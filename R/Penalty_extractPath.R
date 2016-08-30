@@ -77,7 +77,7 @@
     }else if(getCoef %in% c("coef0","coefn0")){
       
       coefChange <- names(regPath)[regPath$indexChange+5] # 5 corresponds to the five colums "lambda1.abs", "lambda1", "lambda2.abs", "lambda2", "indexChange"
-      if(0 %in% regPath$lambda1.abs){
+      if(x$penalty$increasing){
         current.coef <- intersect(validNames, x$penalty$name.coef)
         seqIterator <- 1:NROW(regPath)
       }else{

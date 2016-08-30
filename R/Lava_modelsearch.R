@@ -3,7 +3,9 @@
 
 ###
 
-extendModel.lvm <- function(x, data, type, alpha = 0.05, covariance = TRUE, warn = TRUE, trace = TRUE, ...){
+extendModel.lvm <- function(x, data, type, 
+                            alpha = 0.05, method = "holm",
+                            covariance = TRUE, warn = TRUE, trace = TRUE, ...){
   
   match.arg(type, choices = c("all","modelsearch", "modelsearchLR"))
   
@@ -21,10 +23,15 @@ extendModel.lvm <- function(x, data, type, alpha = 0.05, covariance = TRUE, warn
     while(cv == FALSE){ 
       if(trace){cat("*")}
       resSearch <- do.call(type, args = list(lvmfit, silent = TRUE))
-     
-      if(tail(p.adjust(resSearch$test[,"P-value"], method = "holm"), 1) < alpha){
-        var1 <- tail(resSearch$var,1)[[1]][,1]
-        var2 <- tail(resSearch$var,1)[[1]][,2]
+      if(covariance){
+        index <- 1:length(resSearch$var)
+      }else{
+        index <- which(unlist(lapply(resSearch$var, function(var){sum(var %in% endogenous(x))}))<2)
+      }
+      
+      if(tail(p.adjust(resSearch$test[index,"P-value"], method = method), 1) < alpha){
+        var1 <- tail(resSearch$var[index],1)[[1]][,1]
+        var2 <- tail(resSearch$var[index],1)[[1]][,2]
         
         if(var1 %in% vars(x) == FALSE){
           var1 <- renameFactor(var1, ls.levels = ls.levels)

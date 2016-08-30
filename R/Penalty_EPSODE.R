@@ -22,11 +22,11 @@
 #' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
 
 
-EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, test.penalty1, 
-                   indexPenalty, indexNuisance, 
+EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, 
+                   test.penalty1, indexPenalty, indexNuisance, 
                    resolution_lambda1, increasing, stopLambda, stopParam,
                    nstep_max = min(length(beta)*50,1e4), 
-                   ode.method = "euler", control, tol.0 = 1e-8, exportAllPath, trace){
+                   ode.method = "euler", control, reversible, tol.0 = 1e-8, exportAllPath, trace){
   
   #### preparation
   if(increasing){
@@ -66,7 +66,7 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                          iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, method = control$proxGrad$method))$par
     
   }
-  
+ 
   ## constrain 
   if(length(indexNuisance) > 0){
     res <- initSigmaConstrain(beta, constrain = control$constrain, indexNuisance = indexNuisance)
@@ -87,12 +87,11 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   setZE <- intersect(which(abs(V %*% beta) < tol.0), indexPenalty)
   setPE <- intersect(which(V %*% beta > tol.0), indexPenalty)
   seq_index <- NA
- 
-   if(trace>=0){
+  
+  if(trace>=0){
     cat("Penalisation path using the EPSODE algorithm \n", sep = "")
     if(length(indexNuisance) > 0){
-      cat(" * fixed coef : \"",paste(setdiff(names(beta), names(beta)[indexAllCoef]), collapse = "\" \""),"\" \n", sep = "")
-      cat(" * value coef : ",paste(beta[setdiff(names(beta), names(beta)[indexAllCoef])], collapse = " ")," \n", sep = "")
+      cat(" * fixed coef : \"",paste(names(beta)[indexNuisance], collapse = "\" \""),"\" \n", sep = "")
     }
     if(trace==0){pb <- utils::txtProgressBar(min = 0, max = length(indexPenalty), initial = 0, style = 3)}
   }
@@ -112,16 +111,14 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     uz <- rep(0, n.coef)
     if(length(setNE)>0){uz <- uz - colSums(V[setNE,,drop = FALSE])}
     if(length(setPE)>0){uz <- uz  + colSums(V[setPE,,drop = FALSE])}
-    
     Uz <- V[setZE,indexAllCoef,drop = FALSE]
-    Uz_pen <- V[setZE,indexAllCoef,drop = FALSE]# Uz[,indexAllCoef %in% indexPenalty, drop = FALSE]
     
-    if(length(Uz_pen)>0){ # in case of ill conditionned problem
+    if(length(Uz)>0){ # in case of ill conditionned problem
       B <- pracma::nullspace(Uz)
-      iUz_pen <- solve(Uz_pen %*% t(Uz_pen)) %*% Uz_pen # MASS::ginv(Uz_pen) # or (Uz_pen t(Uz_pen))^-1 Uz_pen
+      iUz <- solve(Uz %*% t(Uz)) %*% Uz # MASS::ginv(Uz_pen) # or (Uz_pen t(Uz_pen))^-1 Uz_pen
     }else{
       B <- NULL
-      iUz_pen <- NULL
+      iUz <- NULL
     }
     
     ## Solve ODE 
@@ -139,29 +136,29 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                                   times = lambda.ode,
                                   func = EPSODE_odeBeta, method = ode.method,
                                   parm = list(hessian = hessian, setNE = setNE, setZE = setZE, setPE = setPE,
-                                              lambda2 = lambda2, indexPenalty = indexPenalty, indexAllCoef = indexAllCoef,
-                                              uz = uz, Uz = Uz, Uz_pen = Uz_pen, iUz_pen = iUz_pen, B = B,
-                                              resolution = resolution_lambda1, envir = envir)
+                                              lambda2 = lambda2, indexPenalty = indexPenalty, indexAllCoef = indexAllCoef, indexNuisance = indexNuisance,
+                                              uz = uz, Uz = Uz, iUz = iUz, B = B,
+                                              resolution = resolution_lambda1, reversible = reversible, envir = envir)
     ), silent = TRUE)
-    
+   
     ## second chance in case of multiple events
     if(!is.null(cv.ode) && cv.ode$cv["cv.sign"]>1){
       bridge.odeS <- bridge.ode
       iterBeta2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),-(1:3)]
       lambda.ode2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),3]
-     
+      
       lambda.ode <- seq_len(10000)
       cv.ode <- NULL
       bridge.ode <- rbind(c(iter = 0, step = 0, lambda = lambda.ode2, iterBeta2))
       
-     
+      
       res.error <- try(deSolve::ode(y = iterBeta2,
                                     times = lambda.ode,
                                     func = EPSODE_odeBeta, method = ode.method,
                                     parm = list(hessian = hessian, Vpen = V, setNE = setNE, setZE = setZE, setPE = setPE,
                                                 lambda2 = lambda2, indexPenalty = indexPenalty, indexAllCoef = indexAllCoef,
-                                                uz = uz, Uz = Uz, Uz_pen = Uz_pen, iUz_pen = iUz_pen, B = B,
-                                                resolution = resolution_lambda1/10, envir = envir)
+                                                uz = uz, Uz = Uz, iUz = iUz, B = B,
+                                                resolution = resolution_lambda1/10, reversible = reversible, envir = envir)
       ), silent = TRUE)
       
     }
@@ -270,29 +267,29 @@ EPSODE_odeBeta <- function(t, y, ls.args){
   }
   
   #### test knot
-  if(ls.args$resolution[2]>0){ #### to be removed, here to avoid instabilities
-  index <- NULL
-  if(length(ls.args$setNE)>0){index <- c(index, ls.args$setNE[which(y[ls.args$setNE] > 0)])} ## any negative parameter that becomes positive: stop algorithm
-  if(length(ls.args$setPE)>0){index <- c(index, ls.args$setPE[which(y[ls.args$setPE] < 0)])} ## any positive parameter that becomes negative: stop algorithm
-  
-  if(length(index) == 1){
-     assign("cv.ode",
-           value = list(param = y, lambda = lambda, index = index, cv = c(cv.sign = TRUE, cv.constrain = FALSE, s = NA)),
-           envir = ls.args$envir)
-    assign("bridge.ode",
-           value =  rbind(bridge,c(t, NA, lambda, y)),
-           envir = ls.args$envir)
-    stop("cv \n")
-  }else if(length(index) > 1){
-    assign("cv.ode",
-           value = list(param = y, lambda = lambda, index = NA, cv = c(cv.sign = length(index), cv.constrain = FALSE, s = NA)),
-           envir = ls.args$envir)
-    assign("bridge.ode",
-           value =  rbind(bridge,c(t, NA, NA, y)),
-           envir = ls.args$envir)
-    stop("EPSODE_odeBeta: multiple events \n",
-         "increase resolution \n")
-  }
+  if(ls.args$reversible || ls.args$resolution[2]>0){ #### to be removed, here to avoid instabilities
+    index <- NULL
+    if(length(ls.args$setNE)>0){index <- c(index, ls.args$setNE[which(y[ls.args$setNE] > 0)])} ## any negative parameter that becomes positive: stop algorithm
+    if(length(ls.args$setPE)>0){index <- c(index, ls.args$setPE[which(y[ls.args$setPE] < 0)])} ## any positive parameter that becomes negative: stop algorithm
+    
+    if(length(index) == 1){
+      assign("cv.ode",
+             value = list(param = y, lambda = lambda, index = index, cv = c(cv.sign = TRUE, cv.constrain = FALSE, s = NA)),
+             envir = ls.args$envir)
+      assign("bridge.ode",
+             value =  rbind(bridge,c(t, NA, lambda, y)),
+             envir = ls.args$envir)
+      stop("cv \n")
+    }else if(length(index) > 1){
+      assign("cv.ode",
+             value = list(param = y, lambda = lambda, index = NA, cv = c(cv.sign = length(index), cv.constrain = FALSE, s = NA)),
+             envir = ls.args$envir)
+      assign("bridge.ode",
+             value =  rbind(bridge,c(t, NA, NA, y)),
+             envir = ls.args$envir)
+      stop("EPSODE_odeBeta: multiple events \n",
+           "increase resolution \n")
+    }
   }
   
   #### Hessian and gradient
@@ -303,6 +300,10 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     attr(H, "grad") <- attr(H, "grad") + ls.args$lambda2[ls.args$indexAllCoef, drop = FALSE] * y[ls.args$indexAllCoef, drop = FALSE]
     H[] <- H[] + diag(ls.args$lambda2[ls.args$indexAllCoef, drop = FALSE])
   }
+  
+  G <- attr(H, "grad")[ls.args$indexAllCoef, drop = FALSE]
+  uz <- ls.args$uz[ls.args$indexAllCoef, drop = FALSE]
+  Uz <- ls.args$Uz[,ls.args$indexAllCoef, drop = FALSE]
   
   #### estimate Q and P
   if(length(ls.args$setZE) == 0){
@@ -315,16 +316,10 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     if(is.matrix(H_m1)){ # 
       # all coef
       H_m1 <- solve(H)
-      R <- solve(ls.args$Uz %*% H_m1 %*% t(ls.args$Uz))
-      Q <- H_m1 %*% t(ls.args$Uz) %*% R
-      P <- H_m1 - Q %*% ls.args$Uz %*% H_m1 
-      # Qred <- Q[ls.args$indexAllCoef %in% ls.args$indexPenalty,, drop = FALSE] #### less accurate I don't know why
-      
-      # only penalized coef
-      # H_m1 <- solve(H[ls.args$indexAllCoef %in% ls.args$indexPenalty, ls.args$indexAllCoef %in% ls.args$indexPenalty,drop = FALSE])
-      # R <- solve(ls.args$Uz_pen %*% H_m1 %*% t(ls.args$Uz_pen))
-      # Qred <- H_m1 %*% t(ls.args$Uz_pen) %*% R
-      
+      R <- solve(Uz %*% H_m1 %*% t(Uz))
+      Q <- H_m1 %*% t(Uz) %*% R
+      P <- H_m1 - Q %*% Uz %*% H_m1 
+         
     }else{ # singular H matrix
       if(all(H<1e-12)){
         assign("cv.ode", 
@@ -338,27 +333,23 @@ EPSODE_odeBeta <- function(t, y, ls.args){
       }
       BHB <-  t(ls.args$B) %*% H %*% ls.args$B
       P <- ls.args$B %*% solve(BHB) %*% t(ls.args$B)
-      Q <- t(ls.args$iUz_pen)
+      Q <- t(ls.args$iUz[,ls.args$indexAllCoef, drop = FALSE])
       
     }
-
-    G <- attr(H, "grad")[ls.args$indexAllCoef, drop = FALSE]
     
     ## check constrains
-    if(ls.args$resolution[2]<0){ #### to be removed, here to avoid instabilities
-   
-    s <- - t(Q) %*% ( (1 / lambda) * G + ls.args$uz[ls.args$indexAllCoef,drop = FALSE])
-    
-    if(t > 1 && any( abs(s) > 1)){
-      index <- which.max(abs(s))
-      assign("cv.ode",
-             value =  list(param = y, lambda = lambda, index = ls.args$setZE[index], cv = c(cv.sign = FALSE, cv.constrain = TRUE, s = s[index])),
-             envir = ls.args$envir)
-      assign("bridge.ode",
-             value =  rbind(bridge,c(t, NA, lambda, y)),
-             envir = ls.args$envir)
-      stop("cv \n")
-    }
+    if(ls.args$reversible || ls.args$resolution[2]<0){ #### to be removed, here to avoid instabilities
+      s <- - t(Q) %*% ( (1 / lambda) * G + uz) # - t(Q) %*% ( (1 / nextKnot) * G + uz)
+      if(t > 1 && any( abs(s) > 1)){
+        index <- which.max(abs(s))
+        assign("cv.ode",
+               value =  list(param = y, lambda = lambda, index = ls.args$setZE[index], cv = c(cv.sign = FALSE, cv.constrain = TRUE, s = s[index])),
+               envir = ls.args$envir)
+        assign("bridge.ode",
+               value =  rbind(bridge,c(t, NA, lambda, y)),
+               envir = ls.args$envir)
+        stop("cv \n")
+      }
     }
   }
   
@@ -366,7 +357,7 @@ EPSODE_odeBeta <- function(t, y, ls.args){
   Puz <- rep(0, length(y))
   if(length(ls.args$setZE)==0){
     coef.n0 <- ls.args$indexAllCoef
-    Puz[ls.args$indexAllCoef] <- P %*% ls.args$uz[ls.args$indexAllCoef, drop = FALSE]
+    Puz[ls.args$indexAllCoef] <- P %*% uz
   }else{
     coef.n0 <- setdiff(ls.args$indexAllCoef,ls.args$setZE)
     Puz[setdiff(ls.args$indexAllCoef,ls.args$setZE)] <- P[-ls.args$setZE,-ls.args$setZE, drop = FALSE] %*% ls.args$uz[setdiff(ls.args$indexAllCoef,ls.args$setZE), drop = FALSE]  
@@ -378,18 +369,19 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     #   ## linear interpolation
     #   normTempo <- max(min(lAll[lAll>0]*ls.args$resolution[1]), ls.args$resolution[2])
     # }else{
-      ## relative difference
-      rdiff.max <- max(abs(Puz[coef.n0]/y[coef.n0]))
-      normTempo <- max(ls.args$resolution[1]/rdiff.max,ls.args$resolution[2])  
+    ## relative difference
+    rdiff.max <- max(abs(Puz[coef.n0]/y[coef.n0]))
+    normTempo <- max(ls.args$resolution[1]/rdiff.max,ls.args$resolution[2])  
     # }
     
   }else{
     ## linear interpolation
-    lPlus <- (- t(Q) %*% G)/(1 + t(Q) %*% ls.args$uz[ls.args$indexAllCoef,drop = FALSE])
-    lMinus <- (- t(Q) %*% G)/(-1 + t(Q) %*% ls.args$uz[ls.args$indexAllCoef,drop = FALSE])
+    lPlus <- (- t(Q) %*% G)/(1 + t(Q) %*% uz)
+    lMinus <- (- t(Q) %*% G)/(-1 + t(Q) %*% uz)
     lAll <- c(lPlus[lPlus<lambda],lMinus[lMinus<lambda])
     nextKnot <- lAll[which.min(lambda-lAll)]
-   
+    # print(paste0(nextKnot, " ",lambda," ",y["Y,Y"]))
+    
     normTempo <- max(-lambda,min( (lambda-nextKnot)*ls.args$resolution[1], ls.args$resolution[2])) ## max(-lambda) to avoid negative lambda
   }
   

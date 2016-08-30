@@ -1,4 +1,4 @@
-#### 1- S3 Methods  - init ####
+##' @title Penalty term for LVM
 ##' @aliases penalize penalize<- penalize.lvm penalize.plvm
 ##' @param x
 ##' @param intercept should the intercept be penalized
@@ -10,8 +10,9 @@
 ##' @param gn_penalty first derivative of the user defined penalty function. Arguments coef, lambda1, lambda2.
 ##' @param hn_penalty, second derivative of the user defined penalty user defined penalty function. Arguments coef, lambda1, lambda2.
 ##' @param value
+##' 
 ##' @return none
-##' @export
+##' 
 ##' @examples
 ##' set.seed(10)
 ##' n <- 500
@@ -41,11 +42,12 @@
 ##' elvm.L1FreePath <- estimate(plvm.model,  data = df.data, lambda1 = elvm.FreePath$opt$message[3,"lambda"])                           
 ##' coef(elvm.L1FreePath) - elvm.FreePath$opt$message[3,-1]
 ##' 
-
+##' @export
 lvm2plvm <- function(x){
   
   x$penalty <- list(name.coef = NULL,
                     group.coef = NULL,
+                    var.coef = NULL,
                     lambda1 = 0, 
                     lambda2 = 0,
                     adaptive = FALSE,
@@ -71,12 +73,13 @@ lvm2plvm <- function(x){
 ##' @export
 `penalize` <-
   function(x,...) UseMethod("penalize")
+
 ##' @export
 "penalize<-" <- function (x, ..., value) {
   UseMethod("penalize<-", x)
 }
 
-
+##' @export
 `penalize.lvm` <- function(x, value = NULL, ...){
   
   penalize(x, ...) <- value
@@ -84,8 +87,10 @@ lvm2plvm <- function(x){
   return(x)
 }
 
+##' @export
 `penalize.plvm` <- `penalize.lvm`
 
+##' @export
 `penalize<-.lvm` <- function(x, ..., value){
   
   ## convert to plvm
@@ -137,7 +142,6 @@ lvm2plvm <- function(x){
     
     ## no penalization on parameters related to the latent variables
     if(latent == FALSE){
-      
       request <- paste( paste0("^",names(x$latent),"~|~",names(x$latent),"$"), collapse = "|")
       sapply("^u~", grep, x = coef(x), value = TRUE)
       ls.penaltyCoefLatent <- sapply(request, grep, x = coef(x), value = FALSE)
@@ -145,8 +149,13 @@ lvm2plvm <- function(x){
     }
       
     x$penalty$name.coef <- coef(x)[index.penaltyCoef]
+  
   } 
-    #### group penalty if the latent variable is penalized
+  endo <- sapply(x$penalty$name.coef,function(char){all.vars(as.formula(char))[1]}) # useless
+  x$penalty$var.coef <- paste(endo,endo,sep =",") # useless
+  x$penalty$var.coef[endo %in% endogenous(x) == FALSE] <- NA # useless
+  
+   #### group penalty if the latent variable is penalized
    names.varLatent <- paste(names(x$latent),names(x$latent),sep = ",")
   if(any(x$penalty$name.coef %in% names.varLatent)){
     

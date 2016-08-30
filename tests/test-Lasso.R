@@ -5,7 +5,7 @@ library(lava)
 library(testthat)
 library(deSolve)
 library(butils)
-package.source("lava", Rcode = TRUE)
+package.source("lava.penalty", Rcode = TRUE)
 source(file.path(butils::dir.gitHub(),"lava","tests","FCT.R"))
 
 context("Reg-lasso")
@@ -66,7 +66,7 @@ test_that("LVM(EPSODE-forward) vs penalize with lasso", {
   
   system.time(
     PathFor_free <- estimate(plvm.model,  data = df.data, increasing = TRUE, estimator = "numDeriveSimple",
-                             regularizationPath = TRUE, lambda2 = 0, resolution_lambda1 = c(1e-2,1e-3),  #stopParam = 4,
+                             regularizationPath = TRUE, lambda2 = 0, resolution_lambda1 = c(1e-1,1e-3),  #stopParam = 4,
                              control = list(trace =TRUE))
   )
   lambda1path <- getLambda(PathFor_free, lambda1 = TRUE, abs = TRUE)[,1]
@@ -80,7 +80,7 @@ test_that("LVM(EPSODE-forward) vs penalize with lasso", {
   # 5  129.196502 323.57628          NA      NA  2.229052e-05  0.0000000  0.000000000 0.0000000 0.1998052 0.4637723 0.3992768
   # 7  236.990412 358.84629          NA      NA  5.321877e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.2494372 0.6604232
   # 8  361.702913 392.73612          NA      NA  8.407698e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 0.9209820
-  #expect_equal(lambda1path[indexLambda], expected=seq_lambda, tolerance=test.tolerance, scale=test.scale)    
+  # expect_equal(lambda1path[indexLambda], expected=seq_lambda, tolerance=test.tolerance, scale=test.scale)
   
   
   # bruger   system forløbet 
@@ -107,7 +107,7 @@ test_that("LVM(EPSODE-backward) vs penalize with lasso", {
   # 1  397.176622 397.97257           0       0 -1.068329e-17  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 0.9980000
   
   PathBack_free <- estimate(plvm.model,  data = df.data, increasing = FALSE, estimator = "numDeriveSimple",
-                             regularizationPath = 2, lambda2 = 0, resolution_lambda1 = c(1e-2,1e-3),
+                             regularizationPath = 2, lambda2 = 0, resolution_lambda1 = c(1e-9,1e-2), reversible = TRUE,
                              control = list(trace = TRUE))
 
   lambda1path <- getLambda(PathBack_free, lambda1 = TRUE, abs = TRUE)[,1]
@@ -116,22 +116,14 @@ test_that("LVM(EPSODE-backward) vs penalize with lasso", {
   # expect_equal(lambda1path[indexLambda], expected=seq_lambda, tolerance=test.tolerance, scale=test.scale)
   
   # getPath(PathBack_free,  rm.duplicated = TRUE)
-  # lambda1.abs    lambda1 lambda2.abs lambda2             Y       Y~X1         Y~X2      Y~X3      Y~X4      Y~X5      Y,Y
-  # 15    0.000000   0.000000          NA      NA -1.578251e-17 -0.0137584 -0.015867427 0.2384096 0.4476322 0.7105163 0.211071
-  # 14    5.672069   1.487624          NA      NA  7.051115e-05  0.0000000 -0.002845238 0.2254063 0.4324297 0.6356873 3.812838
-  # 13    6.983530   1.831920          NA      NA  7.049357e-05  0.0000000  0.000000000 0.2227725 0.4297658 0.6333863 3.812136
-  # 12  129.028452  36.479528          NA      NA  6.360176e-05  0.0000000  0.000000000 0.0000000 0.1978925 0.4058857 3.537010
-  # 11  229.349659  74.981261          NA      NA  5.162176e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.2155615 3.058760
-  # 10  347.912616 170.767081          NA      NA  2.603579e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 2.037352
-  # 9   360.996320 177.188999          NA      NA  2.603579e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 2.037352
-  # 4   361.068164 199.924297          NA      NA  2.024109e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.806024
-  # 8   361.068341 183.897611          NA      NA  2.418383e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.963421
-  # 6   361.069155 191.391584          NA      NA  2.225816e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.886547
-  # 2   361.069415 361.793001          NA      NA -1.068329e-17  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 0.998000
-  # 7   362.073519 184.409563          NA      NA  2.418383e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.963421
-  # 5   363.407438 192.631035          NA      NA  2.225816e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.886547
-  # 1   397.176622 397.972567          NA      NA -1.068329e-17  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 0.998000
-  # 3   629.570493 348.594671          NA      NA  2.024109e-05  0.0000000  0.000000000 0.0000000 0.0000000 0.0000000 1.806024
+  # lambda1.abs  lambda1 lambda2.abs lambda2             Y       Y~X1          Y~X2       Y~X3      Y~X4       Y~X5       Y,Y
+  # 9      0.0000   0.0000          NA      NA -1.578251e-17 -0.0137584 -0.0158674270 0.23840964 0.4476322 0.71051635 0.2110710
+  # 8    129.0630 306.2116          NA      NA -1.444219e-05  0.0000000 -0.0000498277 0.03259751 0.2052476 0.36687687 0.4214830
+  # 7    129.4964 306.2126          NA      NA -1.440677e-05  0.0000000  0.0000000000 0.03190950 0.2044367 0.36572900 0.4228969
+  # 6    168.8055 322.9336          NA      NA -1.190595e-05  0.0000000  0.0000000000 0.00000000 0.1644496 0.30151089 0.5227249
+  # 3    343.3648 361.1992          NA      NA -1.186763e-06  0.0000000  0.0000000000 0.00000000 0.0000000 0.03318823 0.9506244
+  # 2    361.0688 361.7924          NA      NA -1.068329e-17  0.0000000  0.0000000000 0.00000000 0.0000000 0.00000000 0.9980000
+  # 1    397.1766 397.9726          NA      NA -1.068329e-17  0.0000000  0.0000000000 0.00000000 0.0000000 0.00000000 0.9980000
 })
 
 
@@ -347,14 +339,14 @@ plvm.modelSim <- penalize(lvm.modelSim)
 test_that("LVM vs pLVM (lambda = 0)", {
   resLVM <- estimate(lvm.modelSim, data = scale(df.data))
   
-  resPLVM <- estimate(plvm.modelSim, data = df.data, lambda1 = 0)
-  expect_equal(coef(resLVM), coef(resPLVM), tolerance=test.tolerance, scale=test.scale)
+  resPLVM1 <- estimate(plvm.modelSim, data = df.data, lambda1 = 0)
+  expect_equal(coef(resLVM), coef(resPLVM1), tolerance=test.tolerance, scale=test.scale)
   
-  resPLVM <- estimate(plvm.modelSim, data = df.data, lambda1 = 0, control = list(constrain = TRUE))
-  expect_equal(coef(resLVM), coef(resPLVM), tolerance=test.tolerance, scale=test.scale)  
+  resPLVM2 <- estimate(plvm.modelSim, data = df.data, lambda1 = 0, control = list(constrain = TRUE))
+  expect_equal(coef(resLVM), coef(resPLVM2), tolerance=test.tolerance, scale=test.scale)  
   
-  resPLVM <- estimate(plvm.modelSim, data = df.data, lambda1 = 0, fixSigma = TRUE)
-  expect_equal(coef(resLVM), coef(resPLVM), tolerance=test.tolerance, scale=test.scale)
+  resPLVM3 <- estimate(plvm.modelSim, data = df.data, lambda1 = 0, fixSigma = TRUE)
+  expect_equal(coef(resLVM), coef(resPLVM3), tolerance=test.tolerance, scale=test.scale)
 })
 
 #### A given sigma ####

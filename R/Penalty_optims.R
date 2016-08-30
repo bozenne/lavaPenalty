@@ -16,17 +16,17 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   
   n.coef <- length(start)
   
-  #### specify constrain: divide all variance parameters by the variance fo the first parameter and fix first variance parameter to one
+  #### Proximal gradient algorithm
+  # update penalty
+  newPenalty <- initPenalty(start = start, penalty = penalty, penaltyNuclear = penaltyNuclear)
+  
+  # force equivariant
   if(control$proxGrad$fixSigma){
     index.constrain <- which(names(start) %in% penalty$names.varCoef)
     if(control$trace>=0){cat("constrains: lambda1=lambda1/sum(", paste(names(start)[index.constrain], collapse = " "),")\n")}
   }else{
     index.constrain <- NULL
   }
-  
-  #### Proximal gradient algorithm
-  # update penalty
-  newPenalty <- initPenalty(start = start, penalty = penalty, penaltyNuclear = penaltyNuclear)
   
   proxOperator <- function(x, step){
     control$proxOperator(x, step = step,
@@ -49,6 +49,9 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
                   method = control$proxGrad$method, trace = control$proxGrad$trace)
   if(control$trace>=0){cat("- done \n")}
   
+  
+  
+  
   if(penalty$adaptive){
     
     proxOperator <- function(x, step){
@@ -66,15 +69,15 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
     if(control$trace>=0){cat("- done \n")}
     
   }
- 
+  
   ## estimation of the nuisance parameter
-  if(length(index.constrain)>0){
-    if(control$trace>=0){cat("Estimation of the nuisance parameter ")}
-    res$par[index.constrain] <- optim.Nuisance.lvm(x = control$proxGrad$envir$x, data = control$proxGrad$envir$data, 
-                                                   coefEstimated = res$par, coefNuisance = names(res$par)[index.constrain], coefPenalty = penalty$name.coef,
-                                                   control = control, log = control$constrain)
-    if(control$trace>=0){cat("- done \n")}
-  }
+  # if(length(index.constrain)>0){
+  #   if(control$trace>=0){cat("Estimation of the nuisance parameter ")}
+  #   res$par[index.constrain] <- optim.Nuisance.lvm(x = control$proxGrad$envir$x, data = control$proxGrad$envir$data, 
+  #                                                  coefEstimated = res$par, coefNuisance = names(res$par)[index.constrain], coefPenalty = penalty$name.coef,
+  #                                                  control = control, log = control$constrain)
+  #   if(control$trace>=0){cat("- done \n")}
+  # }
   
   ## update objective with penalty - one value for each penalty
   objective.pen <- lapply(control$objectivePenalty, 
@@ -109,7 +112,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
  
   ## nuisance parameter
   if(regPath$fixSigma){
-    if(length(penalty$names.varCoef)>1){stop("Cannot fixSigma when having several variance parameters \n")}
+    #if(length(penalty$names.varCoef)>1){stop("Cannot fixSigma when having several variance parameters \n")}
     indexNuisance <- which(names(start) %in% penalty$names.varCoef)
   }else{
     indexNuisance <- NULL
@@ -122,7 +125,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
                          indexPenalty = which(names(start) %in% penalty$name.coef), indexNuisance = indexNuisance, 
                          resolution_lambda1 = regPath$resolution_lambda1, increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
                          lambda2 = penalty$lambda2, test.penalty1 = newPenalty$test.penalty1,
-                         control = control, exportAllPath = control$regPath$exportAllPath, trace = control$regPath$trace)
+                         control = control, exportAllPath = control$regPath$exportAllPath, reversible = control$regPath$reversible, trace = control$regPath$trace)
 
   
  ## estimation of the nuisance parameter and update lambda/lambda.abs
@@ -202,8 +205,9 @@ initPenalty <- function(start, regPath = NULL, penalty, penaltyNuclear){
               "non-applied penalty: ",paste(setdiff(penalty$name.coef, names(start)), collapse = " "),"\n")
       penalty$group.coef <- penalty$group.coef[penalty$name.coef %in% names(start)]
       penalty$name.coef <- penalty$name.coef[penalty$name.coef %in% names(start)]
-     }
-   
+      penalty$var.coef <- penalty$var.coef[penalty$var.coef %in% names(start)] # useless
+    }
+    
     if(!is.null(regPath)){
       penalty$V <- penalty$V[names(start), names(start),drop = FALSE]
       regPath$beta_lambda0 <- regPath$beta_lambda0[names(start), drop = FALSE]
@@ -215,6 +219,8 @@ initPenalty <- function(start, regPath = NULL, penalty, penaltyNuclear){
     lambda1[names(start) %in% penalty$name.coef] <- penalty$lambda1
     lambda2 <- rep(0, n.coef)
     lambda2[names(start) %in% penalty$name.coef] <- penalty$lambda2
+    index.constrain <- rep(NA, n.coef) # useless
+    index.constrain[names(start) %in% penalty$name.coef] <- penalty$var.coef # useless
     
     ## grouped lasso: set lasso indexes to 0
     test.penaltyN <- NULL
@@ -240,24 +246,25 @@ initPenalty <- function(start, regPath = NULL, penalty, penaltyNuclear){
     test.penaltyN <- which(names(start) %in% penaltyNuclear$name.coef)
     test.penalty1 <- NULL
     test.penalty2 <- NULL
+    index.constrain <- NULL
   }
   
   return(list(start = start, regPath = regPath, penalty = penalty,
-              lambdaN = lambdaN, lambda1 = lambda1, lambda2 = lambda2,
+              lambdaN = lambdaN, lambda1 = lambda1, lambda2 = lambda2, index.constrain = index.constrain,
               test.penaltyN = test.penaltyN, test.penalty1 = test.penalty1, test.penalty2 = test.penalty2))
 }
 
 initSigmaConstrain <- function(start, constrain, indexNuisance){
-  
+
   if(constrain){
     start[indexNuisance] <- start[indexNuisance] - start[indexNuisance[1]]
-    constrain <- setNames(0, names(start)[indexNuisance[1]]) 
+    constrain <- setNames(0, names(start)[indexNuisance[1]])
   }else{
     start[indexNuisance] <- start[indexNuisance]/start[indexNuisance[1]]
-    constrain <- setNames(1, names(start)[indexNuisance[1]]) 
+    constrain <- setNames(1, names(start)[indexNuisance[1]])
   }
   indexAllCoef <- setdiff(1:length(start), indexNuisance[1])
-  
+
   return(list(start = start,
               constrain = constrain,
               indexAllCoef = indexAllCoef)

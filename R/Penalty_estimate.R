@@ -72,7 +72,7 @@
 #' p12lvm.fit <- estimate(plvm.model,  data = df.data, lambda1 = 0.1, lambda2 = 0.1)
 #' p12lvm.fit
 estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, control = list(), estimator = "penalized", 
-                          regularizationPath = FALSE, resolution_lambda1 = c(1e-1,1e-3), increasing = TRUE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
+                          regularizationPath = FALSE, resolution_lambda1 = c(1e-1,1e-3), increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
                           fit = "BIC",
                           method.proxGrad = "ISTA", step = 1, BT.n = 100, BT.eta = 0.8, force.descent = FALSE,
                           fixSigma = FALSE, ...) {
@@ -150,6 +150,7 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   control$regPath <- list(type = regularizationPath,
                           resolution_lambda1 = resolution_lambda1,
                           increasing = increasing,
+                          reversible = reversible,
                           stopParam = stopParam,
                           stopLambda = stopLambda,
                           fixSigma = fixSigma,
@@ -209,6 +210,7 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   ## add elements to object
   res$penalty <-  control$penalty[c("name.coef", "group.coef", "lambda1", "lambda2")]
   res$penalty$regularizationPath <- regularizationPath
+  res$penalty$increasing <- increasing
   res$penalty$penaltyNuclear <- control$penaltyNuclear
   if( regularizationPath > 0){
     res$regularizationPath <- res$opt$message
