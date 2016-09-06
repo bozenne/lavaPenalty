@@ -38,7 +38,7 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
   fct_errorLv <- function(e){warning("unable to compute the value of the likelihood - return Inf \n");return(Inf)}
   ## initialisation
   x_k <- start 
-
+  
   obj.x_k <- tryCatch(objective(x_k), error = fct_errorLv)
   if(is.na(obj.x_k)){obj.x_k <- Inf}
   grad.x_k <- try(gradient(x_k))

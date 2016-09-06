@@ -4,6 +4,7 @@
 \alias{initPenalty}
 \title{initialise the penalty}
 \usage{
-initPenalty(start, regPath = NULL, penalty, penaltyNuclear)
+initPenalty(start = NULL, name.coef = NULL, regPath = NULL, penalty,
+  penaltyNuclear)
 }
 

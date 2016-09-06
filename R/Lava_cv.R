@@ -17,7 +17,7 @@ cvCheck <- function (x, ...) {
 #' 
 #' @return a data frame/cvlvm object containing the convergence status (by default 0 indicates successful convergence, see ?optim), the value of the log-likelihood and the estimated parameters (in columns) for each initialization (in rows)
 #' 
-#' @examples #' 
+#' @examples 
 #' m <- lvm(list(y~v1+v2+v3+v4,c(v1,v2,v3,v4)~x))
 #' covariance(m) <- v1~v2+v3+v4
 #' dd <- sim(m,10000) ## Simulate 10000 observations from model
@@ -30,7 +30,7 @@ cvCheck <- function (x, ...) {
 #' system.time(
 #' summary(cvCheck(m, dd, ncpus = 4))
 #' )
-
+#' @export
 cvCheck.lvm <- function(object, data, factor.vcov = 9, n.init = 100, ncpus = 1, verbose = TRUE, ...){
   
   require(lava)

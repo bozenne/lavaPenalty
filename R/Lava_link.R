@@ -10,7 +10,23 @@
 `rmLink` <-
   function(x,...) UseMethod("rmLink")
 
+
 #' @title Find the new possible links between variables (copied from lava::modelsearch)
+#' 
+#' @param x a lvm model
+#' @param rm.exoexo ignore links between exogeneous variables
+#' @param output return the names of the variables to link ("names") or their position ("index")
+#' 
+#' @examples 
+#' m <- lvm()
+#' regression(m) <- c(y1,y2,y3)~u
+#' regression(m) <- u~x1+x2
+#' latent(m) <- ~u
+#' 
+#' lava.penalty:::findNewLink(m, rm.exoexo = FALSE)
+#' lava.penalty:::findNewLink(m, rm.exoexo = TRUE)
+#' lava.penalty:::findNewLink(m, rm.exoexo = TRUE, output = "index")
+#' 
 findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
   
   match.arg(output, choices = c("names","index"))
@@ -43,14 +59,36 @@ findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
 }
 
 #' @title Add a new link between two variables in a lvm
-addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
+#' @description Generic interface to add links to a lvm.
+#' 
+#' @param x a lvm model
+#' @param var1 the first variable (character) or a formula describing the link to be added to the lvm
+#' @param var2 the second variable (character). Only used if var1 is a character.
+#' @param covariance does the link is bidirectional. Ignored if one of the variable is exogenous.
+#' @param warnings should a warning be displayed when no link is added
+#' 
+#' @examples 
+#' m <- lvm()
+#' regression(m) <- c(y1,y2,y3)~u
+#' regression(m) <- u~x1+x2
+#' latent(m) <- ~u
+#' 
+#' lava.penalty:::addLink(m, x1 ~ y1)
+#' lava.penalty:::addLink(m, y1 ~ x1)
+#' coef(lava.penalty:::addLink(m, y1 ~ y2, covariance = TRUE))
+#' 
+#' lava.penalty:::addLink(m, "x1", "y1")
+#' lava.penalty:::addLink(m, "y1", "x1")
+#' coef(lava.penalty:::addLink(m, "y1", "y2", covariance = TRUE))
+#' 
+addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
  
   res <- initVar_link(var1, var2)
   var1 <- res$var1
   var2 <- res$var2
   
   if(var1 %in% vars(x) == FALSE){
-    if(silent == FALSE){
+    if(warnings){
       warning("addLink.lvm: var1 does not match any variable in x, no link is added \n",
               "var1: ",var1,"\n")
     }
@@ -64,7 +102,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
   }else{
     
     if(var1 == var2){
-      if(silent == FALSE){
+      if(warnings){
         warning("addLink.lvm: var1 equals var2, no link is added \n",
                 "var1/2: ",var1,"\n")
       }
@@ -72,7 +110,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
     
     
     if(var2 %in% vars(x) == FALSE){
-      if(silent == FALSE){
+      if(warnings){
         warning("addLink.lvm: var2 does not match any variable in x, no link is added \n",
                 "var2: ",var2,"\n")
       }
@@ -81,7 +119,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
       if(missing(covariance)){
         covariance <- TRUE
       }else if(covariance == FALSE){
-        if(silent == FALSE){ warning("addLink.lvm: set covariance argument to TRUE to add a covariance link to the lvm \n") }
+        if(warnings){ warning("addLink.lvm: set covariance argument to TRUE to add a covariance link to the lvm \n") }
         return(x)
       }
     }
@@ -90,7 +128,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
     test.2 <- var2 %in% exogenous(x)
     
     if(test.1 && test.2){
-      if(silent == FALSE){
+      if(warnings){
         warning("addLink.lvm: both variable are exogenous, no link is added \n",
                 "var1: ",var1,"\n",
                 "var2: ",var2,"\n")
@@ -117,7 +155,29 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, silent = FALSE){
 }
 
 #' @title Affect a given value to a link between two variables in a lvm 
-setLink.lvm <- function(x, var1, var2 = NA, value, silent = FALSE){
+#' @description Generic interface to set a value to a link in a lvm.
+#' 
+#' @param x a lvm model
+#' @param var1 the first variable (character) or a formula describing the link
+#' @param var2 the second variable (character). Only used if var1 is a character.
+#' @param value the value to which the link should be set
+#' @param warnings should a warning be displayed when the link is not found in the lvm.
+#' 
+#' @examples 
+#' m <- lvm()
+#' regression(m) <- c(y1,y2,y3)~u
+#' regression(m) <- u~x1+x2
+#' latent(m) <- ~u
+#' covariance(m) <- y1 ~ y2
+#' 
+#' m1 <- lava.penalty:::setLink(m, y3 ~ u, value = 1)
+#' estimate(m1, sim(m,1e2))
+#' # m1 <- lava.penalty:::setLink(m, u ~ y3, value = 1)
+#' 
+#' m2 <- lava.penalty:::setLink(m, y1 ~ y2, value = 0.5)
+#' estimate(m2, sim(m,1e2))
+#' 
+setLink.lvm <- function(x, var1, var2 = NA, value, warnings = FALSE){
   
   res <- initVar_link(var1, var2)
   var1 <- res$var1
@@ -133,7 +193,7 @@ setLink.lvm <- function(x, var1, var2 = NA, value, silent = FALSE){
   }else if(paste(var2,var1, sep = ",") %in% coef(x)){
     covariance(x, as.formula(paste(var1,var2, sep = "~"))) <- value
   }else{
-    if(silent == FALSE){
+    if(warnings){
       warning("setLink.lvm: no link was found from var1 to var2, no link is set \n",
               "var1: ",var1,"\n",
               "var2: ",var2,"\n")
@@ -144,7 +204,24 @@ setLink.lvm <- function(x, var1, var2 = NA, value, silent = FALSE){
 }
 
 #' @title Remove a new link between two variables in a lvm model
-rmLink.lvm <- function(x, var1, var2 = NA, silent = FALSE){
+#' @description Generic interface to remove a link in a lvm.
+#' 
+#' @param x a lvm model
+#' @param var1 the first variable (character) or a formula describing the link
+#' @param var2 the second variable (character). Only used if var1 is a character.
+#' @param warnings should a warning be displayed when the link is not found in the lvm.
+#' 
+#' @examples 
+#' m <- lvm()
+#' regression(m) <- c(y1,y2,y3)~u
+#' regression(m) <- u~x1+x2
+#' latent(m) <- ~u
+#' covariance(m) <- y1 ~ y2
+#' 
+#' lava.penalty:::rmLink(m, y3 ~ u)
+#' 
+#' coef(lava.penalty:::rmLink(m, y1 ~ y2))
+rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
   
   res <- initVar_link(var1, var2)
   var1 <- res$var1
@@ -160,7 +237,7 @@ rmLink.lvm <- function(x, var1, var2 = NA, silent = FALSE){
   }else if(paste(var2,var1, sep = ",") %in% coef(x)){
     cancel(x) <-  as.formula(paste(var2,var1, sep = "~"))
   }else{
-    if(silent == FALSE){
+    if(warnings){
       warning("addLink.lvm: no link was found from var1 to var2, no link is removed \n",
               "var1: ",var1,"\n",
               "var2: ",var2,"\n")
@@ -179,7 +256,16 @@ rmLink.lvm <- function(x, var1, var2 = NA, silent = FALSE){
   return(x)
 }
 
-#' @title Convert var1 and var2 from formula to character
+#' @title Normalize var1 and var2
+#' @description Convert var1 and var2 from formula or covariance to character
+#' 
+#' @examples
+#' lava.penalty:::initVar_link(var1 = a~b, var2 = NA)
+#' lava.penalty:::initVar_link(var1 = a ~ b, var2 = NA)
+#' 
+#' lava.penalty:::initVar_link(var1 = "a,b", var2 = NA)
+#' lava.penalty:::initVar_link(var1 = "a", var2 = "b")
+#' 
 initVar_link <- function(var1, var2){
   
   if(is.na(var2) && is.character(var1)){

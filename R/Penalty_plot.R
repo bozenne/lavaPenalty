@@ -54,13 +54,13 @@
     return(ggPath)
     
   }else if(type == "criterion"){
-    
-    df <- data.frame(lambda1 = x$penalty$lambda1,
+    df <- data.frame(lambda = x$penalty[[lambda]],
                      criterion = x$penalty$performance,
-                     optimum = c("no","yes")[(x$penalty$lambda1 == x$penalty$lambda1.best) + 1])
+                     optimum = c("no","yes")[(x$penalty$performance == x$penalty$performance.best) + 1])
+    names(df)[1] <- lambda
     names(df)[2] <- attr(x$penalty$performance,"criterion")
     
-    ggPerf <- ggplot(df, aes_string(x = "lambda1", y = names(df)[2]))
+    ggPerf <- ggplot(df, aes_string(x = lambda, y = names(df)[2]))
     if(add.line){ggPerf <- ggPerf + geom_line(size = line.size)}
     if(add.point){ggPerf <- ggPerf + geom_point(size = point.size, aes_string(color = "optimum"))}
     

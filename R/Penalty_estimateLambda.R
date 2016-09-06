@@ -1,4 +1,25 @@
-calcLambda <- function(object, model, seq_lambda, data.fit, data.test, 
+#' @title Estimate the regularization parameter
+#' 
+#' @description Find the optimal regularization parameter according to a fit criterion
+#'  
+#' @param object the penalized latent variable
+#' @param model the non penalized latent variable
+#' @param seq_lambda
+#' @param data.fit
+#' @param data.test
+#' @param warmUp
+#' @param keep.fit
+#' @param refit.pLVM
+#' @param fit
+#' @param order
+#' @param trace
+#' @param ...
+#' 
+#' @examples 
+#' 
+#' 
+#' @export
+calcLambda <- function(object, model, seq_lambda1, data.fit, data.test, 
                        warmUp = FALSE, keep.fit = FALSE, refit.pLVM = TRUE,
                        fit = "BIC", order = "lambda1", trace = TRUE, ...){
  
@@ -20,8 +41,9 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
   }
   
   if("plvmfit" %in% class(object)){
-    regPath <- getPath(object, getLambda = order, getCoef = "coef0", order = order)
-    seq_lambda <- unlist(lapply(regPath, function(x){attr(x,order)}))
+    regPath <- getPath(object, getLambda = c("lambda1","lambda1.abs"), getCoef = "coef0", order = order)
+    seq_lambda1 <- unlist(lapply(regPath, function(x){attr(x,"lambda1")}))
+    seq_lambda1.abs <- unlist(lapply(regPath, function(x){attr(x,"lambda1.abs")})) 
     seq_row <- unlist(lapply(regPath, function(x){attr(x,"row")}))
     seq_coef <- lapply(regPath, function(x){as.character(x)})
     
@@ -34,26 +56,26 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
   }
   
   ##
-  n.lambda <- length(seq_lambda)
+  n.lambda1 <- length(seq_lambda1)
   n.endogeneous <- length(endogenous(model))
  
-  cv.lvm <- rep(NA,n.lambda)
-  seq.criterion <- rep(NA,n.lambda)
+  cv.lvm <- rep(NA,n.lambda1)
+  seq.criterion <- rep(NA,n.lambda1)
   best.res <- Inf
-  best.lambda <- NA
+  best.lambda1 <- NA
   best.subset <- NULL
   
   fitTempo1 <- NULL
   
-  if(trace){pb <- txtProgressBar(min = 0, max = n.lambda, style = 3)}
-  for(iterLambda in 1:n.lambda){
+  if(trace){pb <- txtProgressBar(min = 0, max = n.lambda1, style = 3)}
+  for(iterLambda in 1:n.lambda1){
     
     #### define the variables to include in the model
     if("plvmfit" %in% class(object) == FALSE){
       control1 <- control
       if(warmUp && !is.null(fitTempo1)){control1$start <- coef(fitTempo1)}
-      fitTempo1 <- estimate(model, data = data.fit, lambda1 = seq_lambda[iterLambda], control = control1)
-      regPath2$pLVM <- rbind(regPath2$pLVM, c(lambda = seq_lambda[iterLambda], 
+      fitTempo1 <- estimate(model, data = data.fit, lambda1 = seq_lambda1[iterLambda], control = control1)
+      regPath2$pLVM <- rbind(regPath2$pLVM, c(lambda = seq_lambda1[iterLambda], 
                                               cv = fitTempo1$opt$convergence==0, coef(fitTempo1)))
       if(keep.fit){
         ls.model <- c(ls.model, list(fitTempo1))
@@ -72,7 +94,7 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
       }
     }
   
-    #### fit the reduced model
+    #### fit the reduced mode
     fitTempo2 <- lava:::estimate.lvm(model2, data = data.fit, 
                                      control = list(constrain = TRUE, trace = FALSE, start = coef(fitTempo1)))
     cv.lvm[iterLambda] <- fitTempo2$opt$convergence==0
@@ -81,7 +103,7 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
       control2 <- control
       control2$start <- coef(fitTempo1)
       pmodel2 <- penalize(model2, intersect(coef(model2),model$penalty$name.coef))
-      fitTempo3 <- estimate(pmodel2, data = data.fit, lambda1 = seq_lambda[iterLambda], control = control2)
+      fitTempo3 <- estimate(pmodel2, data = data.fit, lambda1 = seq_lambda1[iterLambda], control = control2)
       
       newRow <- regPath2$pLVM[iterLambda,]
       newRow[names(coef(fitTempo3))] <- coef(fitTempo3)
@@ -113,10 +135,10 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
     #### storage
     if(cv.lvm[iterLambda] && best.res>seq.criterion[iterLambda]){
       best.res <- seq.criterion[iterLambda]
-      best.lambda <- seq_lambda[iterLambda]
+      best.lambda1 <- seq_lambda1[iterLambda]
       best.subset <- names(coef(fitTempo2))
       best.lvm <- fitTempo2
-      if("plvmfit" %in% class(object)){attr(best.lambda,"row") <- seq_row[iterLambda]}
+      if("plvmfit" %in% class(object)){attr(best.lambda1,"row") <- seq_row[iterLambda]}
     }
     
     if(trace){setTxtProgressBar(pb, iterLambda)}
@@ -125,17 +147,26 @@ calcLambda <- function(object, model, seq_lambda, data.fit, data.test,
   if(trace){close(pb)}
   if("plvmfit" %in% class(object)){
     best.lvm$penalty <- object$penalty 
-    best.lvm$penalty$lambda1 <- seq_lambda 
+    
+    best.lvm$penalty$lambda1 <- seq_lambda1
+    best.lvm$penalty$lambda1.abs <- seq_lambda1.abs
+    
     attr(seq.criterion, "criterion") <- fit
     best.lvm$penalty$performance <- seq.criterion
-    best.lvm$penalty$convergence <- cv.lvm
-    best.lvm$penalty$lambda1.best <- best.lambda
+    best.lvm$penalty$performance.best <- best.res
+    
+    best.lvm$penalty$lambda1.best <- best.lambda1
+    best.lambda1.abs <- attr(regPath[[as.numeric(attr(best.lambda1,"row"))]],"lambda1.abs")
+    attr(best.lambda1.abs,"row") <- attr(best.lambda1,"row")
+    best.lvm$penalty$lambda1.abs.best <- best.lambda1.abs
+    
     best.lvm$regularizationPath <- object$regularizationPath
+    best.lvm$penalty$convergence <- cv.lvm
     class(best.lvm) <- append("plvmfit", class(best.lvm))
     return(best.lvm)
   }else{
     return(list(criterion = seq.criterion,
-                lambda = best.lambda,
+                lambda1 = best.lambda1,
                 subset = best.subset,
                 lvm = best.lvm,
                 cv = cv.lvm,

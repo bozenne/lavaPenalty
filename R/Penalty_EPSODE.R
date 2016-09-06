@@ -3,20 +3,32 @@
 # EPSODE_odeBeta: compute the righ side of the ODE linking lambda1 and beta
 
 #' @title Perform the generic Path Algorithm for a LVM
-#' @param beta initial values for the parameters
+#' 
+#' 
+#' @param beta_lambda0 values of the parameters when the penalty parameter is 0.
+#' @param beta_lambdaMax values of the parameters when the penalty parameter is infinite
 #' @param objective likelihood given by lava. Used to adjust the step parameter when using backtracking
 #' @param gradient first derivative of the likelihood given by lava. 
 #' @param hessian second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL
 #' @param V matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)
+#' @param lambda2 L2 penalization parameter
+#' 
+#' @param test.penalty1 parameters affected by the lasso penalty.
 #' @param indexPenalty position of the penalised coefficients in beta
-#' @param stepLambda1 the range of lambda values investigated at each step
+#' @param indexNuisance index of the nuisance parameter to be treated as a constant
+#' 
 #' @param resolution_lambda1 the first value is the maximum relative difference in parameter between two steps. 
 #' If this lead to a too small step, the second value is used as the minimum change in penalization parameter between two steps.
+#' @param increasing direction of the path
+#' @param stopLambda if not null, stop the path when the penalty parameter reach this value
+#' @param stopParam if not null, stop the path when the number of 0 (if increasing = TRUE) or non 0 (if increasing = FALSE) parameters has reached this value.
 #' @param nstep_max the maximum number of iterations
 #' @param ode.method the type of method to use to solve the ode (see the documentation of deSolve:::ode)
-#' @param lambda2 L2 penalization parameter
-#' @param group.lambda1 group of lambda to be penalized together (!! not functional now !!)
 #' @param control additional options to be passed to the proximal algorithm
+#' @param reversible should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)
+#' @param tol.0 tolerance for classify a parameter from beta_lambdaMax in the set of 0 parameters
+#' @param exportAllPath export all the regularization path (and not only the breakpoints)
+#' @param trace should the function be traced
 #' 
 #' @references 
 #' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
@@ -131,7 +143,6 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     # Hdiff <- H1 - H2
     # attr(Hdiff,"grad") <- attr(H1,"grad") - attr(H2,"grad")
     # print(Hdiff)
-    
     res.error <- try(deSolve::ode(y = iterBeta,
                                   times = lambda.ode,
                                   func = EPSODE_odeBeta, method = ode.method,
@@ -140,8 +151,9 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                                               uz = uz, Uz = Uz, iUz = iUz, B = B,
                                               resolution = resolution_lambda1, reversible = reversible, envir = envir)
     ), silent = TRUE)
-   
-    ## second chance in case of multiple events
+    # print(bridge.ode)
+    
+     ## second chance in case of multiple events
     if(!is.null(cv.ode) && cv.ode$cv["cv.sign"]>1){
       bridge.odeS <- bridge.ode
       iterBeta2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),-(1:3)]
@@ -165,7 +177,7 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     #  cat("\n iteration ",iter,"\n")
     
     ## update 
-    if(exportAllPath && length(bridge.ode$iter)>2){ ## export all the points of the regularization path
+    if(exportAllPath && length(bridge.ode[,"iter"])>2){ ## export all the points of the regularization path
       seq_index <- c(seq_index, rep(NA, nrow(bridge.ode)-2) )  
       seq_lambda1 <- c(seq_lambda1, 
                        bridge.ode[c(-1,-nrow(bridge.ode)),"lambda",drop = FALSE])
@@ -203,6 +215,7 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     iter <- iter + 1
     
     ## cv
+    if(is.na(newLambda1)){break}
     if(stepLambda1 > 0){
       test.ncv <- (length(setNE) > 0 || length(setPE) > 0 )
       if(!is.null(stopLambda) && newLambda1>=stopLambda){test.ncv <- -1}
@@ -375,14 +388,34 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     # }
     
   }else{
-    ## linear interpolation
+   ## linear interpolation
     lPlus <- (- t(Q) %*% G)/(1 + t(Q) %*% uz)
     lMinus <- (- t(Q) %*% G)/(-1 + t(Q) %*% uz)
     lAll <- c(lPlus[lPlus<lambda],lMinus[lMinus<lambda])
     nextKnot <- lAll[which.min(lambda-lAll)]
-    # print(paste0(nextKnot, " ",lambda," ",y["Y,Y"]))
     
-    normTempo <- max(-lambda,min( (lambda-nextKnot)*ls.args$resolution[1], ls.args$resolution[2])) ## max(-lambda) to avoid negative lambda
+    if(t==1 && length(c(ls.args$setNE,ls.args$setPE))==0){ ## when all parameter are shrinked to 0, the second member of the ODE is constant with lambda so linear interpolation is ok
+      sign <- c(-1,1)[which.min(c(min(abs(lMinus-nextKnot)), min(abs(lPlus-nextKnot))))]
+      if(sign<0){
+        index <- ls.args$setZE[which.min(abs(lMinus-nextKnot))]
+      }else{
+        index <- ls.args$setZE[which.min(abs(lPlus-nextKnot))]
+      }
+      
+      assign("cv.ode",
+             value =  list(param = y, lambda = nextKnot,
+                           index = index,
+                           cv = c(cv.sign = FALSE, cv.constrain = TRUE, s = sign)),
+             envir = ls.args$envir)
+      assign("bridge.ode",
+             value =  rbind(bridge,c(t, NA, nextKnot, y)),
+             envir = ls.args$envir)
+      stop("cv \n")
+      
+    }else{
+      normTempo <- max(-lambda,min( (lambda-nextKnot)*ls.args$resolution[1], ls.args$resolution[2])) ## max(-lambda) to avoid negative lambda
+    }
+    
   }
   
   assign("bridge.ode",

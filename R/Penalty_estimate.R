@@ -1,29 +1,33 @@
-#### OVERVIEW
-# estimate.plvm: Estimate a penalized lvm model
-# initializer.lvm: if not given by the user, find an initial solution to LVM that will be used to initialize the regularization path algorithm or the proximal gradient algorithm
-# orthoData.lvm: [ONLY used if regularizationPath = 1] make the non-penalized variables orthogonal to the penalized variables
-# rescaleRes: [ONLY used if regularizationPath = 1]  Cancel the effect of the orthogonalization on the estimated parameters
+`initializer` <-
+  function(x,...) UseMethod("initializer")
 
-#' @title Estimate a penalized lvm model
-#
+#' @title Penalized lvm model
+#'
+#' @description Estimate a lvm model
+#'
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
-#' @param lambda1 L1 penalization parameter
-#' @param lambda2 L2 penalization parameter
+#' @param lambda1 lasso penalization parameter
+#' @param lambda2 ridge penalization parameter
 #' @param lambdaN Nuclear norm penalization parameter
-#' @param regularizationPath the algorithm used to compute the regularization path. 
-#' 0 indicates to estimate the solution for a given lambda
-#' 1 corresponds to the algorithm proposed by (Park 2007) - called GLMpath.  Only works for regression models.  
-#' 2 corresponds to the algorithm proposed by (Zhou 2014) - called EPSODE. 
-#' If regularizationPath>0, the argument lambda1 is ignored but not lambda2
-#' @param resolution_lambda1 argument for the EPSODE function (see Penalty_EPSODE.R)
-#' @param method.proxGrad argument for the proxGrad function (see Penalty_optims.R) 
-#' @param step argument for the proxGrad function (see Penalty_optims.R)
-#' @param BT.n argument for the proxGrad function (see Penalty_optims.R)
+#' @param adaptive should the coefficient of the adaptive lasso be returned instead of the coefficient of the lasso
+#' @param control control/optimization parameters
+#' @param estimator the method used to compute the likelihood, gradient and hessian.
+#' @param regularizationPath should the regularization path be computed. If so the argument lambda1 is ignored but not lambda2.
+#' @param resolution_lambda1,resolution_lambda1, increasing, stopLambda, stopParam arguments for the EPSODE function (see \link{\code{EPSODE}})
+#' @param method.proxGrad, step, BT.n, BT.eta, force.descent arguments for the proximal gradient algorithm (see \link{\code{proxGrad}}) 
+#' @param fit criterion to decide of the optimal model to retain among the penalized models.
 #' @param fixSigma should the variance parameter be fixed at 1 ? Only works for regression models. [temporary]
 #' @param ... additional arguments to be passed to lava:::estimate.lvm
 #' 
 #' @details 
+#' Available estimators are:
+#' \itemize{
+#'  \item{"penalized"}{the hessian is computed as E[t(S) %*% S]}
+#'  \item{"numDeriveSimple"}{the hessian is computed using numerical derivatives}
+#'  \item{"numDeriveRichardson"}{the hessian is computed using numerical derivatives (Richardson method)}
+#'  \item{"explicit"}{the hessian is computed using an explicit formula}
+#' }   
 #' 
 #' @references 
 #' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
@@ -32,53 +36,19 @@
 #' @return 
 #' a plvmfit object
 #' 
-#' @examples
-#' set.seed(10)
-#' n <- 300
-#' formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:4), collapse = "+")))
-#' lvm.modelSim <- lvm(formula.lvm)
-#' df.data <- sim(lvm.modelSim,n)
+#' @example 
+#' R/ZEX_Penalty_estimate.R
 #' 
-#' lvm.model <- lvm(formula.lvm)
-#' plvm.model <- penalize(lvm.model)
-#' 
-#' #### unpenalized
-#' lvm.fit <- estimate(lvm.model, df.data)
-#' 
-#' #### L1 penalisation
-#' 
-#' ## regularization path
-#' rp1lvm.fit <- estimate(plvm.model,  data = df.data, regularizationPath = 1)
-#' rp1lvm.fit
-#' 
-#' EPSODE1lvm.fit <- estimate(plvm.model,  data = df.data, regularizationPath = 2)
-#' EPSODE1lvm.fit
-#' 
-#' ## 
-#' p1lvm.fit <- estimate(plvm.model,  data = df.data, lambda1 = 0.1)
-#' p1lvm.fit
-#' 
-#' p1lvm.fit_bis <- estimate(plvm.model,  data = df.data, lambda1 = rp1lvm.fit$opt$message[2,"lambda1.abs"])
-#' p1lvm.fit_bis
-#' 
-#' #### L2 penalisation
-#' p2lvm.fit <- estimate(plvm.model,  data = df.data, lambda2 = 0.1)
-#' p2lvm.fit
-#' 
-#' #### elastic net
-#' rp12lvm.fit <- estimate(plvm.model,  data = df.data, regularizationPath = 1, lambda2 = 5, fixSigma = TRUE)
-#' rp12lvm.fit
-#' 
-#' p12lvm.fit <- estimate(plvm.model,  data = df.data, lambda1 = 0.1, lambda2 = 0.1)
-#' p12lvm.fit
-estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, control = list(), estimator = "penalized", 
+#' @export
+estimate.plvm <- function(x, data, 
+                          lambda1, lambda2, lambdaN, adaptive = FALSE, 
+                          control = list(), estimator = "penalized", 
                           regularizationPath = FALSE, resolution_lambda1 = c(1e-1,1e-3), increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
-                          fit = "BIC",
                           method.proxGrad = "ISTA", step = 1, BT.n = 100, BT.eta = 0.8, force.descent = FALSE,
+                          fit = "BIC",
                           fixSigma = FALSE, ...) {
-  
-  names.coef <- coef(x)
-  n.coef <- length(names.coef)
+  # names.coef <- coef(x)
+  # n.coef <- length(names.coef)
   
   #### prepare control
   if("iter.max" %in% names(control) == FALSE){
@@ -95,10 +65,17 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   
   #### prepare data (scaling)
   if(control$trace>=0){cat("Scale and center dataset \n")}
-  resData <- prepareData.lvm(x, data = data, penalty = x$penalty)
-  penalty <- resData$penalty
+  resData <- prepareData.lvm(x, data = data)
   
-  ## penalty
+  x <- resData$lvm
+  data <- resData$data # non scale data with factors converted to binary variables
+  scaledData <- resData$scaledData # scaled data with factors converted to binary variables
+  penalty <- x$penalty
+  names.coef <- coef(x)
+  n.coef <- length(names.coef)
+  
+  #### prepare penalty
+  ## elastic net
   if(!missing(lambda1)){
     penalty$lambda1 <- as.numeric(lambda1)
   }
@@ -108,6 +85,7 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   if(!missing(adaptive)){
     penalty$adaptive <- as.numeric(adaptive)
   }
+  
   penalty$names.varCoef <- names.coef[x$index$parBelongsTo$cov]
   penalty$names.varCoef <- intersect(penalty$names.varCoef,
                                      paste(c(endogenous(x), latent(x)), 
@@ -126,16 +104,16 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
     
     x$penaltyNuclear$objective <- function(coef){
       x$penaltyNuclear$FCTobjective(coef, 
-                                    Y = as.vector(resData$data[,x$penaltyNuclear$name.Y,drop=TRUE]), 
-                                    X = as.matrix(resData$data[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+                                    Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
+                                    X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
     x$penaltyNuclear$gradient <- function(coef){
       x$penaltyNuclear$FCTgradient(coef, 
-                                   Y = as.vector(resData$data[,x$penaltyNuclear$name.Y,drop=TRUE]), 
-                                   X = as.matrix(resData$data[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+                                   Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
+                                   X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
     control$penaltyNuclear <- x$penaltyNuclear
   }
   
-  ## pass parameters for the penalty through the control argument
+  #### control/optimisation parameters 
   control$proxGrad <- list(method = method.proxGrad,
                            step = step,
                            BT.n = BT.n,
@@ -160,23 +138,18 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   #### initialization
   if(is.null(control$start) || regularizationPath>0){
     if(control$trace>=0){cat("Initialization: ")}
-    res.init  <- initializer.lvm(x, data = resData$data, names.coef = names.coef, n.coef = n.coef,
-                                 penalty = control$penalty, regPath = control$regPath, ...)
+    res.init  <- initializer.plvm(x, data = scaledData, ...)
     
     if(regularizationPath == 0){
-      
       if(control$trace>=0){cat(" LVM where all penalized coefficient are shrinked to 0 \n")}
       control$start <- res.init$lambdaMax
-      # if(control$trace>=0){cat(" unpenalized LVM \n")}
-      # control$start <- res.init$lambdaMax
-      
     }else {
       control$regPath$beta_lambdaMax <- res.init$lambdaMax
       control$regPath$beta_lambda0 <- res.init$lambda0
     }
   }
   
-  ## proximal operator 
+  #### define proximal operator 
   resOperator <- init.proxOperator(lambda1 = control$penalty$lambda1,  # will be NULL if control$penalty does not exist
                                    lambda2 = control$penalty$lambda2, 
                                    lambdaN = control$penaltyNuclear$lambdaN,  # will be NULL if control$penaltyNuclear does not exist
@@ -185,7 +158,7 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
   control$proxOperator <- resOperator$proxOperator
   control$objectivePenalty <- resOperator$objectivePenalty
   
-  #### main
+  #### optimisation
   if(all(c("objective", "gradient", "hessian") %in% names(list(...)))){
     
     if(regularizationPath == 0){
@@ -201,13 +174,13 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
     return(res)
     
   }else{
-    res <- lava:::estimate.lvm(x = x, data = resData$data, 
+    res <- lava:::estimate.lvm(x = x, data = scaledData, 
                                method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
                                control = control, estimator = estimator, ...)
   }
   class(res) <- append("plvmfit", class(res))
   
-  ## add elements to object
+  #### add elements to object
   res$penalty <-  control$penalty[c("name.coef", "group.coef", "lambda1", "lambda2")]
   res$penalty$regularizationPath <- regularizationPath
   res$penalty$increasing <- increasing
@@ -240,18 +213,32 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE, 
 }
 
 
-#' @title Find an initial solution for the model
-#
+#' @title Intialization of the parameter of the plvm
+#'
+#' @description Compute the coefficients of the non and the completely regularized latent variable model
+#' 
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
-#' @param n.coef number of coefficients
-#' @param penalty parameter of the penalty
-#' @param regPath parameter of the penalisation path
 #' 
-initializer.lvm <- function(x, data, names.coef, n.coef, penalty, regPath, ...){
+#' @examples 
+#' m <- lvm()
+#' regression(m) <- c(y1,y2,y3)~u+x1+x2+x3
+#' regression(m) <- u~x1+x2
+#' latent(m) <- ~u
+#' covariance(m) <- y1 ~ y2
+#' 
+#' pm <- penalize(m)
+#' initializer(pm, data = sim(pm, 1e2))
+#' 
+initializer.plvm <- function(x, data, ...){
+  
+  names.coef <- coef(x)
+  n.coef <- length(names.coef)
+  n.data <- NROW(data)
+  penalty <- x$penalty
   
   #### normal model
-  if(nrow(data) > length(coef(x))){
+  if(n.data > n.coef){
     suppressWarnings(
       initLVM <- try(lava:::estimate.lvm(x = x, data = data, ...), silent = TRUE)
     )
@@ -281,7 +268,7 @@ initializer.lvm <- function(x, data, names.coef, n.coef, penalty, regPath, ...){
   newCoef <- coef(x0.fit, level = 9)[,"Estimate"]
   newCoef <- newCoef[names(newCoef) %in% names(start_lambdaMax)] # only keep relevant parameters
   start_lambdaMax[names(newCoef)] <- newCoef
- # start_lambdaMax[] <- coef(x0.fit, level = 9)[,"Estimate"]
+  # start_lambdaMax[] <- coef(x0.fit, level = 9)[,"Estimate"]
   
   return(list(lambda0 = start_lambda0,
               lambdaMax = start_lambdaMax))
@@ -289,74 +276,82 @@ initializer.lvm <- function(x, data, names.coef, n.coef, penalty, regPath, ...){
 
 #' @title Prepare the data for the estimate function
 #'  
-#' Scale the data, update the penalty term according to the presence of factors. If regularizationPath=1 (i.e. glmPath) orthogonolize the data
+#' @description Scale the data, update the penalty term according to the presence of factors. 
 #' 
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
-#' @param penalty parameter of the penalty
+#' @param method.center function used to center the data
+#' @param method.scale function used to scale the data
 #' 
-prepareData.lvm <- function(x, data, method.center = "mean", method.scale = "sd", penalty){
+prepareData.lvm <- function(x, data, method.center = "mean", method.scale = "sd"){
   
-  #### rescale data
-  varToScale <- names(which(unlist(lapply(data,is.numeric))))
-  if(class(data)[1] != "data.frame"){data <- as.data.frame(data)}
-  
-  value.center <- sapply(varToScale, function(x){do.call(method.center,args = list(data[[x]]))})
-  value.scale <- sapply(varToScale, function(x){do.call(method.scale,args = list(data[[x]]))})
-  data[, varToScale] <- scale(data[, varToScale, drop = FALSE], center = value.center, scale = value.scale)
-  # data[, c(varToScale) := lapply(.SD,scale), .SDcols = varToScale]
-  
-  #### handle factors for the penalty BUT DOES NOT WORK IF SEVERAL APPARTION OF THE SAME VARIABLE
-  test.factor <- unlist(lapply(manifest(x), function(name){is.factor(data[[name]])}))
-  if(any(test.factor)){ # if some manifest variables are factors
-    for(iterFactor in manifest(x)[test.factor]){
-      levelTempo <- levels(data[[iterFactor]])
-      indexTempo <- grep(paste0("+~",iterFactor,"$"), penalty$name.coef)
-      varTempo <- penalty$name.coef[indexTempo]
-      
-      if(length(varTempo)>0){ # if the manifest variable is penalized
-        newTempo <- paste0(varTempo, levelTempo[-1]) # replace by the non reference level
-        n.newTempo <- length(newTempo)
-        
-        penalty$V <- rbind(penalty$V,
-                           matrix(0,nrow = n.newTempo, ncol = ncol(penalty$V))
-        )
-        penalty$V <- cbind(penalty$V,
-                           matrix(0,nrow = nrow(penalty$V), ncol = n.newTempo)
-        ) 
-        colnames(penalty$V)[seq(ncol(penalty$V)-n.newTempo+1,ncol(penalty$V))] <- newTempo
-        rownames(penalty$V)[seq(ncol(penalty$V)-n.newTempo+1,ncol(penalty$V))] <- newTempo
-        penalty$V[,newTempo] <- penalty$V[,varTempo]
-        penalty$V[newTempo,] <- penalty$V[,varTempo]
-        for(iterNew in newTempo){
-          penalty$V[iterNew,iterNew] <- penalty$V[varTempo,varTempo]
-        }
-        penalty$V <- penalty$V[rownames(penalty$V)!=varTempo,colnames(penalty$V)!=varTempo]
-        
-        penalty$name.coef <- c(setdiff(penalty$name.coef,
-                                       varTempo),
-                               newTempo) 
-        
-        penalty$group.coef <- c(penalty$group.coef[-indexTempo],
-                                rep(penalty$group.coef[indexTempo], length(newTempo))
-        )
-        
-      }
-    }
+  if(any(manifest(x) %in% names(data) == FALSE)){
+    stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
+         "variables: ",paste(manifest(x)[manifest(x) %in% names(data) == FALSE], collapse = " ")," not found in \'data\' \n")
   }
   
-  #### Should use ???
-  # if (length(exogenous(x) > 0)) {
-  #   catx <- lava:::categorical2dummy(x, data)
-  #   x <- catx$x
-  #   data <- catx$data
-  # }
+  #### convert categorical variables to dummy variables
+  resC2D <- lava:::categorical2dummy(x, data)
+  
+  index.numeric <- intersect(manifest(x), manifest(resC2D$x))
+  indexOld.factor <- setdiff(manifest(x),  manifest(resC2D$x))
+  indexNew.factor <- setdiff(manifest(resC2D$x), manifest(x))
+  
+  test.factor <- length(indexNew.factor)>0
+  
+  if(test.factor){
+    if(any(endogenous(x) %in% indexOld.factor == TRUE)){
+      stop("prepareData.lvm: endogenous variables must not be categorical \n",
+           "incorrect variables: ",paste(endogenous(x)[endogenous(x) %in% indexOld.factor == TRUE], collapse = " "),"\n")
+    }
+    ls.factor <- lapply(indexOld.factor, function(var){unique(data[,var])})
+    names(ls.factor) <- indexOld.factor
+    conversion.factor <- sapply(indexNew.factor, renameFactor, ls.factor)
+  }else{
+    conversion.factor <- NULL
+  }
+  
+  x <- resC2D$x
+  data <- resC2D$data
+  
+  #### rescale data
+  if(class(data)[1] != "data.frame"){data <- as.data.frame(data)}
+  
+  if(length(index.numeric)>0){
+    value.center <- sapply(index.numeric, function(x){do.call(method.center,args = list(data[[x]]))})
+    value.scale <- sapply(index.numeric, function(x){do.call(method.scale,args = list(data[[x]]))})
+    data[, index.numeric] <- scale(data[, index.numeric, drop = FALSE], center = value.center, scale = value.scale)
+  }
+  
+  #### update the penalty according to the dummy variables
+  if(test.factor){
+    penalty <- x$penalty
+    
+    ## find the new coefficients to penalize
+    name.Newlinks <- coef(x)
+    
+    OldLinksPenalty.factors <- setdiff(penalty$name.coef, name.Newlinks)
+    NewExogePenalty.factor <- lapply(1:length(OldLinksPenalty.factors), function(x){
+      formulaTempo <- as.formula(OldLinksPenalty.factors[x])
+      newVar <- names(conversion.factor)[conversion.factor %in% all.vars(formulaTempo)[2]]
+      return(paste0(all.vars(formulaTempo)[1],"~",newVar))
+    })  
+    
+    name.NewlinksPenalty <- c(intersect(penalty$name.coef, name.Newlinks),
+                              unlist(NewExogePenalty.factor))
+    
+    x$penalty$V <- NULL
+    res <- penalize(x, value = name.NewlinksPenalty)
+    
+    x$penalty <- res$penalty
+  }
   
   #### export
-  return(list(data = data, 
+  return(list(data = resC2D$data,
+              scaledData = data, 
               scale = value.scale,
               center = value.center,
-              penalty = penalty))
+              lvm = x))
 }
 
 

@@ -1,3 +1,19 @@
+#' @title Proximal operators
+#' @name proximalOperators
+#' @aliases prox proxL1 proxL2 proxE2 proxNuclear
+#' 
+#' @description Proximal operators for the lasso, ridge, group lasso and nuclear norm penalties.
+#' 
+#' @param x value of the coefficients
+#' @param step value of the step size. Should be between 0 and the inverse of the Lipschitw constant of grad f
+#' @param lambda value of the penalization parameter
+#' @param test.penalty should the parameter be penalized
+#' @param nrow the number of rows of the matrix of coefficients
+#' @param ncol the number of columns of the matrix of coefficients
+#'
+#' @return the updated vector of coefficients
+
+#' @rdname proximalOperators
 proxL1 <- function(x, step, lambda, test.penalty){
   if(test.penalty){
     max(0, (abs(x) - lambda * step)) * sign(x)
@@ -6,6 +22,7 @@ proxL1 <- function(x, step, lambda, test.penalty){
   }
 }
 
+#' @rdname proximalOperators
 proxL2 <- function(x, step, lambda, test.penalty){ # should be with a factor 2 (1/(1+2*lambda*step))
   if(test.penalty){
     1 / (1 + lambda * step) * x
@@ -14,11 +31,13 @@ proxL2 <- function(x, step, lambda, test.penalty){ # should be with a factor 2 (
   }
 }
 
+#' @rdname proximalOperators
 proxE2 <- function(x, step, lambda){ # adapted from Simon 2013
   max(0, 1 - sqrt(length(x)) * lambda * step/norm(x, type = "2"))*x
 }
 
 
+#' @rdname proximalOperators
 proxNuclear <-  function(x, step, lambda, nrow, ncol){
   eigen.Mx <- svd(matrix(x, nrow = nrow, ncol = ncol))
   n.eigen <- min(nrow, ncol)
@@ -26,7 +45,23 @@ proxNuclear <-  function(x, step, lambda, nrow, ncol){
   as.vector(eigen.Mx$u %*% diag(b) %*% t(eigen.Mx$v))
 }
 
-
+#' @title Initialise a proximal operator
+#' 
+#' @description Generate the proximal operator for the requested penalty
+#' 
+#' @param lambda1 penalization parameter for the (group) lasso penalty
+#' @param lambda2 penalization parameter for the ridge penalty
+#' @param group.coef group of coefficients where a common lasso penalty should be applied
+#' @param lambdaN penalization parameter for the nuclear norm penalty
+#' @param nrow the number of rows of the matrix of coefficients
+#' @param ncol the number of columns of the matrix of coefficients
+#' @param regularizationPath Will the regularization path be computed? In such a case always include the lasso penalty.
+#' 
+#' @return a list containing the proximal operator and the penalty funtion
+#'
+#' @examples 
+#' lava.penalty:::init.proxOperator(lambda1 = 1, lambda2 = NULL, group.coef = 1:5, lambdaN = NULL, nrow = NA, ncol = NA, regularizationPath = FALSE)
+#' 
 init.proxOperator <- function(lambda1, lambda2, group.coef, 
                               lambdaN, nrow, ncol, 
                               regularizationPath){
@@ -124,7 +159,15 @@ init.proxOperator <- function(lambda1, lambda2, group.coef,
 }
 
 
-#### miscelaneous function ####
+#' @title Composition of several proximal operators
+#' 
+#' @param ... proximal operators
+#' 
+#' @return a function
+#'
+#' @examples 
+#' lava.penalty:::composeOperator(proxL1, proxL2)
+#'
 composeOperator <- function (...){ 
   ls.fct <- lapply(list(...), match.fun)
   
