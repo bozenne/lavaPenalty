@@ -6,4 +6,22 @@
 \usage{
 \method{findNewLink}{lvm}(x, rm.exoexo, output = "names")
 }
+\arguments{
+\item{x}{a lvm model}
+
+\item{rm.exoexo}{ignore links between exogeneous variables}
+
+\item{output}{return the names of the variables to link ("names") or their position ("index")}
+}
+\examples{
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u
+regression(m) <- u~x1+x2
+latent(m) <- ~u
+
+lava.penalty:::findNewLink(m, rm.exoexo = FALSE)
+lava.penalty:::findNewLink(m, rm.exoexo = TRUE)
+lava.penalty:::findNewLink(m, rm.exoexo = TRUE, output = "index")
+
+}
 

@@ -4,7 +4,22 @@
 \alias{optim.Nuisance.lvm}
 \title{Estimate nuisance parameter}
 \usage{
-optim.Nuisance.lvm(x, data, coefEstimated, coefNuisance, coefPenalty, control,
-  log)
+optim.Nuisance.lvm(x, data, coefEstimated, coefNuisance, coefPenalty, control)
+}
+\arguments{
+\item{x}{a penalized lvm model}
+
+\item{data}{a data.frame containing the data}
+
+\item{coefEstimated}{the estimated mean coefficients}
+
+\item{coefNuisance}{the name of the nuisance parameters to be estimated}
+
+\item{coefPenalty}{the name of the penalized parameters}
+
+\item{control}{control arguments to be passed to estimate.lvm}
+}
+\description{
+Use a constrained LVM to estimate nuisance parameters
 }
 

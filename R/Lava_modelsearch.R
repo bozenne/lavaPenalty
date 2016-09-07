@@ -1,3 +1,4 @@
+#' @export
 `extendModel` <-
   function(x,...) UseMethod("extendModel")
 
@@ -107,7 +108,7 @@ extendModel.lvm <- function(x, type, covariance = TRUE,
     newlinks <- findNewLink(x, rm.exoexo = TRUE)
     for(iterLink in 1:nrow(newlinks)){
      x <- addLink(x, newlinks[iterLink,1], newlinks[iterLink,2], covariance = covariance,
-                  warnings = display.warnings)
+                  warnings = FALSE)
     }
     
     return(x)

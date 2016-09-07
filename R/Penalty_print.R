@@ -47,21 +47,11 @@
   invisible(x)
 }
 
-
-
-
-
-##' @export
-`print.plvmfit` <- function(x,level=2,labels=FALSE, 
-                            getCoef = "penalized", getLambda = "abs", rm.duplicated = TRUE,
+`print.plvmfit` <- function(x,level=2,labels=FALSE,
+                            getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE, 
                             ...) {
-  if(!is.null(x$penalty$lambda1.best)){
-    lava:::print.lvmfit(x)
-    cat("\n Model selected using ",attr(x$penalty$performance,"criterion"),"criterion \n")
-    cat("   range of lambda1: ",paste(range(x$penalty$lambda1), collapse = " "),"\n")
-    cat("   best lambda1    : ",x$penalty$lambda1.best,"\n")
-    
-  }else if(x$penalty$regularizationPath == 0){
+  
+  if(is.null(x$regularizationPath)){
     
     Mtempo <- CoefMat(x,labels=labels,level=level,...) 
     ncol.M <- ncol(Mtempo)
@@ -83,23 +73,36 @@
     pseudo <- attr(vcov(x),"pseudo")
     if (!is.null(pseudo) && pseudo) warning("Singular covariance matrix. Pseudo-inverse used.")
     
-    
-  }else {
+  }else if(is.null(x$regularizationPath$optimum)){
     cat("Regularization path: \n")
-    printPath <- getPath(x, rm.duplicated = rm.duplicated, getCoef = getCoef, getLambda = getLambda)
+    print(x$regularizationPath, getCoef = getCoef, getLambda = getLambda, only.breakpoints = only.breakpoints)
+    cat("estimated using EPSODE algorithm \n")
+    
+  }else{
+    lava:::print.lvmfit(x)
+    cat("\n Model selected using ",x$regularizationPath$optimum$criterion," \n")
+    if(getLambda == "abs"){
+      cat("   range of lambda1.abs: ",paste(range(x$regularizationPath$performance$lambda1.abs), collapse = " "),"\n")
+      cat("   best lambda1.abs    : ",x$regularizationPath$optimum$lambda1.abs,"\n")
+    }else if(getLambda == "nabs"){
+      cat("   range of lambda1: ",paste(range(x$regularizationPath$performance$lambda1), collapse = " "),"\n")
+      cat("   best lambda1    : ",x$regularizationPath$optimum$lambda1,"\n")
+    }
+  }
+  
+  invisible(x)
+}
+
+`print.regPath` <- function(x, getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE) {
+  
+    printPath <- getPath(x, only.breakpoints = only.breakpoints, getCoef = getCoef, getLambda = getLambda)
     print(printPath)
     diffRow <- nrow(getPath(x)) - nrow(printPath)
     if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
-    cat("estimated using ")
-    switch(x$penalty$regularizationPath,
-           "1" = cat("glmPath algorithm \n"),
-           "2" = cat("EPSODE algorithm \n"))
-  }
-
-
-invisible(x)
+    
 }
 
+  
 ##' @title get the common substring sequence in a vector of strings
 LCSseq <- function(x){
   affixe <- strsplit(x[[1]], split = "")[[1]]

@@ -4,6 +4,35 @@
 \alias{addLink.lvm}
 \title{Add a new link between two variables in a lvm}
 \usage{
-\method{addLink}{lvm}(x, var1, var2 = NA, covariance, silent = FALSE)
+\method{addLink}{lvm}(x, var1, var2 = NA, covariance, warnings = FALSE)
+}
+\arguments{
+\item{x}{a lvm model}
+
+\item{var1}{the first variable (character) or a formula describing the link to be added to the lvm}
+
+\item{var2}{the second variable (character). Only used if var1 is a character.}
+
+\item{covariance}{does the link is bidirectional. Ignored if one of the variable is exogenous.}
+
+\item{warnings}{should a warning be displayed when no link is added}
+}
+\description{
+Generic interface to add links to a lvm.
+}
+\examples{
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u
+regression(m) <- u~x1+x2
+latent(m) <- ~u
+
+lava.penalty:::addLink(m, x1 ~ y1)
+lava.penalty:::addLink(m, y1 ~ x1)
+coef(lava.penalty:::addLink(m, y1 ~ y2, covariance = TRUE))
+
+lava.penalty:::addLink(m, "x1", "y1")
+lava.penalty:::addLink(m, "y1", "x1")
+coef(lava.penalty:::addLink(m, "y1", "y2", covariance = TRUE))
+
 }
 

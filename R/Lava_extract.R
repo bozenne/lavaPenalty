@@ -1,9 +1,12 @@
+#' @export
 `coefVar` <-
   function(x,...) UseMethod("coefVar")
 
+#' @export
 `coefCov` <-
   function(x,...) UseMethod("coefCov")
 
+#' @export
 `loadings` <- function(object, ...) UseMethod("loadings")
 
 #' @title Extract the name or the position of the variance coefficients

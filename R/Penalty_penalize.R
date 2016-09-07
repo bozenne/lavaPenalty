@@ -1,6 +1,6 @@
 ##' @title Penalty term for LVM
 ##' @aliases penalize penalize<- penalize.lvm penalize.plvm
-##' @param x
+##' @param x a lvm model
 ##' @param intercept should the intercept be penalized
 ##' @param regression should the mean parameters be penalized
 ##' @param variance should the variance parameters be penalized (not possible now)

@@ -1,12 +1,15 @@
-`plot.plvmfit` <- function(x, lambda = "lambda1.abs", type = NULL,
-                               add.line = TRUE, line.size = 2,
-                               add.point = TRUE, point.shape = 4, point.size = 2,
-                               add.best = TRUE, color.selected = TRUE) {
-  
-  test.best <- !is.null(x$penalty$lambda1.best)
+`plot.plvmfit` <- function(x, ...) {
+  plot(x$regularizationPath, ...)
+}  
+
+
+`plot.regPath` <- function(x, lambda = "lambda1.abs", type = NULL,
+                           add.line = TRUE, line.size = 2,
+                           add.point = TRUE, point.shape = 4, point.size = 2,
+                           add.best = TRUE, color.selected = TRUE) {
   
   if(is.null(type)){
-    if(test.best){
+    if(!is.null(x$performance)){
       type <- "criterion"
     }else{
       type <- "path"
@@ -26,10 +29,10 @@
     )
     if(add.line){ggPath <- ggPath + geom_line(size = line.size)}
     if(add.point){ggPath <- ggPath + geom_point(size = point.size, shape = point.shape)}
-  
-    if(!is.null(x$penalty$lambda1.best)){
+    
+    if(!is.null(x$performance)){
       if(color.selected){
-        df.Path$selected <- df.Path$coefficient %in% names(coef(x))
+        df.Path$selected <- df.Path$coefficient %in% names(x$optimum$coef)
         names.selected <- unique(df.Path$coefficient[df.Path$selected])
         names.Nselected <- unique(df.Path$coefficient[!df.Path$selected])
         n.selected <- length(names.selected)
@@ -45,20 +48,21 @@
       
       if(add.best){
         ggPath <- ggPath + geom_vline(size = line.size/2, 
-                                      xintercept = unlist(getPath(x, names = lambda, row = attr(x$penalty$lambda1.best,"row"))), 
+                                      xintercept = x$optimum[[lambda]], 
                                       linetype = 2, color = "blue")
-        }
+      }
       
     }
     
     return(ggPath)
     
   }else if(type == "criterion"){
-    df <- data.frame(lambda = x$penalty[[lambda]],
-                     criterion = x$penalty$performance,
-                     optimum = c("no","yes")[(x$penalty$performance == x$penalty$performance.best) + 1])
+    
+    df <- data.frame(lambda = x$performance[[lambda]],
+                     criterion = x$performance$value,
+                     optimum = x$performance$optimum)
     names(df)[1] <- lambda
-    names(df)[2] <- attr(x$penalty$performance,"criterion")
+    names(df)[2] <- x$optimum$criterion
     
     ggPerf <- ggplot(df, aes_string(x = lambda, y = names(df)[2]))
     if(add.line){ggPerf <- ggPerf + geom_line(size = line.size)}

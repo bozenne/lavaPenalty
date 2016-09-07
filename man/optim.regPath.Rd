@@ -2,8 +2,24 @@
 % Please edit documentation in R/Penalty_optims.R
 \name{optim.regPath}
 \alias{optim.regPath}
-\title{Estimate the penalization path}
+\title{Regularization path}
 \usage{
 optim.regPath(start, objective, gradient, hessian, control, ...)
+}
+\arguments{
+\item{start}{-exported by estimate.lvm}
+
+\item{objective}{-exported by estimate.lvm}
+
+\item{gradient}{-exported by estimate.lvm}
+
+\item{hessian}{-exported by estimate.lvm}
+
+\item{control}{-exported by estimate.lvm}
+
+\item{...}{-exported by estimate.lvm}
+}
+\description{
+Estimate the regularization path associated to a LVM
 }
 

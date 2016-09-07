@@ -5,12 +5,16 @@
 \title{Perform the generic Path Algorithm for a LVM}
 \usage{
 EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
-  test.penalty1, indexPenalty, indexNuisance, resolution_lambda1, increasing,
-  stopLambda, stopParam, nstep_max = min(length(beta) * 50, 10000),
+  indexPenalty, indexNuisance, resolution_lambda1, increasing, stopLambda,
+  stopParam, nstep_max = min(length(beta) * 50, 10000),
   ode.method = "euler", control, reversible, tol.0 = 1e-08, exportAllPath,
   trace)
 }
 \arguments{
+\item{beta_lambda0}{values of the parameters when the penalty parameter is 0.}
+
+\item{beta_lambdaMax}{values of the parameters when the penalty parameter is infinite}
+
 \item{objective}{likelihood given by lava. Used to adjust the step parameter when using backtracking}
 
 \item{gradient}{first derivative of the likelihood given by lava.}
@@ -23,8 +27,16 @@ EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
 
 \item{indexPenalty}{position of the penalised coefficients in beta}
 
+\item{indexNuisance}{index of the nuisance parameter to be treated as a constant}
+
 \item{resolution_lambda1}{the first value is the maximum relative difference in parameter between two steps. 
 If this lead to a too small step, the second value is used as the minimum change in penalization parameter between two steps.}
+
+\item{increasing}{direction of the path}
+
+\item{stopLambda}{if not null, stop the path when the penalty parameter reach this value}
+
+\item{stopParam}{if not null, stop the path when the number of 0 (if increasing = TRUE) or non 0 (if increasing = FALSE) parameters has reached this value.}
 
 \item{nstep_max}{the maximum number of iterations}
 
@@ -32,11 +44,13 @@ If this lead to a too small step, the second value is used as the minimum change
 
 \item{control}{additional options to be passed to the proximal algorithm}
 
-\item{beta}{initial values for the parameters}
+\item{reversible}{should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)}
 
-\item{stepLambda1}{the range of lambda values investigated at each step}
+\item{tol.0}{tolerance for classify a parameter from beta_lambdaMax in the set of 0 parameters}
 
-\item{group.lambda1}{group of lambda to be penalized together (!! not functional now !!)}
+\item{exportAllPath}{export all the regularization path (and not only the breakpoints)}
+
+\item{trace}{should the function be traced}
 }
 \references{
 Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation

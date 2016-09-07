@@ -2,8 +2,24 @@
 % Please edit documentation in R/Penalty_optims.R
 \name{optim.regLL}
 \alias{optim.regLL}
-\title{Estimate a penalized lvm model using a proximal gradient algorithm}
+\title{Proximal gradient algorithm}
 \usage{
 optim.regLL(start, objective, gradient, hessian, control, ...)
+}
+\arguments{
+\item{start}{-exported by estimate.lvm}
+
+\item{objective}{-exported by estimate.lvm}
+
+\item{gradient}{-exported by estimate.lvm}
+
+\item{hessian}{-exported by estimate.lvm}
+
+\item{control}{-exported by estimate.lvm}
+
+\item{...}{-exported by estimate.lvm}
+}
+\description{
+Estimate a penalized lvm model using a proximal gradient algorithm
 }
 

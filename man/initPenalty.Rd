@@ -2,9 +2,23 @@
 % Please edit documentation in R/Penalty_optims.R
 \name{initPenalty}
 \alias{initPenalty}
-\title{initialise the penalty}
+\title{Initialise the penalty}
 \usage{
-initPenalty(start = NULL, name.coef = NULL, regPath = NULL, penalty,
-  penaltyNuclear)
+initPenalty(penalty, penaltyNuclear, start = NULL, name.coef = NULL,
+  regPath = NULL)
+}
+\arguments{
+\item{penalty}{definition of the penalty}
+
+\item{penaltyNuclear}{definition of the nuclear norm penalty}
+
+\item{start}{initialization value of the parameters}
+
+\item{name.coef}{names of the parameters}
+
+\item{regPath}{control parameters for the regularization path}
+}
+\description{
+Update the penalty according to the initialization of estimate
 }
 

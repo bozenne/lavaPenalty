@@ -34,11 +34,11 @@ Collate:
     'Penalty_extractLVM.R'
     'Penalty_extractPath.R'
     'Penalty_gaussianMoment.R'
-    'Penalty_glmPath.R'
     'Penalty_ISTA.R'
     'Penalty_optims.R'
     'Penalty_penalize.R'
     'Penalty_plot.R'
     'Penalty_print.R'
     'Penalty_proxOperator.R'
+    'Utils.R'
 RoxygenNote: 5.0.1

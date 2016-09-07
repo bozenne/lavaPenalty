@@ -2,8 +2,8 @@
   function(x,...) UseMethod("initializer")
 
 #' @title Penalized lvm model
-#'
-#' @description Estimate a lvm model
+#' @aliases estimate estimate.plvm
+#' @description Estimate a penalized lvm model
 #'
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
@@ -14,30 +14,28 @@
 #' @param control control/optimization parameters
 #' @param estimator the method used to compute the likelihood, gradient and hessian.
 #' @param regularizationPath should the regularization path be computed. If so the argument lambda1 is ignored but not lambda2.
-#' @param resolution_lambda1,resolution_lambda1, increasing, stopLambda, stopParam arguments for the EPSODE function (see \link{\code{EPSODE}})
-#' @param method.proxGrad, step, BT.n, BT.eta, force.descent arguments for the proximal gradient algorithm (see \link{\code{proxGrad}}) 
+#' @param resolution_lambda1,increasing,stopLambda,stopParam arguments for the EPSODE function (see \code{EPSODE})
+#' @param method.proxGrad,step,BT.n,BT.eta,force.descent arguments for the proximal gradient algorithm (see \code{proxGrad}) 
 #' @param fit criterion to decide of the optimal model to retain among the penalized models.
 #' @param fixSigma should the variance parameter be fixed at 1 ? Only works for regression models. [temporary]
 #' @param ... additional arguments to be passed to lava:::estimate.lvm
 #' 
-#' @details 
-#' Available estimators are:
+#' @details Available estimators are:
 #' \itemize{
-#'  \item{"penalized"}{the hessian is computed as E[t(S) %*% S]}
-#'  \item{"numDeriveSimple"}{the hessian is computed using numerical derivatives}
-#'  \item{"numDeriveRichardson"}{the hessian is computed using numerical derivatives (Richardson method)}
-#'  \item{"explicit"}{the hessian is computed using an explicit formula}
+#'  \item{"penalized"}{ the hessian is computed as E[t(S) S]}
+#'  \item{"numDeriveSimple"}{ the hessian is computed using numerical derivatives}
+#'  \item{"numDeriveRichardson"}{ the hessian is computed using numerical derivatives (Richardson method)}
+#'  \item{"explicit"}{ the hessian is computed using an explicit formula}
 #' }   
 #' 
 #' @references 
-#' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
+#' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation \cr
 #' Park 2007 - L1-regularization path algorithm for GLM
 #' 
-#' @return 
-#' a plvmfit object
+#' @return a plvmfit object
 #' 
 #' @example 
-#' R/ZEX_Penalty_estimate.R
+#' examples/EX_Penalty_estimate.R
 #' 
 #' @export
 estimate.plvm <- function(x, data, 
@@ -65,7 +63,7 @@ estimate.plvm <- function(x, data,
   
   #### prepare data (scaling)
   if(control$trace>=0){cat("Scale and center dataset \n")}
-  resData <- prepareData.lvm(x, data = data)
+  resData <- prepareData.plvm(x, data = data)
   
   x <- resData$lvm
   data <- resData$data # non scale data with factors converted to binary variables
@@ -146,6 +144,7 @@ estimate.plvm <- function(x, data,
     }else {
       control$regPath$beta_lambdaMax <- res.init$lambdaMax
       control$regPath$beta_lambda0 <- res.init$lambda0
+      control$start <- res.init$lambdaMax
     }
   }
   
@@ -166,8 +165,7 @@ estimate.plvm <- function(x, data,
                          objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
                          control = control)
     }else{
-      res <- optim.regPath(start = control$start, 
-                           objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
+      res <- optim.regPath(objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
                            control = control)
     }
     
@@ -178,37 +176,41 @@ estimate.plvm <- function(x, data,
                                method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
                                control = control, estimator = estimator, ...)
   }
-  class(res) <- append("plvmfit", class(res))
   
   #### add elements to object
-  res$penalty <-  control$penalty[c("name.coef", "group.coef", "lambda1", "lambda2")]
-  res$penalty$regularizationPath <- regularizationPath
-  res$penalty$increasing <- increasing
-  res$penalty$penaltyNuclear <- control$penaltyNuclear
-  if( regularizationPath > 0){
-    res$regularizationPath <- res$opt$message
-    res$opt$message <- ""
-  }else{
+  penalty <-  control$penalty[c("name.coef", "group.coef", "lambda1", "lambda2")]
+  regPath <- res$opt$regPath
+  res$opt$regPath <- NULL
+  
+  if(regularizationPath == 0){
     if(fixSigma){
-      res$penalty$lambda1.abs <- res$penalty$lambda1
-      res$penalty$lambda2.abs <- res$penalty$lambda2
-      res$penalty$lambda1 <- res$penalty$lambda1/sum(coef(res)[control$penalty$names.varCoef])
-      res$penalty$lambda2 <- res$penalty$lambda2/sum(coef(res)[control$penalty$names.varCoef])
+      penalty$lambda1.abs <- penalty$lambda1
+      penalty$lambda2.abs <- penalty$lambda2
+      penalty$lambda1 <- penalty$lambda1/sum(coef(res)[control$penalty$names.varCoef])
+      penalty$lambda2 <- penalty$lambda2/sum(coef(res)[control$penalty$names.varCoef])
     }else{
-      res$penalty$lambda1.abs <- res$penalty$lambda1*sum(coef(res)[control$penalty$names.varCoef])
-      res$penalty$lambda2.abs <- res$penalty$lambda2*sum(coef(res)[control$penalty$names.varCoef])
+      penalty$lambda1.abs <- penalty$lambda1*sum(coef(res)[control$penalty$names.varCoef])
+      penalty$lambda2.abs <- penalty$lambda2*sum(coef(res)[control$penalty$names.varCoef])
     }
   }
   
   #### estimate the best model according to the fit parameter
   if(regularizationPath > 0 && !is.null(fit)){
     if(control$trace>=0){cat("Best penalized model according to the",fit,"criteria",if(control$trace>=1){"\n"})}
-    res <- calcLambda(res, model = x, fit = fit, data.fit = data, trace = control$trace)
+    resLambda <- calcLambda(path = regPath, model = x, fit = fit, data.fit = data, trace = control$trace)
+    res <- resLambda$optimum$lvm
+    resLambda$optimum$lvm <- NULL
+    regPath <- resLambda
     if(control$trace>=0){cat(" - done \n")}
   }
   
   #### export
+  class(res) <- append("plvmfit", class(res))
+  res$regularizationPath <- regPath
+  res$penalty <- penalty
+  res$penaltyNuclear <- control$penaltyNuclear
   res$x <- x
+  
   return(res)
 }
 
@@ -244,7 +246,8 @@ initializer.plvm <- function(x, data, ...){
     )
     
     if(("try-error" %in% class(initLVM) == FALSE)){ # should also check convergence
-      start_lambda0 <- coef(initLVM)
+      start_lambda0 <- setNames(rep(0,n.coef),names.coef)
+      start_lambda0[names(coef(initLVM))] <- coef(initLVM)
     }else{ 
       start_lambda0 <- NULL
     }
@@ -283,7 +286,7 @@ initializer.plvm <- function(x, data, ...){
 #' @param method.center function used to center the data
 #' @param method.scale function used to scale the data
 #' 
-prepareData.lvm <- function(x, data, method.center = "mean", method.scale = "sd"){
+prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd"){
   
   if(any(manifest(x) %in% names(data) == FALSE)){
     stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
@@ -356,3 +359,96 @@ prepareData.lvm <- function(x, data, method.center = "mean", method.scale = "sd"
 
 
 
+orthoData_glmPath <- function(model, name.Y, allCoef, penaltyCoef, data){
+  
+  ## function
+  extractVar <- function(names){
+    names.formula <- grep("~", names ,fixed = TRUE)  
+    if(length(names.formula)>0){
+      names[names.formula] <- unlist(lapply(strsplit(names[names.formula], split = "~", fixed = TRUE),"[",2))
+    }
+    
+    return(names)
+  }
+  
+  ## preparation
+  n <- nrow(data)
+  n.coef <- length(allCoef)
+  names.interceptCoef <- intersect(allCoef,coef(model)[model$index$parBelongsTo$mean])
+  n.interceptCoef <- length(names.interceptCoef)
+  names.covCoef <- intersect(allCoef,coef(model)[model$index$parBelongsTo$cov])
+  if(length(model$latent)>0){
+    names.latentCoef <- allCoef[sapply(names(model$latent), grep, x = allCoef, fixed = TRUE)]
+  }else{
+    names.latentCoef <- NULL
+  }
+  
+  var.penalized <-  extractVar(penaltyCoef)
+  var.unpenalized <- setdiff(extractVar(setdiff(allCoef,c(names.covCoef,names.latentCoef))), 
+                             c(var.penalized))
+  
+  ## rebuild data
+  X_tempo <- data[,setdiff(c(var.penalized,var.unpenalized),names.interceptCoef), drop = FALSE]
+  
+  if(n.interceptCoef>0){
+    X_tempo <- cbind(matrix(1, nrow = n, ncol = n.interceptCoef),
+                     X_tempo)
+  }
+  names(X_tempo)[1:n.interceptCoef] <- names.interceptCoef
+  
+  ## distinguish penalized from non penalized
+  penalized <-  as.matrix(X_tempo[,var.penalized, drop = FALSE])
+  unpenalized <-  as.matrix(X_tempo[,var.unpenalized, drop = FALSE])
+  
+  ## orthogonlize
+  orthogonalizer <- solve(crossprod(unpenalized), crossprod(unpenalized, penalized))
+  penalized <- penalized - unpenalized %*% orthogonalizer
+  
+  ## starting coefficients
+  mu.X <- setNames(rep(0,n.coef), allCoef)
+  lm.fitted <- lm.fit(y = data[[name.Y]], x = unpenalized)
+  mu.X[names(mu.X) %in% penaltyCoef == FALSE] <- c(coef(lm.fitted), var(lm.fitted$residuals)) ### issue with the latent variable here!!
+  
+  ## scale
+  sd.X <- setNames(rep(1,n.coef), allCoef)
+  
+  varNI.penalized <- setdiff(var.penalized, names.interceptCoef)
+  index.penalized <- setdiff(which(names(mu.X) %in% penaltyCoef),
+                             which(names(mu.X) %in% names.interceptCoef) )
+  
+  if(length(varNI.penalized)>0){
+    sd.X[index.penalized] <- sqrt(apply(penalized[,varNI.penalized, drop = FALSE], 2, var)*(n-1)/n)
+    penalized <- sweep(penalized[,varNI.penalized, drop = FALSE], MARGIN = 2, FUN = "/", STATS = sd.X[index.penalized])
+  }
+  
+  varNI.unpenalized <- setdiff(var.unpenalized, names.interceptCoef)
+  index.unpenalized <- setdiff(which(names(mu.X) %in% penaltyCoef == FALSE), 
+                               which(names(mu.X) %in% c(names.interceptCoef, names.covCoef))
+  )
+  
+  if(length(varNI.unpenalized)>0){
+    sd.X[index.unpenalized] <- sqrt(apply(unpenalized[,varNI.unpenalized, drop = FALSE], 2, var)*(n-1)/n)
+    unpenalized <- sweep(unpenalized[,varNI.unpenalized, drop = FALSE], MARGIN = 2, FUN = "/", STATS = sd.X[index.unpenalized])
+  }
+  mu.X <- mu.X * sd.X
+  
+  ## update initial dataset
+  data[,var.penalized] <- penalized
+  if(length(setdiff(var.unpenalized, names.interceptCoef))>0){
+    data[,setdiff(var.unpenalized, names.interceptCoef)] <- unpenalized
+  }
+  
+  ## lambda
+  lambda1 <- setNames(rep(0,n.coef), allCoef)
+  lambda1[which(names(mu.X) %in% penaltyCoef)] <- 1/sd.X[which(names(mu.X) %in% penaltyCoef)]
+  lambda2 <- setNames(rep(0,n.coef), allCoef)
+  lambda2[which(names(mu.X) %in% penaltyCoef)] <- 1/(sd.X[which(names(mu.X) %in% penaltyCoef)]^2)
+  
+  ## export
+  return(list(data = data,
+              orthogonalizer = orthogonalizer,
+              sd.X = sd.X,
+              mu.X = mu.X,
+              lambda1 = lambda1,
+              lambda2 = lambda2))
+}

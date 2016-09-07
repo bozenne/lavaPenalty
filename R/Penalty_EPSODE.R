@@ -1,7 +1,3 @@
-#### OVERVIEW
-# EPSODE: perform the generic Path Algorithm. Because of solve(H) not suited to high dimensional data
-# EPSODE_odeBeta: compute the righ side of the ODE linking lambda1 and beta
-
 #' @title Perform the generic Path Algorithm for a LVM
 #' 
 #' 
@@ -13,7 +9,6 @@
 #' @param V matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)
 #' @param lambda2 L2 penalization parameter
 #' 
-#' @param test.penalty1 parameters affected by the lasso penalty.
 #' @param indexPenalty position of the penalised coefficients in beta
 #' @param indexNuisance index of the nuisance parameter to be treated as a constant
 #' 
@@ -35,7 +30,7 @@
 
 
 EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, 
-                   test.penalty1, indexPenalty, indexNuisance, 
+                   indexPenalty, indexNuisance, 
                    resolution_lambda1, increasing, stopLambda, stopParam,
                    nstep_max = min(length(beta)*50,1e4), 
                    ode.method = "euler", control, reversible, tol.0 = 1e-8, exportAllPath, trace){
@@ -46,11 +41,6 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   }else{
     beta <- beta_lambdaMax
   }
-  n.coef <- length(beta)
-  lambda2_save <- lambda2
-  lambda2 <- rep(0, n.coef)
-  lambda2[indexPenalty] <- lambda2_save 
-  envir <- environment()
   
   ## lambda
   res <- initLambda_EPSODE(increasing = increasing,
@@ -62,23 +52,13 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     stop("EPSODE : argument \'resolution_lambda1\' must have length 2 \n",
          "proposed length: ",length(resolution_lambda1),"\n")}
   
-  ## reestimate beta
-  if(any(lambda2 > 0)){
-    
-    proxOperator <- function(x, step){  
-      control$proxOperator(x, step = step,
-                           lambda1 = seq_lambda1, lambda2 = lambda2, test.penalty1 = test.penalty1, test.penalty2 = lambda2>0, 
-                           index.constrain = indexNuisance, type.constrain = control$constrain, expX = control$proxGrad$expX)
-    }
-    
-    # may not be ok - check whether constrains are needed 
-    beta <- do.call("proxGrad",
-                    list(start = beta, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                         step = control$proxGrad$step, BT.n = control$proxGrad$BT.n, BT.eta = control$proxGrad$BT.eta,  force.descent = control$proxGrad$force.descent, trace = FALSE, 
-                         iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, method = control$proxGrad$method))$par
-    
-  }
- 
+  
+  n.coef <- length(beta)
+  lambda2_save <- lambda2
+  lambda2 <- rep(0, n.coef)
+  lambda2[indexPenalty] <- lambda2_save 
+  envir <- environment()
+  
   ## constrain 
   if(length(indexNuisance) > 0){
     res <- initSigmaConstrain(beta, constrain = control$constrain, indexNuisance = indexNuisance)
@@ -107,7 +87,6 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     }
     if(trace==0){pb <- utils::txtProgressBar(min = 0, max = length(indexPenalty), initial = 0, style = 3)}
   }
-  
   
   #### main loop
   while(iter < nstep_max && test.ncv>0){
@@ -151,13 +130,12 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                                               uz = uz, Uz = Uz, iUz = iUz, B = B,
                                               resolution = resolution_lambda1, reversible = reversible, envir = envir)
     ), silent = TRUE)
-    # print(bridge.ode)
     
      ## second chance in case of multiple events
     if(!is.null(cv.ode) && cv.ode$cv["cv.sign"]>1){
       bridge.odeS <- bridge.ode
       iterBeta2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),-(1:3)]
-      lambda.ode2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),3]
+      lambda.ode2 <- unname(bridge.ode[max(1,nrow(bridge.odeS)-10),3])
       
       lambda.ode <- seq_len(10000)
       cv.ode <- NULL
@@ -175,10 +153,11 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
       
     }
     #  cat("\n iteration ",iter,"\n")
-    
+
     ## update 
     if(exportAllPath && length(bridge.ode[,"iter"])>2){ ## export all the points of the regularization path
       seq_index <- c(seq_index, rep(NA, nrow(bridge.ode)-2) )  
+     
       seq_lambda1 <- c(seq_lambda1, 
                        bridge.ode[c(-1,-nrow(bridge.ode)),"lambda",drop = FALSE])
       M.beta <- rbind(M.beta, 
@@ -236,9 +215,6 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   if(trace==0){close(pb)}
   
   #### post treatment
-  if(iter >= nstep_max && trace>=0){
-    warning("EPSODE algorithm: maximum number of steps reached \n")
-  }
   if(increasing == FALSE && !is.null(beta_lambda0) && (0 %in% seq_lambda1 == FALSE) && test.ncv==0){
     M.beta <- rbind(M.beta,
                     unname(beta_lambda0))
@@ -247,6 +223,14 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   }
   
   #### export
+  if(test.ncv == FALSE){
+    message <- "Sucessful convergence \n"
+  }else if(iter >= nstep_max){
+    message <- "Maximum number of steps reached \n"
+  }else if(is.na(newLambda1) || newLambda1 < 0){
+    message <- "Invalid penalization parameter \n"
+  }
+  
   seq_lambda1 <- unname(seq_lambda1)
   rownames(M.beta) <- NULL
   df <- as.data.frame(cbind(lambda1.abs = if(length(indexNuisance) == 0){NA}else{seq_lambda1}, 
@@ -255,7 +239,8 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                             lambda2 = NA,
                             indexChange = unname(seq_index),
                             M.beta))
-  return(df)
+   return(list(message = message,
+               path = df))
 }
 
 
@@ -267,7 +252,7 @@ EPSODE_odeBeta <- function(t, y, ls.args){
   lambda <- bridge[tail(which(bridge[,1]==(t-1)),1),3]
   
   #### test lambda <= 0
-  if(ls.args$resolution[2] < 0 && lambda <= 0){
+  if(lambda < 0 || ls.args$resolution[2] < 0 && lambda == 0){
     
     assign("cv.ode", 
            value = list(param = y, lambda = lambda, index = NA, cv = c(cv.sign = FALSE, cv.constrain = FALSE, s = NA)), 
@@ -324,7 +309,6 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     Q <- NULL
     P <- solve(H)
   }else{
-    
     H_m1 <- try(solve(H), silent = TRUE)
     if(is.matrix(H_m1)){ # 
       # all coef
@@ -445,4 +429,22 @@ initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty, indexNui
   
   return(list(seq_lambda = seq_lambda,
               stepLambda = stepLambda))
+}
+
+
+initSigmaConstrain <- function(start, constrain, indexNuisance){
+  
+  if(constrain){
+    start[indexNuisance] <- start[indexNuisance] - start[indexNuisance[1]]
+    constrain <- setNames(0, names(start)[indexNuisance[1]])
+  }else{
+    start[indexNuisance] <- start[indexNuisance]/start[indexNuisance[1]]
+    constrain <- setNames(1, names(start)[indexNuisance[1]])
+  }
+  indexAllCoef <- setdiff(1:length(start), indexNuisance[1])
+  
+  return(list(start = start,
+              constrain = constrain,
+              indexAllCoef = indexAllCoef)
+  )
 }

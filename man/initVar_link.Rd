@@ -2,8 +2,19 @@
 % Please edit documentation in R/Lava_link.R
 \name{initVar_link}
 \alias{initVar_link}
-\title{Convert var1 and var2 from formula to character}
+\title{Normalize var1 and var2}
 \usage{
 initVar_link(var1, var2)
+}
+\description{
+Convert var1 and var2 from formula or covariance to character
+}
+\examples{
+lava.penalty:::initVar_link(var1 = a~b, var2 = NA)
+lava.penalty:::initVar_link(var1 = a ~ b, var2 = NA)
+
+lava.penalty:::initVar_link(var1 = "a,b", var2 = NA)
+lava.penalty:::initVar_link(var1 = "a", var2 = "b")
+
 }
 

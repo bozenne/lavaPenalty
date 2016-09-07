@@ -6,4 +6,23 @@
 \usage{
 \method{coefCov}{lvm}(x, value = FALSE)
 }
+\arguments{
+\item{x}{a lvm model}
+
+\item{value}{should the name of the coefficient be returned? Else return the coefficients}
+}
+\examples{
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u
+regression(m) <- u~x
+latent(m) <- ~u
+
+coefCov(m)
+coefCov(m, value = TRUE)
+
+covariance(m) <- y1 ~ y2
+coefCov(m)
+coefCov(m, value = TRUE)
+
+}
 

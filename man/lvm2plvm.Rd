@@ -11,6 +11,8 @@
 lvm2plvm(x)
 }
 \arguments{
+\item{x}{a lvm model}
+
 \item{intercept}{should the intercept be penalized}
 
 \item{regression}{should the mean parameters be penalized}

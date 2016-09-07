@@ -4,6 +4,29 @@
 \alias{rmLink.lvm}
 \title{Remove a new link between two variables in a lvm model}
 \usage{
-\method{rmLink}{lvm}(x, var1, var2 = NA, silent = FALSE)
+\method{rmLink}{lvm}(x, var1, var2 = NA, warnings = FALSE)
+}
+\arguments{
+\item{x}{a lvm model}
+
+\item{var1}{the first variable (character) or a formula describing the link}
+
+\item{var2}{the second variable (character). Only used if var1 is a character.}
+
+\item{warnings}{should a warning be displayed when the link is not found in the lvm.}
+}
+\description{
+Generic interface to remove a link in a lvm.
+}
+\examples{
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u
+regression(m) <- u~x1+x2
+latent(m) <- ~u
+covariance(m) <- y1 ~ y2
+
+lava.penalty:::rmLink(m, y3 ~ u)
+
+coef(lava.penalty:::rmLink(m, y1 ~ y2))
 }
 
