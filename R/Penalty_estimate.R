@@ -157,7 +157,6 @@ estimate.plvm <- function(x, data,
       res <- optim.regPath(objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
                            control = control)
     }
-    
     return(res)
     
   }else{

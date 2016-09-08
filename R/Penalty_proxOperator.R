@@ -39,6 +39,7 @@ proxE2 <- function(x, step, lambda){ # adapted from Simon 2013
 
 #' @rdname proximalOperators
 proxNuclear <-  function(x, step, lambda, nrow, ncol){
+  
   eigen.Mx <- svd(matrix(x, nrow = nrow, ncol = ncol))
   n.eigen <- min(nrow, ncol)
   b <- mapply(proxL1, x = eigen.Mx$d, step = step, lambda = rep(lambda, n.eigen), test.penalty = rep(1, n.eigen))

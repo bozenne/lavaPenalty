@@ -27,6 +27,7 @@ scoreGaussianO <- function(x){scoreGaussian(x, df.data[[1]], as.matrix(df.data[,
 hessianGaussianO <- function(x){hessianGaussian(x, df.data[[1]], as.matrix(df.data[,-1]))}
 
 #### test ####
+EPSODE_options <- lava.options()$EPSODE
 
 ## at fix Sigma - forward
 system.time(
@@ -40,7 +41,7 @@ system.time(
                  regularizationPath = TRUE)
 )
 # identical
-expect_equal(P2$regPath, getPath(P1), tolerance = 1e-5)
+expect_equal(getPath(P2$regPath), getPath(P1), tolerance = 1e-5)
 
 ## with free Sigma - forward
 P3 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL,
@@ -48,26 +49,35 @@ P3 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL,
 getPath(P3)
 
 
+EPSODE_options$resolution_lambda1 <- c(1e-10,1)
+lava.options(EPSODE = EPSODE_options)
+
 P4 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, exportAllPath = FALSE,
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
-               resolution_lambda1 = c(1e-10,1), # tries every lambda
                regularizationPath = TRUE)
 getPath(P4$regPath)
 # getPath(P1) - getPath(P4$regPath)
 
+EPSODE_options$resolution_lambda1 <- c(1e-10,0.1)
+lava.options(EPSODE = EPSODE_options)
+
 P5 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
-               resolution_lambda1 = c(1e-10,0.1), # tries every lambda
                regularizationPath = TRUE)
 getPath(P5$regPath)
 # getPath(P1) - getPath(P5$regPath)
 
+EPSODE_options$resolution_lambda1 <- c(1e-10,0.01)
+lava.options(EPSODE = EPSODE_options)
+
 P6 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, exportAllPath = TRUE, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
-               resolution_lambda1 = c(1e-10,0.01), # tries every lambda
                regularizationPath = TRUE)
 getPath(P6$regPath)
 # getPath(P1) - getPath(P6$regPath)
+
+EPSODE_options$resolution_lambda1 <-  c(1e-2,1e-3)
+lava.options(EPSODE = EPSODE_options)
 
 P7 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
@@ -79,7 +89,7 @@ getPath(P7$regPath)
 #### debug P6
 n.points <- NROW(P6$regPath$path)
 plot(P6$regPath, lambda = "lambda1", getCoef = "all",
-     row = seq(1, n.points, length = 1000)) + coord_cartesian(ylim =c(-0.5,1.25), xlim = c(0,375))
+     row = seq(1, n.points, length = 1000)) + coord_cartesian(ylim =c(-0.5,1.25), xlim = c(0,500))
 
 plot(P6$regPath, lambda = "lambda1", getCoef = "all",
      row = seq(1, n.points, length = 1000)) + coord_cartesian(ylim = c(-0.5,1.25), xlim = c(340,350))

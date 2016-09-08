@@ -1,15 +1,13 @@
-rm(list = ls())
+path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
+path.res <- file.path(path, "Results/ElasticNet")
 
-#### 0- load packages ####
 library(penalized)
 library(data.table)
-library(lava)
+library(lava.penalty)
 library(fields)
 library(testthat)
 
-library(butils)
-package.source("lava", Rcode = TRUE)
-source(file.path(butils:::dir.gitHub(),"lava","tests","FCT.R"))
+source(file.path(path,"FCT.R"))
 
 
 
@@ -165,6 +163,66 @@ dfNuclear(B.LS = B.LS, B.lambda = B.lambda, lambda = lambda1, lambda2 = lambda2)
 
 # multiplot(coords, resLasso$par[test.penalty1>0])
 
+set.seed(10)
+n.obs <- 500
+xmax <- 64 #10
+ymax <- 64 #10  
+center <- c(32,32)#5
+radius <- 10#3#
+res <- simForm(n.obs, xmax, ymax, radius = radius)
+coords <- res$coords
+n.coord <- nrow(coords)
+betaI <- as.vector(res$X)
+X <- matrix(rnorm(n.obs*n.coord), nrow = n.obs, ncol = n.coord)
+Xnames <- paste0("X",1:n.coord)
+
+n.confounder <- 5
+gamma <- rep(1, n.confounder)
+Z <- matrix(rnorm(n.obs*n.confounder), nrow = n.obs, ncol = n.confounder)
+Znames <- paste0("Z",1:n.confounder)
+
+Y <- Z %*% gamma + X %*% betaI + rnorm(n.obs)
+formula.lvm <- as.formula( paste0("Y~", paste(Xnames, collapse = "+") ) )
+df.data <- data.frame(Y=Y,setNames(data.frame(Z),Znames),setNames(data.frame(X),Xnames))
+
+## coef
+names.param <- c("intercept",Znames,Xnames,"Y,Y")
+beta <- setNames(c(0,gamma,betaI,1), names.param)
+beta[Xnames] <-  0
+
+test.penalty <- setNames(names(beta) %in% Xnames, names(beta))
+
+## display
+MRIaggr:::multiplot(as.data.table(coords), betaI, axes = FALSE, num.main = FALSE,
+                    legend = FALSE) # coeffcient
+
+formula.image <- as.formula(paste0("Y~",paste(c(Znames,Xnames), collapse = "+")))
+# lvm.image <- try(lvm(formula.image))
+#coef(lvm.image)[85:90]
+lvm.image <- lvm(as.formula(paste0("Y~",paste(Znames, collapse = "+"))))
+plvm.image <- lvm.image
+penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
+
+elvm.Path <- estimate(plvm.image,  data = df.data,
+                      lambdaN = 1e1, 
+                      control = list(trace = 2, iter.max = 25))
+B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
+               nrow = xmax, ncol = ymax, byrow = TRUE)
+fields:::image.plot(B.LS)
+
+elvm.Path <- estimate(plvm.image,  data = df.data,
+                      lambdaN = 1e2, 
+                      control = list(trace = 2, iter.max = 25))
+B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
+               nrow = xmax, ncol = ymax, byrow = TRUE)
+fields:::image.plot(B.LS)
+
+elvm.Path <- estimate(plvm.image,  data = df.data,
+                      lambdaN = 5e2, 
+                      control = list(trace = 2, iter.max = 25))
+B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
+               nrow = xmax, ncol = ymax, byrow = TRUE)
+fields:::image.plot(B.LS)
 
 #### lvm 
 test <- FALSE

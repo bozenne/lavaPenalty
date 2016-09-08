@@ -1,12 +1,10 @@
-rm(list = ls())
+path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
+path.res <- file.path(path, "Results/ElasticNet")
 
 library(penalized)
-library(lava)
+library(lava.penalty)
 library(testthat)
-library(deSolve)
-library(butils)
-package.source("lava", Rcode = TRUE)
-source(file.path(butils::dir.gitHub(),"lava","tests","FCT.R"))
+source(file.path(path,"FCT.R"))
 
 context("Reg-GroupLasso")
 
@@ -25,7 +23,7 @@ lvm.fit_bardety <- estimate(lvm.model_bardety, data = df.bardet)
 
 plvm.model_L1 <- penalize(lvm.model_bardety)
 plvm.model_GL <- penalize(lvm.model_bardety) 
-plvm.model_GL$penalty$group.penaltyCoef[] <- 1
+plvm.model_GL$penalty$group.coef[] <- 1
 
 gglasso.fit <- gglasso(x=bardet$x,y=bardet$y,group=group1,loss="ls")
 seq_lambda <- gglasso.fit$lambda
@@ -48,17 +46,6 @@ plvm.fit_GL <- estimate(plvm.model_GL,  data = df.bardet, fixSigma = TRUE,
                         lambda1 = 69*seq_lambda[1] * nrow(df.bardet),
                         control = list(constrain = FALSE, iter.max = 1000))
 coef(plvm.fit_GL)
-
-# Mcoef <- NULL
-# for(iter in 1:length(seq_lambda)){
-#   eplvm.model_GL <- estimate(plvm.model_GL,  data = df.bardet, fixSigma = TRUE,
-#                              lambda1 = constrain = FALSE, lambda1 = lambda[iter] * nrow(df.bardet), 
-#                              control = list(constrain = FALSE, iter.max = 1000,
-#                                             start =if(iter>1){Mcoef[nrow(Mcoef),]}else{NULL})
-#   )
-#   Mcoef <- rbind(Mcoef,
-#                  coef(eplvm.model_GL))
-# }
 
 
 #### OLD

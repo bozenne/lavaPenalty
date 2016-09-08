@@ -47,7 +47,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   }
   
   if(control$trace>=0){cat("Proximal gradient ")}
- 
+
   res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, 
                   hessian = hessian, gradient = gradient, objective = objective,
                   iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = control$proxGrad$trace)
@@ -307,12 +307,13 @@ initPenalty <- function(penalty, penaltyNuclear, start = NULL, name.coef = NULL,
                start[penalty$names.varCoef])  
     }
     
+    name.coef <- names(start)
     n.coef <- length(start)
     
     lambdaN <- penaltyNuclear$lambdaN
     lambda1 <- NA
     lambda2 <- NA
-   
+    
     test.penaltyN <- which(name.coef %in% penaltyNuclear$name.coef)
     test.penalty1 <- NULL
     test.penalty2 <- NULL
