@@ -40,7 +40,7 @@ system.time(
                  regularizationPath = TRUE)
 )
 # identical
-expect_equal(P2$message, getPath(P1, names = names(P2$message)), tolerance = 1e-5)
+expect_equal(P2$regPath, getPath(P1), tolerance = 1e-5)
 
 ## with free Sigma - forward
 P3 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL,
@@ -52,27 +52,34 @@ P4 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, expor
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
                resolution_lambda1 = c(1e-10,1), # tries every lambda
                regularizationPath = TRUE)
-pathP4 <- P4$message[union(1,which(!is.na(P4$message$indexChange))),]
-# getPath(P1, names = names(pathP4)) - pathP4
+getPath(P4$regPath)
+# getPath(P1) - getPath(P4$regPath)
 
 P5 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
                resolution_lambda1 = c(1e-10,0.1), # tries every lambda
                regularizationPath = TRUE)
-pathP5 <- P5$message[union(1,which(!is.na(P5$message$indexChange))),]
-# getPath(P1, names = names(pathP5)) - pathP5
+getPath(P5$regPath)
+# getPath(P1) - getPath(P5$regPath)
 
-P6 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, 
+P6 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, exportAllPath = TRUE, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
                resolution_lambda1 = c(1e-10,0.01), # tries every lambda
                regularizationPath = TRUE)
-pathP6 <- P6$message[union(1,which(!is.na(P6$message$indexChange))),]
-# getPath(P1, names = names(pathP6)) - pathP6
+getPath(P6$regPath)
+# getPath(P1) - getPath(P6$regPath)
 
 P7 <- estimate(plvm.model,  data = df.data, increasing = TRUE, fit = NULL, 
                objective = lvGaussianO, gradient = scoreGaussianO, hessian = hessianGaussianO, 
                resolution_lambda1 = c(1e-2,1e-3), # adaptive mesh
                regularizationPath = TRUE)
-pathP7 <- P7$message[union(1,which(!is.na(P7$message$indexChange))),]
-# getPath(P1, names = names(pathP7)) - pathP7
+getPath(P7$regPath)
+# getPath(P1) - getPath(P7$regPath)
 
+#### debug P6
+n.points <- NROW(P6$regPath$path)
+plot(P6$regPath, lambda = "lambda1", getCoef = "all",
+     row = seq(1, n.points, length = 1000)) + coord_cartesian(ylim =c(-0.5,1.25), xlim = c(0,375))
+
+plot(P6$regPath, lambda = "lambda1", getCoef = "all",
+     row = seq(1, n.points, length = 1000)) + coord_cartesian(ylim = c(-0.5,1.25), xlim = c(340,350))

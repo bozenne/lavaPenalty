@@ -13,8 +13,10 @@ context("LVM-lasso")
 test.tolerance <- 1e-4
 test.scale <- NULL
 save <- FALSE
+lava.options(trace = FALSE)
 
 #### > factor analysis ####
+cat("* factor analysis ")
 
 #### Simulations ####
 set.seed(10)

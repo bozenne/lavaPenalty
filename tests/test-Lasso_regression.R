@@ -1,3 +1,17 @@
+#%%%%%%% Test: lasso regression  %%%%%%
+#%% standard regression
+#> no penalty: lvm-plvm   status=ok
+#> lasso path: penalized-plvm   status=~ | WARNING: discrepancy if sigma is not fixed
+#> proxGrad at the breakpoints: penalized-plvm  status=ok
+#> between breakpoints: lvm-plvm   status=ok | NOTE: if sigma is not fixed, a different solution may be found
+#%% partial penalization  
+#> status=ok
+#%% regression with factors
+#> status=~ | NOTE: if sigma is not fixed, a different solution may be found
+#%% high dimensional case 
+#> proxGrad at the breakpoints: penalized-plvm  status=ok | NOTE: if sigma is not fixed, a different solution may be found. Accuracy is lower compared to the low dimensional case
+#> lasso path: penalized-plvm   status=~ | WARNING: discrepancy if sigma is not fixed
+
 path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
 path.res <- file.path(path, "Results/Lasso")
 
@@ -13,8 +27,10 @@ context("Reg-lasso")
 test.tolerance <- 1e-4
 test.scale <- NULL
 save <- FALSE
+lava.options(trace = FALSE)
 
 #### > standard regression ####
+cat("* standard regression \n")
 
 #### simulation ####
 set.seed(10)
@@ -38,11 +54,12 @@ lvm.model <- lvm(formula.lvm)
 elvm.model <- estimate(lvm.model, df.data)
 plvm.model <- penalize(lvm.model)
 
-penalized.PathL1 <- penalized(Y ~  ., data = df.data, steps = "Park", trace = TRUE)
+penalized.PathL1 <- penalized(Y ~  ., data = df.data, steps = "Park", trace = FALSE)
 seq_lambda <- unlist(lapply(penalized.PathL1, function(x){x@lambda1}))
 n.lambda <- length(seq_lambda)
 
 #### no penalty ####
+cat("  - no penalty \n")
 test_that("NR vs proxGrad with lasso - lambda=0", {
   eplvm.model <- estimate(plvm.model, df.data, lambda1 = 0)
   expect_equal(object=coef(elvm.model),expected=coef(eplvm.model), tolerance=test.tolerance, scale=test.scale)    
@@ -52,6 +69,7 @@ test_that("NR vs proxGrad with lasso - lambda=0", {
 })
 
 #### lasso path ####
+cat("  - lasso path forward \n")
 test_that("EPSODE-forward vs penalize with lasso", {
   
   # data1
@@ -89,6 +107,7 @@ test_that("EPSODE-forward vs penalize with lasso", {
   
 })
 
+cat("  - lasso path backward \n")
 test_that("EPSODE-backward vs penalize with lasso", {
   
   # data1
@@ -128,14 +147,13 @@ test_that("EPSODE-backward vs penalize with lasso", {
 
 
 #### check fix lambda - at the breakpoints ####
-pb <- utils:::txtProgressBar(max = n.lambda)
+cat("  - proxGrad at the breakpoints \n")
 
 for(iter_l in 1:n.lambda){
   
   # normal model
   eplvm.fit_tempo1 <- estimate(plvm.model,  data = df.data, fixSigma = FALSE,
-                               lambda1 = penalized.PathL1[[iter_l]]@lambda1/penalized.PathL1[[iter_l]]@nuisance$sigma2, 
-                               control = list(trace = -1))
+                               lambda1 = penalized.PathL1[[iter_l]]@lambda1/penalized.PathL1[[iter_l]]@nuisance$sigma2)
   
   test_that("NR vs proxGrad with lasso", {
     expect_equal(object = coef(eplvm.fit_tempo1),
@@ -145,8 +163,7 @@ for(iter_l in 1:n.lambda){
   
   # with constrains
   eplvm.fit_tempo2 <- estimate(plvm.model,  data = df.data, fixSigma = FALSE,
-                               lambda1 = penalized.PathL1[[iter_l]]@lambda1/penalized.PathL1[[iter_l]]@nuisance$sigma2, 
-                               control = list(constrain = TRUE, trace = -1))
+                               lambda1 = penalized.PathL1[[iter_l]]@lambda1/penalized.PathL1[[iter_l]]@nuisance$sigma2)
   
   test_that("NR vs proxGrad with lasso (constrain)", {
     expect_equal(object = coef(eplvm.fit_tempo2),
@@ -156,8 +173,7 @@ for(iter_l in 1:n.lambda){
   
   # fixed sigma
   eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE,
-                               lambda1 = penalized.PathL1[[iter_l]]@lambda1, 
-                               control = list(trace = -1))
+                               lambda1 = penalized.PathL1[[iter_l]]@lambda1)
   
   test_that("NR vs proxGrad with lasso (fix sigma)", {
     expect_equal(object = coef(eplvm.fit_tempo3),
@@ -165,22 +181,18 @@ for(iter_l in 1:n.lambda){
                  tolerance = test.tolerance, scale=1)  
   })
   
-  utils::setTxtProgressBar(pb, iter_l)
 }
-close(pb)
 
 #### check fix lambda - between breakpoints ####
+cat("  - between breakpoints \n")
 seq2_lambda <- igraph::running.mean(seq_lambda, binwidth = 2)
-
-pb <- utils:::txtProgressBar(max = length(seq2_lambda))
 
 for(iter_l in 1:length(seq2_lambda)){
   penalized.L1 <- penalized(Y ~  ., data = df.data, lambda1 = seq2_lambda[iter_l], trace = FALSE)
   
   # constrain
   eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE,
-                               lambda1 = seq2_lambda[iter_l], 
-                               control = list(trace = -1))
+                               lambda1 = seq2_lambda[iter_l])
   
   test_that("NR vs proxGrad with lasso (fix sigma - between knots)", {
     expect_equal(object = coef(eplvm.fit_tempo3),
@@ -190,8 +202,7 @@ for(iter_l in 1:length(seq2_lambda)){
   
   # no constrain - can find unexpected solution
   eplvm.fit_tempo1 <- estimate(plvm.model,  data = df.data,
-                              lambda1 = seq2_lambda[iter_l]/penalized.L1@nuisance$sigma2, 
-                              control = list(trace = -1))
+                              lambda1 = seq2_lambda[iter_l]/penalized.L1@nuisance$sigma2)
   
   test_that("NR vs proxGrad with lasso (free sigma - between knots)", {
     penalized.L1bis <- penalized(Y ~  ., data = df.data, lambda1 = eplvm.fit_tempo1$penalty$lambda1.abs, trace = FALSE)
@@ -201,13 +212,12 @@ for(iter_l in 1:length(seq2_lambda)){
     
     
   })
-  utils::setTxtProgressBar(pb, iter_l)
   
 }
-close(pb)
 
 #### partial penalization ####
-ppenalized.PathL1 <- penalized(Y~.,data = df.data, steps = "Park", trace = TRUE, 
+cat("  - partial penalization \n")
+ppenalized.PathL1 <- penalized(Y~.,data = df.data, steps = "Park", trace = FALSE, 
                               unpenalized = Y~ X2 + X4,
                               penalized = Y ~ X1 + X3 + X5)
 seq_lambda2 <- unlist(lapply(ppenalized.PathL1, function(x){x@lambda1}))
@@ -217,8 +227,7 @@ plvm.model2 <- penalize(lvm.model, value = Y ~ X1 + X3 + X5)
 test_that("EPSODE-forward vs penalize with partial lasso", {
   system.time(
     PathFor_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = TRUE, fit = NULL,
-                                regularizationPath = TRUE,
-                                control = list(trace =TRUE))
+                                regularizationPath = TRUE)
   )
   lambda1path <- getPath(PathFor_fixed3, names = "lambda1.abs")[,1]
   indexLambda <- apply(outer(lambda1path,seq_lambda2,'-'), 2, function(x){which.min(abs(x))})
@@ -237,10 +246,9 @@ test_that("EPSODE-forward vs penalize with partial lasso", {
 test_that("EPSODE-backward vs penalize with partial lasso", {
   system.time(
     PathBack_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = FALSE, fit = NULL,
-                               regularizationPath = TRUE, 
-                               control = list(trace =TRUE))
+                               regularizationPath = TRUE)
   )
-  lambda1path <- getPath(PathFor_fixed3, names = "lambda1.abs")[,1]
+  lambda1path <- getPath(PathBack_fixed3, names = "lambda1.abs")[,1]
   indexLambda <- apply(outer(lambda1path,seq_lambda2,'-'), 2, function(x){which.min(abs(x))})
   expect_equal(lambda1path[indexLambda], expected=seq_lambda2, tolerance=test.tolerance, scale=test.scale)  
   
@@ -255,6 +263,8 @@ test_that("EPSODE-backward vs penalize with partial lasso", {
 })
 
 #### > regression with factors ####
+cat("* regression with factors \n")
+
 set.seed(10)
 n <- 300
 formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:12), collapse = "+")))
@@ -271,6 +281,7 @@ plvm.model <- penalize(lvm.model)
 # penalized.PathL1.factor <- penalized(Y~.,data = df.data, steps = "Park", trace = TRUE, lambda2 = 0)
 
 ## no penalty
+cat("  - no penalty \n")
 test_that("NR vs proxGrad with lasso (factor) - lambda=0", {
   elvm.model <- estimate(lvm.model,  data = df.data)
   eplvm.model <-  estimate(plvm.model,  data = df.data, lambda1 = 0, control = list(constrain = TRUE))
@@ -281,6 +292,7 @@ test_that("NR vs proxGrad with lasso (factor) - lambda=0", {
 })
 
 ## regularization path
+cat("  - lasso path \n")
 test_that("EPSODE with factors - lambda=0", {
   path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE)
   
@@ -303,6 +315,7 @@ test_that("EPSODE with factors - lambda=0", {
 })
 
 #### > high dimensional ####
+cat("* high dimensional case \n")
 
 #### simulation ####
 set.seed(10)
@@ -317,21 +330,21 @@ df.data <- as.data.frame(scale(df.data))
 
 ### models ####
 lvm.model <- lvm(formula.lvm)
-elvm.model <- estimate(lvm.model, df.data)
+# elvm.model <- estimate(lvm.model, df.data)
 plvm.model <- penalize(lvm.model)
 
-penalized.PathL1 <- penalized(Y ~  ., data = df.data, lambda1 = 1, steps = "Park", trace = TRUE)
+penalized.PathL1 <- penalized(Y ~  ., data = df.data, lambda1 = 1, steps = "Park", trace = FALSE)
 seq_lambda <- unlist(lapply(penalized.PathL1, function(x){x@lambda1}))
 
 #### check fix lambda ####
-pb <- utils:::txtProgressBar(max = length(seq_lambda))
+cat("  - at the breakpoints \n")
 
 for(iter_l in 1:length(seq_lambda)){
   
    # fixed sigma
   eplvm.fit_tempo2 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE,
                                lambda1 = penalized.PathL1[[iter_l]]@lambda1,
-                               control = list(constrain = TRUE, trace = -1))
+                               control = list(constrain = TRUE))
   
   # print(range(coef(eplvm.fit_tempo2)-coef2.penalized( penalized.PathL1[[iter_l]])))
   test_that("penalized vs pLVM with lasso (high dimensional - sigmaFixed)", {
@@ -343,7 +356,7 @@ for(iter_l in 1:length(seq_lambda)){
   # normal model - can find unexpected solution
   eplvm.fit_tempo1 <- estimate(plvm.model,  data = df.data, fixSigma = FALSE,
                                lambda1 = penalized.PathL1[[iter_l]]@lambda1/penalized.PathL1[[iter_l]]@nuisance$sigma2,
-                               control = list(constrain = TRUE, trace = -1))
+                               control = list(constrain = TRUE))
   
   test_that("penalized vs pLVM with lasso (high dimensional - sigmaFree)", {
     penalized.L1bis <- penalized(Y ~  ., data = df.data, lambda1 = eplvm.fit_tempo1$penalty$lambda1.abs, trace = FALSE)
@@ -351,17 +364,14 @@ for(iter_l in 1:length(seq_lambda)){
                  expected=coef2.penalized( penalized.L1bis ),
                  tolerance=1e-2)
   })
-  utils::setTxtProgressBar(pb, iter_l)
-  
+ 
 }
-close(pb)
-
 
 #### regularization path ####
+cat("  - lasso path \n")
 test_that("LVM(EPSODE-backward) vs penalize with lasso (high dimensional)", {
   elvm.PathL1_EPSODE <- estimate(plvm.model,  data = df.data, increasing = FALSE, fixSigma = TRUE,
-                                 regularizationPath = TRUE, stopLambda = seq_lambda[5],
-                                 control = list(trace = TRUE))
+                                 regularizationPath = TRUE, stopLambda = seq_lambda[5])
   lambda1path <- getPath(elvm.PathL1_EPSODE, names = "lambda1.abs", order = "lambda1.abs")[,1]
   
   #expect_equal(lambda1path[indexLambda], expected=seq_lambda[-length(seq_lambda)], tolerance=10*test.tolerance, scale=test.scale)    

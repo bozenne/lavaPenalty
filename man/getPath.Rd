@@ -3,16 +3,19 @@
 \name{getPath}
 \alias{getPath}
 \alias{getPath.plvmfit}
+\alias{getPath.regPath}
 \title{Get the regularization path}
 \usage{
 getPath(x, ...)
 
-\method{getPath}{plvmfit}(x, names = NULL, getCoef, getLambda,
+\method{getPath}{plvmfit}(x, ...)
+
+\method{getPath}{regPath}(x, names = NULL, getCoef, getLambda,
   only.breakpoints = FALSE, increasing = TRUE, order = "lambda1",
   row = NULL)
 }
 \arguments{
-\item{x}{a penalized lvm model}
+\item{x}{a plvmfit object or a regPath object}
 
 \item{names}{names of the columns to extract}
 

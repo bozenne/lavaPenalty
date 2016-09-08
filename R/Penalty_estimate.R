@@ -41,25 +41,21 @@
 estimate.plvm <- function(x, data, 
                           lambda1, lambda2, lambdaN, adaptive = FALSE, 
                           control = list(), estimator = "penalized", 
-                          regularizationPath = FALSE, resolution_lambda1 = c(1e-1,1e-3), increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
-                          method.proxGrad = "ISTA", step = 1, BT.n = 100, BT.eta = 0.8, force.descent = FALSE,
-                          fit = "BIC",
+                          regularizationPath = FALSE, resolution_lambda1 = lava.options()$resolution_lambda1, increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
+                          fit = lava.options()$calcLambda$fit,
                           fixSigma = FALSE, ...) {
   # names.coef <- coef(x)
   # n.coef <- length(names.coef)
   
   #### prepare control
-  if("iter.max" %in% names(control) == FALSE){
-    control$iter.max <- 1000
+  controlUser <- control
+  control <- list(iter.max = lava.options()$proxGrad$iter.max,
+                  constrain = lava.options()$constrain,
+                  trace = lava.options()$trace)
+  if (length(controlUser) > 0) {
+    control[names(controlUser)] <- controlUser
   }
-  if("trace" %in% names(control) == FALSE){
-    control$trace <- 0
-  }else{
-    control$trace <- control$trace - 1
-  }
-  if("constrain" %in% names(control) == FALSE){
-    control$constrain <- FALSE
-  }
+  control$trace <- control$trace - 1 
   
   #### prepare data (scaling)
   if(control$trace>=0){cat("Scale and center dataset \n")}
@@ -112,20 +108,13 @@ estimate.plvm <- function(x, data,
   }
   
   #### control/optimisation parameters 
-  control$proxGrad <- list(method = method.proxGrad,
-                           step = step,
-                           BT.n = BT.n,
-                           BT.eta = BT.eta,
-                           expX = if(control$constrain){penalty$names.varCoef}else{NULL},
-                           force.descent = force.descent,
+  control$proxGrad <- list(expX = if(control$constrain){penalty$names.varCoef}else{NULL},
                            trace = if(regularizationPath == 0){control$trace}else{FALSE},
                            fixSigma = fixSigma,
                            envir = environment() # pass x and data in case where fixSigma = TRUE
   )
   
-  control$regPath <- list(type = regularizationPath,
-                          resolution_lambda1 = resolution_lambda1,
-                          increasing = increasing,
+  control$regPath <- list(increasing = increasing,
                           reversible = reversible,
                           stopParam = stopParam,
                           stopLambda = stopLambda,
@@ -197,7 +186,7 @@ estimate.plvm <- function(x, data,
   #### estimate the best model according to the fit parameter
   if(regularizationPath > 0 && !is.null(fit)){
     if(control$trace>=0){cat("Best penalized model according to the",fit,"criteria",if(control$trace>=1){"\n"})}
-    resLambda <- calcLambda(path = regPath, model = x, fit = fit, data.fit = data, trace = control$trace)
+    resLambda <- calcLambda(path = regPath, fit = fit, model = x, data.fit = data, trace = control$trace+1)
     res <- resLambda$optimum$lvm
     resLambda$optimum$lvm <- NULL
     regPath <- resLambda

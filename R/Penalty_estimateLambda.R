@@ -34,8 +34,8 @@
 #' @export
 calcLambda <- function(path, model, 
                        seq_lambda1, data.fit, data.test, 
-                       warmUp = FALSE, CI.coef = FALSE,
-                       fit = "BIC", order = "lambda1", trace = TRUE, ...){
+                       warmUp = lava.options()$calcLambda$warmUp, CI.coef = FALSE,
+                       fit = lava.options()$calcLambda$fit, order = "lambda1", trace = TRUE, ...){
   
   #### preparation
   if(!missing(path)){

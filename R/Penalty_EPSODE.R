@@ -19,7 +19,7 @@
 #' @param stopParam if not null, stop the path when the number of 0 (if increasing = TRUE) or non 0 (if increasing = FALSE) parameters has reached this value.
 #' @param nstep_max the maximum number of iterations
 #' @param ode.method the type of method to use to solve the ode (see the documentation of deSolve:::ode)
-#' @param control additional options to be passed to the proximal algorithm
+#' @param constrain the constrain on the variance parameters
 #' @param reversible should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)
 #' @param tol.0 tolerance for classify a parameter from beta_lambdaMax in the set of 0 parameters
 #' @param exportAllPath export all the regularization path (and not only the breakpoints)
@@ -30,10 +30,12 @@
 
 
 EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, 
-                   indexPenalty, indexNuisance, 
-                   resolution_lambda1, increasing, stopLambda, stopParam,
-                   nstep_max = min(length(beta)*50,1e4), 
-                   ode.method = "euler", control, reversible, tol.0 = 1e-8, exportAllPath, trace){
+                   indexPenalty, indexNuisance, increasing, stopLambda, stopParam, 
+                   constrain, reversible, exportAllPath, trace,
+                   resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1, 
+                   nstep_max = lava.options()$EPSODE$nstep_max,
+                   ode.method = lava.options()$EPSODE$ode.method,
+                   tol.0 = lava.options()$EPSODE$tol.0){
   
   #### preparation
   if(increasing){
@@ -44,7 +46,9 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   
   ## lambda
   res <- initLambda_EPSODE(increasing = increasing,
-                           gradient = gradient, beta = beta_lambdaMax, indexPenalty = indexPenalty, indexNuisance = indexNuisance)
+                           gradient = gradient, beta = beta_lambdaMax, indexPenalty = indexPenalty,
+                           constrain = constrain, indexNuisance = indexNuisance)
+  
   seq_lambda1 <- res$seq_lambda
   stepLambda1 <- res$stepLambda
   if(increasing == FALSE){resolution_lambda1 <- -resolution_lambda1}
@@ -61,11 +65,10 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
   
   ## constrain 
   if(length(indexNuisance) > 0){
-    res <- initSigmaConstrain(beta, constrain = control$constrain, indexNuisance = indexNuisance)
+    res <- initSigmaConstrain(beta, constrain = constrain, indexNuisance = indexNuisance)
     beta <- res$start
     indexAllCoef <- res$indexAllCoef
   }else{
-    constrain <- NULL
     indexAllCoef <- 1:n.coef
   }
   
@@ -195,7 +198,7 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     
     ## cv
     if(is.na(newLambda1)){break}
-    if(stepLambda1 > 0){
+    if(increasing){
       test.ncv <- (length(setNE) > 0 || length(setPE) > 0 )
       if(!is.null(stopLambda) && newLambda1>=stopLambda){test.ncv <- -1}
       if(!is.null(stopParam) && length(setZE)>=stopParam){test.ncv <- -1}
@@ -409,23 +412,24 @@ EPSODE_odeBeta <- function(t, y, ls.args){
 }
 
 
-initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty, indexNuisance){
+initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty, 
+                              constrain, indexNuisance){
+  
+  max.grad <- max( abs(-gradient(beta) )[indexPenalty] )
   
   if(increasing){
     seq_lambda <- 0 
-    
-    stepLambda <- max( abs(-gradient(beta) )[indexPenalty] )
-    if(length(indexNuisance) > 0){stepLambda <- stepLambda * beta[indexNuisance[1]]}
-    
-    
+    stepLambda <- max.grad
   }else{
-    
-    seq_lambda <-  max( abs(-gradient(beta) )[indexPenalty] ) * 1.1 # initialisation with the fully penalized solution
-    if(length(indexNuisance) > 0){seq_lambda <- seq_lambda * beta[indexNuisance[1]]}
-    
+    seq_lambda <-  max.grad * 1.1 # initialisation with the fully penalized solution
     stepLambda <- -seq_lambda
-    
   }
+  
+  # if(constrain){beta[indexNuisance] <- exp(beta[indexNuisance])}
+  # if(length(indexNuisance) > 0){
+  #   stepLambda <- stepLambda * sum(beta[indexNuisance])
+  # }
+ 
   
   return(list(seq_lambda = seq_lambda,
               stepLambda = stepLambda))

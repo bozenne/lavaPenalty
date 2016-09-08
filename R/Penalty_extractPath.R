@@ -37,6 +37,7 @@
   regPath <- x$path
   validNames <- names(regPath)
   names.penalized <- intersect(validNames, x$penCoef)
+  name.coef <- names(x$path)[-(1:5)]
   
   if(order %in% c("lambda1","lambda2","lambda1.abs","lambda2.abs") == FALSE){
     stop("getPath.plvmfit: order must be one of \"lambda1\" \"lambda2\" \"lambda1.abs\" \"lambda2.abs\" \n",
@@ -80,8 +81,8 @@
              "valid values: ",paste(validValues, collapse = "\" \""),"\n")
       }
       
-      names.lambda <- sapply(getLambda, function(x){
-        switch(x,
+      names.lambda <- sapply(getLambda, function(l){
+        switch(l,
                "abs" = c("lambda1.abs", "lambda2.abs"),
                "nabs" = c("lambda1", "lambda2"),
                "lambda1" = "lambda1",
@@ -150,7 +151,7 @@
       return(ls.coef)
             
     } else {
-      validValues <- c("penalized", "npenalized", "n.coef0", "n.coefn0", "coef0", "coefn0")
+      validValues <- c("all","penalized", "npenalized", "n.coef0", "n.coefn0", "coef0", "coefn0")
       if(getCoef %in% validValues == FALSE){
         stop("getPath.plvmfit: invalid value for \'getCoef\' \n",
              "getCoef: ",getCoef,"\n",
@@ -158,8 +159,9 @@
       }
       
       names.coef <- switch(getCoef,
+                           "all" = name.coef,
                            "penalized" = names.penalized,
-                           "npenalized" = setdiff(names(coef(x)),names.penalized),
+                           "npenalized" = setdiff(name.coef,names.penalized),
                            "n.coef0" = {regPath$coef0 <- rowSums(abs(regPath[,names.penalized, drop = FALSE] == 0)) ; "n.coef0"},
                            "n.coefn0" = {regPath$coefn0 <- rowSums(abs(regPath[,names.penalized, drop = FALSE] != 0)) ; "n.coefn0"}
       )

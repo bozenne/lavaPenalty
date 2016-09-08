@@ -7,11 +7,10 @@
 \usage{
 \method{estimate}{plvm}(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE,
   control = list(), estimator = "penalized", regularizationPath = FALSE,
-  resolution_lambda1 = c(0.1, 0.001), increasing = TRUE,
+  resolution_lambda1 = lava.options()$resolution_lambda1, increasing = TRUE,
   reversible = FALSE, stopLambda = NULL, stopParam = NULL,
-  exportAllPath = FALSE, method.proxGrad = "ISTA", step = 1, BT.n = 100,
-  BT.eta = 0.8, force.descent = FALSE, fit = "BIC", fixSigma = FALSE,
-  ...)
+  exportAllPath = FALSE, fit = lava.options()$calcLambda$fit,
+  fixSigma = FALSE, ...)
 }
 \arguments{
 \item{x}{a penalized lvm model}
@@ -34,13 +33,13 @@
 
 \item{resolution_lambda1, increasing, stopLambda, stopParam}{arguments for the EPSODE function (see \code{EPSODE})}
 
-\item{method.proxGrad, step, BT.n, BT.eta, force.descent}{arguments for the proximal gradient algorithm (see \code{proxGrad})}
-
 \item{fit}{criterion to decide of the optimal model to retain among the penalized models.}
 
 \item{fixSigma}{should the variance parameter be fixed at 1 ? Only works for regression models. [temporary]}
 
 \item{...}{additional arguments to be passed to lava:::estimate.lvm}
+
+\item{method.proxGrad, step, BT.n, BT.eta, force.descent}{arguments for the proximal gradient algorithm (see \code{proxGrad})}
 }
 \value{
 a plvmfit object

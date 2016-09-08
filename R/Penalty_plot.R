@@ -3,7 +3,8 @@
 }  
 
 
-`plot.regPath` <- function(x, lambda = "lambda1.abs", type = NULL,
+`plot.regPath` <- function(x, lambda = "lambda1.abs", type = NULL, 
+                           getCoef = "penalized", row = NULL,
                            add.line = TRUE, line.size = 2,
                            add.point = TRUE, point.shape = 4, point.size = 2,
                            add.best = TRUE, color.selected = TRUE) {
@@ -17,7 +18,7 @@
   }
   
   if(type == "path"){
-    path <- getPath(x, getCoef = "penalized", getLambda = lambda)
+    path <- getPath(x, getCoef = getCoef, getLambda = lambda, row = row)
     df.Path <- data.table::melt(path, 
                                 measure=names(path)[-1], 
                                 value.name = "value", variable.name = "coefficient")

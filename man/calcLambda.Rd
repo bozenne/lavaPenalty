@@ -4,12 +4,13 @@
 \alias{calcLambda}
 \title{Estimate the regularization parameter}
 \usage{
-calcLambda(object, model, seq_lambda1, data.fit, data.test, warmUp = FALSE,
-  keep.fit = FALSE, refit.pLVM = TRUE, fit = "BIC", order = "lambda1",
-  trace = TRUE, ...)
+calcLambda(path, model, seq_lambda1, data.fit, data.test,
+  warmUp = lava.options()$calcLambda$warmUp, CI.coef = FALSE,
+  fit = lava.options()$calcLambda$fit, order = "lambda1", trace = TRUE,
+  ...)
 }
 \arguments{
-\item{object}{the penalized latent variable}
+\item{path}{the penalized latent variable}
 
 \item{model}{the non penalized latent variable}
 
@@ -18,10 +19,6 @@ calcLambda(object, model, seq_lambda1, data.fit, data.test, warmUp = FALSE,
 \item{data.test}{the data used to test the model}
 
 \item{warmUp}{should the new model be initialized with the solution of the previous model (i.e. estimated for a different penalization parameter)}
-
-\item{keep.fit}{should the penalized LVM be exported}
-
-\item{refit.pLVM}{should the penalized LVM be fitted on only the non 0 parameters}
 
 \item{fit}{criterion to decide of the optimal model to retain among the penalized models.}
 
@@ -32,12 +29,29 @@ calcLambda(object, model, seq_lambda1, data.fit, data.test, warmUp = FALSE,
 \item{...}{additional arguments - e.g. control argument for estimate.lvm}
 
 \item{seq_lambda}{the sequence of penalisation paramaters to be used to define the sub model}
+
+\item{keep.fit}{should the penalized LVM be exported}
+
+\item{refit.pLVM}{should the penalized LVM be fitted on only the non 0 parameters}
 }
 \description{
 Find the optimal regularization parameter according to a fit criterion
 }
 \examples{
 
+set.seed(10)
+n <- 300
+formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:4), collapse = "+")))
+mSim <- lvm(formula.lvm)
+df.data <- sim(mSim,n)
 
+lvm.model <- lvm(formula.lvm)
+plvm.model <- penalize(lvm.model)
+
+res <- estimate(plvm.model, data = df.data, increasing = FALSE, regularizationPath = TRUE)
+
+perf <- calcLambda(res$regularizationPath, res$x, data.fit = df.data)
+perf
+ 
 }
 

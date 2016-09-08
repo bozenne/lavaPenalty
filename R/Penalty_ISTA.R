@@ -27,15 +27,17 @@
 #' Li 2015 - Accelerated Proximal Gradient Methods for Nonconvex Programming
 #' Simon 2013 - A sparse group Lasso
 proxGrad <- function(start, proxOperator, hessian, gradient, objective,
-                     step, BT.n, BT.eta, force.descent, 
-                     iter.max, abs.tol, rel.tol, method, trace = FALSE){
-  
-#   if(is.null(step)){
-#     step <- 100/sum( (gradient(start)/start)^2)#add variance and x
-#   }
+                     iter.max, abs.tol, rel.tol, trace,
+                     step = lava.options()$proxGrad$step, 
+                     BT.n = lava.options()$proxGrad$BT.n, 
+                     BT.eta = lava.options()$proxGrad$BT.eta, 
+                     force.descent = lava.options()$proxGrad$force.descent, 
+                     method = lava.options()$proxGrad$method){
+ 
   stepMax <- step 
   stepMin <- step*BT.eta^BT.n
   fct_errorLv <- function(e){warning("unable to compute the value of the likelihood - return Inf \n");return(Inf)}
+  
   ## initialisation
   x_k <- start 
   

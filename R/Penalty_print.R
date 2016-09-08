@@ -1,3 +1,8 @@
+#' @title Display the content of a plvm object
+#
+#' @param x a plvm object
+#'
+#' @export
 `print.plvm` <- function(x, ...) {
   
   ## normal display
@@ -47,6 +52,11 @@
   invisible(x)
 }
 
+#' @title Display the content of a plvmfit object
+#
+#' @param x a plvmfit object
+#'
+#' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
                             getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE, 
                             ...) {

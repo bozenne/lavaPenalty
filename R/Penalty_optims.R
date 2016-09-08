@@ -1,9 +1,3 @@
-#### OVERVIEW
-# optim.proxGrad: Estimate a penalized lvm model using a proximal gradient algorithm 
-# optim.regPath: Estimate the regularization path associated to a LVM
-# optim.nuisance: Estimate a nuisance parameter given all others
-# initPenalty: initialise the penalty 
-
 #' @title Proximal gradient algorithm
 #' 
 #' @description Estimate a penalized lvm model using a proximal gradient algorithm 
@@ -53,12 +47,10 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   }
   
   if(control$trace>=0){cat("Proximal gradient ")}
-  
+ 
   res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, 
                   hessian = hessian, gradient = gradient, objective = objective,
-                  step = control$proxGrad$step, BT.n = control$proxGrad$BT.n, BT.eta = control$proxGrad$BT.eta,
-                  iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, force.descent = control$proxGrad$force.descent,
-                  method = control$proxGrad$method, trace = control$proxGrad$trace)
+                  iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = control$proxGrad$trace)
   if(control$trace>=0){cat("- done \n")}
 
   if(penalty$adaptive){
@@ -72,9 +64,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
     
     if(control$trace>=0){cat("Proximal gradient (adaptive) ")}
     res <- proxGrad(start = res$par, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                    step = control$proxGrad$step, BT.n = control$proxGrad$BT.n, BT.eta = control$proxGrad$BT.eta,
-                    iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, force.descent = control$proxGrad$force.descent,
-                    method = control$proxGrad$method, trace = control$proxGrad$trace)
+                    iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = control$proxGrad$trace)
     if(control$trace>=0){cat("- done \n")}
   }
 
@@ -152,8 +142,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
     
     regPath$beta_lambda0 <- do.call("proxGrad",
                                     list(start = start, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                                         step = control$proxGrad$step, BT.n = control$proxGrad$BT.n, BT.eta = control$proxGrad$BT.eta,  force.descent = control$proxGrad$force.descent, trace = FALSE, 
-                                         iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, method = control$proxGrad$method))$par
+                                         iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = FALSE))$par
     
     penalty$lambda1 <- 1e10
     newPenalty <- initPenalty(start = start, penalty = penalty, penaltyNuclear = NULL)
@@ -166,18 +155,16 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
     }
     regPath$beta_lambdaMax <- do.call("proxGrad",
                                       list(start = start, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                                           step = control$proxGrad$step, BT.n = control$proxGrad$BT.n, BT.eta = control$proxGrad$BT.eta,  force.descent = control$proxGrad$force.descent, trace = FALSE, 
-                                           iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, method = control$proxGrad$method))$par
+                                           iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = FALSE))$par
     
   }
   
   ## EPSODE
   resEPSODE <- EPSODE(beta_lambda0 = regPath$beta_lambda0, beta_lambdaMax = regPath$beta_lambdaMax,
                       objective = objective, gradient = gradient, hessian = hessian, 
-                      V = penalty$V, 
-                      indexPenalty = which(name.coef %in% penalty$name.coef), indexNuisance = indexNuisance, lambda2 = penalty$lambda2,
-                      resolution_lambda1 = regPath$resolution_lambda1, increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
-                      control = control, exportAllPath = control$regPath$exportAllPath, reversible = control$regPath$reversible, trace = control$regPath$trace)
+                      V = penalty$V, indexPenalty = which(name.coef %in% penalty$name.coef), indexNuisance = indexNuisance, lambda2 = penalty$lambda2,
+                      increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
+                      constrain = control$constrain, exportAllPath = control$regPath$exportAllPath, reversible = control$regPath$reversible, trace = control$trace)
 
  ## estimation of the nuisance parameter and update lambda/lambda.abs
  if(length(indexNuisance)>0){
