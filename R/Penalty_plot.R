@@ -1,10 +1,11 @@
+#' @export
 `plot.plvmfit` <- function(x, ...) {
   plot(x$regularizationPath, ...)
 }  
 
-
-`plot.regPath` <- function(x, lambda = "lambda1.abs", type = NULL, 
-                           getCoef = "penalized", row = NULL,
+#' @export
+`plot.regPath` <- function(x, lambda = getLambda(x), type = NULL, 
+                           coefficient = "penalized", row = NULL,
                            add.line = TRUE, line.size = 2,
                            add.point = TRUE, point.shape = 4, point.size = 2,
                            add.best = TRUE, color.selected = TRUE) {
@@ -18,7 +19,7 @@
   }
   
   if(type == "path"){
-    path <- getPath(x, getCoef = getCoef, getLambda = lambda, row = row)
+    path <- getPath(x, coefficient = coefficient, lambda = lambda, row = row)
     df.Path <- data.table::melt(path, 
                                 measure=names(path)[-1], 
                                 value.name = "value", variable.name = "coefficient")
@@ -58,10 +59,11 @@
     return(ggPath)
     
   }else if(type == "criterion"){
+    performance <- getPerformance(x)[order(getPerformance(x)[[lambda]]),]
     
-    df <- data.frame(lambda = x$performance[[lambda]],
-                     criterion = x$performance$value,
-                     optimum = x$performance$optimum)
+    df <- data.frame(lambda = performance[[lambda]],
+                     criterion = performance$value,
+                     optimum = performance$optimum)
     names(df)[1] <- lambda
     names(df)[2] <- x$optimum$criterion
     

@@ -105,7 +105,7 @@ coef2.penalized <- function(x, iter_lambda){
 
 validPath.lvm <- function(x, data, validMean = TRUE, validCov = TRUE, control = list(), ...){
   
-  Mall <- getPath(x, getLambda = c("lambda1","lambda2"), only.breakpoints = TRUE)
+  Mall <- getPath(x, lambda = c("lambda1","lambda2"), only.breakpoints = TRUE)
   Mcoef <- Mall[,-(1:2),drop = FALSE]
   seqLambda1 <- Mall[,"lambda1"]
   seqLambda2 <- Mall[,"lambda2"]

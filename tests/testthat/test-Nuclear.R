@@ -9,8 +9,8 @@ library(testthat)
 
 source(file.path(path,"FCT.R"))
 
-
-
+test <- FALSE
+if(test){
 #### 1- Simulation ###
 set.seed(10)
 n.obs <- 500
@@ -235,5 +235,7 @@ estimate(lvm.model, lambdaN = 1e3, data = df.data)
 
 res <- estimate(lvm.model, lambdaN = 1e3, data = df.data)
 
+
+}
 
 }

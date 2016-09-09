@@ -1,4 +1,5 @@
-library("lava")
+library("lava.penalty")
 suppressPackageStartupMessages(library("testthat"))
-test_check("lava")
+source("FCT.R")
+test_check("lava.penalty")
 

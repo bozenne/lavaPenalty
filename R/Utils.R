@@ -15,3 +15,10 @@ renameFactor <- function(var, ls.levels, data, sep = ""){
   
   return(allvars[unlist(test)])
 }
+
+
+formula2character <- function(x){
+  name.X <- all.vars(delete.response(terms(x)))
+  name.Y <- setdiff(all.vars(x), name.X)
+  return(paste(name.Y,name.X,sep="~"))
+}

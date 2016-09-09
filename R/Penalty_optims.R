@@ -33,6 +33,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
     index.constrain <- NULL
   }
   
+  
   proxOperator <- function(x, step){
     control$proxOperator(x, step = step,
                          lambdaN = newPenalty$lambdaN, lambda1 = newPenalty$lambda1, lambda2 = newPenalty$lambda2, 
@@ -163,7 +164,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
   resEPSODE <- EPSODE(beta_lambda0 = regPath$beta_lambda0, beta_lambdaMax = regPath$beta_lambdaMax,
                       objective = objective, gradient = gradient, hessian = hessian, 
                       V = penalty$V, indexPenalty = which(name.coef %in% penalty$name.coef), indexNuisance = indexNuisance, lambda2 = penalty$lambda2,
-                      increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
+                      resolution_lambda1 = regPath$resolution_lambda1, increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
                       constrain = control$constrain, exportAllPath = control$regPath$exportAllPath, reversible = control$regPath$reversible, trace = control$trace)
 
  ## estimation of the nuisance parameter and update lambda/lambda.abs
@@ -186,9 +187,9 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
   
   #### conversion to regPath object
   message <- resEPSODE$message
-  
   regPath <- list(path = resEPSODE$path,
-                  increasing = regPath$increasing,
+                  increasing = regPath$increasing, 
+                  lambda = if(regPath$fixSigma){"lambda1.abs"}else{"lambda1"},
                   penCoef = penalty$name.coef,
                   performance = NULL,
                   optimum = NULL)
@@ -290,7 +291,7 @@ initPenalty <- function(penalty, penaltyNuclear, start = NULL, name.coef = NULL,
     lambda2 <- rep(0, n.coef)
     lambda2[name.coef %in% penalty$name.coef] <- penalty$lambda2
     index.constrain <- rep(NA, n.coef) # useless
-    index.constrain[name.coef %in% penalty$name.coef] <- penalty$var.coef # useless
+    index.constrain[name.coef %in% penalty$var.coef] <- penalty$var.coef # useless
     
     ## grouped lasso: set lasso indexes to 0
     test.penaltyN <- NULL

@@ -21,7 +21,7 @@ library(lava.penalty)
 # package.source("lava.penalty", Rcode = TRUE)
 source(file.path(path,"FCT.R"))
 
-context("Reg-lasso")
+context("#### Reg-lasso #### \n")
 
 #### > settings ####
 test.tolerance <- 1e-4
@@ -291,27 +291,27 @@ test_that("NR vs proxGrad with lasso (factor) - lambda=0", {
   expect_equal(object=coef(elvm.model),expected=coef(eplvm.model), tolerance=test.tolerance, scale=test.scale)
 })
 
-## regularization path
+## regularization path 
 cat("  - lasso path \n")
 test_that("EPSODE with factors - lambda=0", {
   path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE)
   
   path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE, 
                      increasing = FALSE, resolution_lambda1 = c(1,1e-3))
-  p1 <- getPath(path1F, order = "lambda1.abs")
-  p2 <- getPath(path1B, order = "lambda1.abs", row = 1:nrow(p1))
+  p1 <- getPath(path1F)
+  p2 <- getPath(path1B, row = 1:nrow(p1))
   rownames(p2) <- 1:nrow(p1)
   expect_equal(p1,p2, tolerance=10*test.tolerance, scale=test.scale)
   
-  # comparison to proxGrad
+  # comparison to proxGrad - an error could occur here as group lasso is used for factors
   pfit_Fixed <- estimate(plvm.model,  data = df.data, 
                          lambda1 = getPath(path1F, names = "lambda1.abs", row = 8), 
                          fixSigma = TRUE, control = list(constrain = TRUE))
-  expect_equal(as.double(coef(pfit_Fixed)), as.double(getPath(path1F, getLambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
+  expect_equal(as.double(coef(pfit_Fixed)), as.double(getPath(path1F, lambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
   
   ## find another solution when free
   # pfit_Free <- estimate(plvm.model,  data = df.data, lambda1 = getPath(path1F, names = "lambda1", row = 8), fixSigma = FALSE, control = list(constrain = TRUE))
-  # expect_equal(as.double(coef(pfit_Free)), as.double(getPath(path1F, getLambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
+  # expect_equal(as.double(coef(pfit_Free)), as.double(getPath(path1F, lambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
 })
 
 #### > high dimensional ####
@@ -372,7 +372,7 @@ cat("  - lasso path \n")
 test_that("LVM(EPSODE-backward) vs penalize with lasso (high dimensional)", {
   elvm.PathL1_EPSODE <- estimate(plvm.model,  data = df.data, increasing = FALSE, fixSigma = TRUE,
                                  regularizationPath = TRUE, stopLambda = seq_lambda[5])
-  lambda1path <- getPath(elvm.PathL1_EPSODE, names = "lambda1.abs", order = "lambda1.abs")[,1]
+  lambda1path <- getPath(elvm.PathL1_EPSODE, names = "lambda1.abs")[,1]
   
   #expect_equal(lambda1path[indexLambda], expected=seq_lambda[-length(seq_lambda)], tolerance=10*test.tolerance, scale=test.scale)    
   

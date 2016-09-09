@@ -6,8 +6,7 @@
 \usage{
 EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
   indexPenalty, indexNuisance, increasing, stopLambda, stopParam, constrain,
-  reversible, exportAllPath, trace,
-  resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1,
+  reversible, exportAllPath, trace, resolution_lambda1,
   nstep_max = lava.options()$EPSODE$nstep_max,
   ode.method = lava.options()$EPSODE$ode.method,
   tol.0 = lava.options()$EPSODE$tol.0)

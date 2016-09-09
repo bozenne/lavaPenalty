@@ -58,7 +58,7 @@
 #'
 #' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
-                            getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE, 
+                            coef = "penalized", lambda = "abs", only.breakpoints = TRUE, 
                             ...) {
   
   if(is.null(x$regularizationPath)){
@@ -70,9 +70,11 @@
     }
     if(x$penalty$lambda1>0){
       Mtempo <- rbind(Mtempo, "   L1 lambda (abs)" = c(x$penalty$lambda1.abs, rep("",ncol.M-1)))
+      Mtempo <- rbind(Mtempo, "   L1 lambda" = c(x$penalty$lambda1, rep("",ncol.M-1)))
     }
     if(x$penalty$lambda2>0){
       Mtempo <- rbind(Mtempo, "   L2 lambda (abs)" = c(x$penalty$lambda2.abs, rep("",ncol.M-1)))
+      Mtempo <- rbind(Mtempo, "   L2 lambda" = c(x$penalty$lambda2, rep("",ncol.M-1)))
     }
     
     print(Mtempo,quote=FALSE,right=TRUE)
@@ -85,16 +87,16 @@
     
   }else if(is.null(x$regularizationPath$optimum)){
     cat("Regularization path: \n")
-    print(x$regularizationPath, getCoef = getCoef, getLambda = getLambda, only.breakpoints = only.breakpoints)
+    print(x$regularizationPath, coef = coef, lambda = lambda, only.breakpoints = only.breakpoints)
     cat("estimated using EPSODE algorithm \n")
     
   }else{
     lava:::print.lvmfit(x)
     cat("\n Model selected using ",x$regularizationPath$optimum$criterion," \n")
-    if(getLambda == "abs"){
+    if(lambda == "abs"){
       cat("   range of lambda1.abs: ",paste(range(x$regularizationPath$performance$lambda1.abs), collapse = " "),"\n")
       cat("   best lambda1.abs    : ",x$regularizationPath$optimum$lambda1.abs,"\n")
-    }else if(getLambda == "nabs"){
+    }else if(lambda == "nabs"){
       cat("   range of lambda1: ",paste(range(x$regularizationPath$performance$lambda1), collapse = " "),"\n")
       cat("   best lambda1    : ",x$regularizationPath$optimum$lambda1,"\n")
     }
@@ -103,9 +105,9 @@
   invisible(x)
 }
 
-`print.regPath` <- function(x, getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE) {
+`print.regPath` <- function(x, coef = "penalized", lambda = "abs", only.breakpoints = TRUE) {
   
-    printPath <- getPath(x, only.breakpoints = only.breakpoints, getCoef = getCoef, getLambda = getLambda)
+    printPath <- getPath(x, only.breakpoints = only.breakpoints, coefficient = coef, lambda = lambda)
     print(printPath)
     diffRow <- nrow(getPath(x)) - nrow(printPath)
     if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}

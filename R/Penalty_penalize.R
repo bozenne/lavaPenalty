@@ -83,7 +83,7 @@ lvm2plvm <- function(x){
 `penalize.lvm` <- function(x, value = NULL, ...){
   
   penalize(x, ...) <- value
-
+  
   return(x)
 }
 
@@ -99,20 +99,25 @@ lvm2plvm <- function(x){
   penalize(x, ...) <- value
   # `penalize<-.plvm`(x, ..., value = value)
   # do.call(`penalize<-.plvm`, args = list(x = x, ..., value = value))
- 
+  
   ## export
   return(x)
 }
 
-`penalize<-.plvm` <- function(x, intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
-                              lambda1, lambda2, adaptive, V, ..., value){
+`penalize<-.plvm` <- function(x, group, V, add = TRUE,
+                              lambda1, lambda2, adaptive,
+                              intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
+                              value){
   
-  #### coefficients
+  #### find coefficients from value
   if(!is.null(value)){
+    
     if("formula" %in% class(value)){
-      name.X <- all.vars(delete.response(terms(value)))
-      name.Y <- setdiff(all.vars(value), name.X)
-      value <- paste(name.Y,name.X,sep="~")
+      value <- formula2character(value)
+    }else if(is.list(value)){
+      value <- unlist(lapply(value, function(v){
+        if("formula" %in% class(v)){formula2character(v)}else{v}
+      }))
     }
     
     if(any(value %in% coef(x) == FALSE)){
@@ -121,10 +126,8 @@ lvm2plvm <- function(x){
            "available coefficients: ",paste(coef(x)[coef(x) %in% value == FALSE], collapse = " "),"\n")
     }
     
-    x$penalty$name.coef <- value
-    
   } else if(is.null(x$penalty$name.coef)){
-
+    
     index.penaltyCoef <- NULL
     if(intercept == TRUE){
       index.penaltyCoef <- c(index.penaltyCoef, x$index$parBelongsTo$mean)  
@@ -135,7 +138,7 @@ lvm2plvm <- function(x){
     if(variance == TRUE){
       index.penaltyCoef <- c(index.penaltyCoef, coefVar(x))
     }
-
+    
     if(covariance == TRUE){
       index.penaltyCoef <- c(index.penaltyCoef, coefCov(x))
     }
@@ -147,51 +150,69 @@ lvm2plvm <- function(x){
       ls.penaltyCoefLatent <- sapply(request, grep, x = coef(x), value = FALSE)
       index.penaltyCoef <- setdiff(index.penaltyCoef, unique(unlist(ls.penaltyCoefLatent)))
     }
-      
-    x$penalty$name.coef <- coef(x)[index.penaltyCoef]
-  
+    
+    value <- coef(x)[index.penaltyCoef]
+    
   } 
-  endo <- sapply(x$penalty$name.coef,function(char){all.vars(as.formula(char))[1]}) # useless
-  x$penalty$var.coef <- paste(endo,endo,sep =",") # useless
-  x$penalty$var.coef[endo %in% endogenous(x) == FALSE] <- NA # useless
   
-   #### group penalty if the latent variable is penalized
-   names.varLatent <- paste(names(x$latent),names(x$latent),sep = ",")
-  if(any(x$penalty$name.coef %in% names.varLatent)){
+  #### update the name of the penalized parameters
+  group.oldPenalty <- x$penalty$group.coef
+  n.oldPenalty <- length(group.oldPenalty)
+  
+  if(add && n.oldPenalty>0){
+    x$penalty$name.coef <- c(x$penalty$name.coef, value)
     
-    ## check that all paths related to the latent variable are penalized
-    for(iter_latent in which(names.varLatent %in% x$penalty$name.coef) ){
-      index.groupPenalty <- grep(names(x$latent)[iter_latent], coef(x), fixed = TRUE)
-      if(any( coef(x)[index.groupPenalty]  %in% x$penalty$name.coef == FALSE)){
-        message("All paths related to the latent variable ",names(x$latent)[iter_latent]," will be penalized \n",
-                "additional penalized parameters: ",paste(setdiff(coef(x)[index.groupPenalty], x$penalty$name.coef), collapse = " "),"\n")
-        x$penalty$name.coef <- union(x$penalty$name.coef, coef(x)[index.groupPenalty]) 
-      }
-    }
-    
-    ## form groups
-    x$penalty$group.coef <- seq(0.1, 0.9, length.out = length(x$penalty$name.coef))
-    for(iter_latent in which(names.varLatent %in% x$penalty$name.coef) ){
-    index.groupPenalty <- grep(names(x$latent)[iter_latent], x$penalty$name.coef, fixed = TRUE)
-    x$penalty$group.coef[index.groupPenalty] <- iter_latent
-    }
-    
+    allGroups <- seq(0.1, 0.9, length.out = n.oldPenalty+length(value))
+    allGroups[which(group.oldPenalty>=1)] <- group.oldPenalty[which(group.oldPenalty>=1)]
+    x$penalty$group.coef <- allGroups[1:n.oldPenalty]
+    newGroup <-  allGroups[-(1:n.oldPenalty)]
   }else{
-    x$penalty$group.coef <- seq(0.1, 0.9, length.out = length(x$penalty$name.coef))
-  }
-   
-   #### V matrix
-   if(!missing(V)){
-     x$penalty$V <- V
-   }else if(is.null(x$penalty$V)){
-     V <- matrix(0, nrow = length(coef(x)), ncol = length(coef(x)))
-     colnames(V) <- coef(x)
-     rownames(V) <- coef(x)
-     diag(V)[x$penalty$name.coef] <- 1
-     x$penalty$V <- V
+    x$penalty$name.coef <- value
+    
+    allGroups <- seq(0.1, 0.9, length.out = length(value)) 
+    x$penalty$group.coef <- NULL
+    newGroup <- allGroups
   }
   
-   #### penalization parameters
+  x$penalty$var.coef <- paste(c(endogenous(x),latent(x)),c(endogenous(x),latent(x)),sep =",") # useless
+  
+  #### group penalty
+  if(missing(group) == FALSE){
+    
+    if(length(group) == length(x$penalty$name.coef)){
+      x$penalty$group.coef <- group
+    }else{
+      
+      if(length(group)!=1){
+        stop("penalize<-.plvm: can only create one group of penalized variable at a time \n",
+             "length(group): ",length(group),"\n")
+      }
+      
+      group.id <- if(all(x$penalty$group.coef<1)){1}else{max(x$penalty$group.coef+1)}
+      
+      if(group %in% lava::vars(x)){
+        newGroup[grep(group, x$penalty$name.coef)] <- group.id
+      }else{
+        newGroup[] <- group.id
+      }
+      x$penalty$group.coef <- c(x$penalty$group.coef,newGroup)
+    }
+  }else{
+    x$penalty$group.coef <- c(x$penalty$group.coef,newGroup)
+  }
+  
+  #### V matrix
+  if(!missing(V)){
+    x$penalty$V <- V
+  }else if(is.null(x$penalty$V)){
+    V <- matrix(0, nrow = length(coef(x)), ncol = length(coef(x)))
+    colnames(V) <- coef(x)
+    rownames(V) <- coef(x)
+    diag(V)[coef(x) %in% x$penalty$name.coef] <- 1
+    x$penalty$V <- V
+  }
+  
+  #### penalization parameters
   if(!missing(lambda1)){
     x$penalty$lambda1 <- as.numeric(lambda1)
   }
@@ -200,10 +221,10 @@ lvm2plvm <- function(x){
     x$penalty$lambda2 <- as.numeric(lambda2)
   }
   
-   if(!missing(adaptive)){
-     x$penalty$adaptive <- as.numeric(adaptive)
-   }
-   
+  if(!missing(adaptive)){
+    x$penalty$adaptive <- as.numeric(adaptive)
+  }
+  
   #### export
   return(x)
 }
@@ -246,7 +267,7 @@ lvm2plvm <- function(x){
   if(is.null(objective) && is.null(x$penaltyNuclear$FCTobjective)){
     x$penaltyNuclear$FCTobjective <- lvGaussian
   }
-   
+  
   if(is.null(gradient) && is.null(x$penaltyNuclear$FCTgradient)){
     x$penaltyNuclear$FCTgradient <- scoreGaussian
   }
@@ -274,7 +295,7 @@ lvm2plvm <- function(x){
     stop("penaltyNuclear: the independent variable in formula must not be in the model \n",
          "existing variables: ",paste(name.X[name.X %in% vars(x) == TRUE],collapse = " "),"\n")
   }
-   coords.factor <- apply(coords, 2, function(x){
+  coords.factor <- apply(coords, 2, function(x){
     as.numeric(as.factor(x))
   })
   ncol <- max(coords.factor)

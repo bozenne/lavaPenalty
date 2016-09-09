@@ -6,8 +6,8 @@
 #' 
 #' @param x a plvmfit object or a regPath object
 #' @param names names of the columns to extract
-#' @param getCoef names of the coefficients to extract. Can also be \code{"coef0"} or \code{"coefn0"} to extract the number of 0 or non-0 coefficients
-#' @param getLambda names of the penalization parameter to extract.
+#' @param coef names of the coefficients to extract. Can also be \code{"coef0"} or \code{"coefn0"} to extract the number of 0 or non-0 coefficients
+#' @param lambda names of the penalization parameter to extract.
 #' @param only.breakpoints should the path be extracted only at the breakpoints
 #' @param increasing should the path be extracted by increasing value of regularization parameter
 #' @param order the regularization parameter to consider when ordering the points along the path
@@ -31,32 +31,22 @@
 
 #' @rdname getPath
 #' @export
-`getPath.regPath` <- function(x, names = NULL, getCoef, getLambda, only.breakpoints = FALSE, increasing = TRUE, order = "lambda1", row = NULL) {
+`getPath.regPath` <- function(x, names = NULL, coefficient, lambda, only.breakpoints = FALSE, increasing = TRUE, row = NULL) {
   
   ## preparation of the request
   regPath <- x$path
   validNames <- names(regPath)
-  names.penalized <- intersect(validNames, x$penCoef)
-  name.coef <- names(x$path)[-(1:5)]
+  names.penalized <- intersect(validNames, coef(x))
+  name.coef <- names(regPath)[-(1:5)]
   
-  if(order %in% c("lambda1","lambda2","lambda1.abs","lambda2.abs") == FALSE){
-    stop("getPath.plvmfit: order must be one of \"lambda1\" \"lambda2\" \"lambda1.abs\" \"lambda2.abs\" \n",
-         "proposed value: ",paste(order, collapse = " ")," \n")
+  if(!missing(coefficient) && !is.null(coefficient)){
+    if(length(coefficient)>1){stop("getPath.plvmfit: coefficient must have length 1 \n")}
+    if(coefficient %in% c("coef0", "coefn0")){only.breakpoints <- TRUE}
   }
   
-  if(!missing(getCoef) && !is.null(getCoef)){
-    if(length(getCoef)>1){stop("getPath.plvmfit: getCoef must have length 1 \n")}
-    if(getCoef %in% c("coef0", "coefn0")){only.breakpoints <- TRUE}
-  }
-  
-  if(!is.null(increasing)){
-    if(increasing == TRUE){
-      regPath <- regPath[order(regPath[,order], decreasing = FALSE),,drop = FALSE]
-    }else{
-      regPath <- regPath[order(regPath[,order], decreasing = TRUE),,drop = FALSE]
-    }
-  }
-  
+  ## sort the regularization path
+  regPath <- regPath[order(regPath[,getLambda(x)], decreasing = 1-increasing),,drop = FALSE]
+ 
   if(!is.null(names)){
     
     if(all(names %in% validNames)){
@@ -69,19 +59,19 @@
     
   } else {
     
-    if(missing(getLambda)){
+    if(missing(lambda)){
       names.lambda <- c("lambda1.abs", "lambda1", "lambda2.abs", "lambda2")
-    }else if(is.null(getLambda)){
+    }else if(is.null(lambda)){
       names.lambda <- NULL
     }else{
       validValues <- c("abs", "nabs", "lambda1", "lambda2", "lambda1.abs", "lambda2.abs")
-      if(any(getLambda %in% validValues == FALSE)){
-        stop("getPath.plvmfit: invalid value for \'getLambda\' \n",
-             "getLambda: ",getLambda,"\n",
+      if(any(lambda %in% validValues == FALSE)){
+        stop("getPath.plvmfit: invalid value for \'lambda\' \n",
+             "lambda: ",lambda,"\n",
              "valid values: ",paste(validValues, collapse = "\" \""),"\n")
       }
       
-      names.lambda <- sapply(getLambda, function(l){
+      names.lambda <- sapply(lambda, function(l){
         switch(l,
                "abs" = c("lambda1.abs", "lambda2.abs"),
                "nabs" = c("lambda1", "lambda2"),
@@ -93,7 +83,6 @@
       })
     }
   
-  
   ## extract the path
   if(only.breakpoints == 1){ # only keep points where there is a change in the non 0 coefficients (+ first and last knot)
     indexChange <- regPath$indexChange
@@ -103,16 +92,16 @@
     regPath <- regPath[index, ,drop = FALSE]
   }
   
-  ## 
-  if(missing(getCoef)){
+  ##
+  if(missing(coefficient)){
       names.coef <- setdiff(validNames, c("lambda1.abs", "lambda1", "lambda2.abs", "lambda2", "indexChange"))
-    }else if(is.null(getCoef)){
+    }else if(is.null(coefficient)){
       names.coef <- NULL
-    }else if(getCoef %in% c("coef0","coefn0")){
+    }else if(coefficient %in% c("coef0","coefn0")){
      
       coefChange <- names(regPath)[regPath$indexChange+5] # 5 corresponds to the five colums "lambda1.abs", "lambda1", "lambda2.abs", "lambda2", "indexChange"
-      if(x$increasing){
-        current.coef <- intersect(validNames, x$penCoef)
+      if(getIncreasing(x)){
+        current.coef <- intersect(validNames, coef(x))
         seqIterator <- 1:NROW(regPath)
       }else{
         current.coef <- NULL
@@ -129,10 +118,10 @@
           }
         }
         
-        if(getCoef == "coefn0"){
+        if(coefficient == "coefn0"){
           update <- current.coef
         }else{
-          update <- setdiff(x$penCoef,current.coef)
+          update <- setdiff(coef(x),current.coef)
         }
         
         ## add names
@@ -152,13 +141,13 @@
             
     } else {
       validValues <- c("all","penalized", "npenalized", "n.coef0", "n.coefn0", "coef0", "coefn0")
-      if(getCoef %in% validValues == FALSE){
-        stop("getPath.plvmfit: invalid value for \'getCoef\' \n",
-             "getCoef: ",getCoef,"\n",
+      if(coefficient %in% validValues == FALSE){
+        stop("getPath.plvmfit: invalid value for \'coefficient\' \n",
+             "coefficient: ",coefficient,"\n",
              "valid values: ",paste(validValues, collapse = "\" \""),"\n")
       }
       
-      names.coef <- switch(getCoef,
+      names.coef <- switch(coefficient,
                            "all" = name.coef,
                            "penalized" = names.penalized,
                            "npenalized" = setdiff(name.coef,names.penalized),
@@ -205,15 +194,30 @@
 }
 
 `isPath` <- function(x, ...) UseMethod("isPath")
-
 `isPath.plvmfit` <- function(x) {
-  
   return( class(x$regularizationPath) == "regPath" )
-  
 }
 
+`getLambda` <- function(x, ...) UseMethod("getLambda")
+`getLambda.regPath` <- function(x) {
+  return(x$lambda)
+}
 
+`getIncreasing` <- function(x, ...) UseMethod("getIncreasing")
+`getIncreasing.regPath` <- function(x) {
+  return(x$increasing)
+}
 
+`getPerformance` <- function(x, ...) UseMethod("getPerformance")
+`getPerformance.regPath` <- function(x) {
+  return(x$performance)
+}
 
+`getOptimum` <- function(x, ...) UseMethod("getOptimum")
+`getOptimum.regPath` <- function(x) {
+  return(x$optimum)
+}
 
-
+`coef.regPath` <- function(x) {
+  return(x$penCoef)
+}

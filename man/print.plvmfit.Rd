@@ -4,8 +4,8 @@
 \alias{print.plvmfit}
 \title{Display the content of a plvmfit object}
 \usage{
-\method{print}{plvmfit}(x, level = 2, labels = FALSE,
-  getCoef = "penalized", getLambda = "abs", only.breakpoints = TRUE, ...)
+\method{print}{plvmfit}(x, level = 2, labels = FALSE, coef = "penalized",
+  lambda = "abs", only.breakpoints = TRUE, ...)
 }
 \arguments{
 \item{x}{a plvmfit object}

@@ -20,7 +20,7 @@ library(lava.penalty)
 # package.source("lava.penalty", Rcode = TRUE)
 source(file.path(path,"FCT.R"))
 
-context("Reg-elasticNet")
+context("#### Reg-elasticNet #### \n")
 
 #### > settings ####
 test.tolerance <- 1e-4
@@ -277,7 +277,7 @@ lvm.model <- lvm(formula.lvm)
 plvm.model <- penalize(lvm.model)
 
 
-ppenalized.PathL12.factor <- penalized(Y~.,data = df.data, steps = "Park", trace = TRUE, lambda2 = lambda2, lambda1 = 10, trace = FALSE) # CRASH
+ppenalized.PathL12.factor <- penalized(Y~.,data = df.data, steps = "Park", lambda2 = lambda2, lambda1 = 10, trace = FALSE) # CRASH
 seq_lambda2 <- unlist(lapply(ppenalized.PathL12.factor, function(x){x@lambda1}))
 
 ## regularization path
@@ -289,21 +289,21 @@ test_that("EPSODE with factors - lambda=0", {
   
   path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE, lambda2 = lambda2, 
                      increasing = FALSE, control = list(constrain = TRUE))
-  p1 <- getPath(path1F, order = "lambda1.abs")
-  p2 <- getPath(path1B, order = "lambda1.abs", row = 1:nrow(p1))
+  p1 <- getPath(path1F)
+  p2 <- getPath(path1B, row = 1:nrow(p1))
   rownames(p2) <- 1:nrow(p1)
   expect_equal(p1,p2, tolerance=10*test.tolerance, scale=test.scale)
   
-  # comparison to proxGrad
+  # comparison to proxGrad  - an error may occur here as group lasso is used for factors
   pfit_Fixed <- estimate(plvm.model,  data = df.data, 
                          lambda1 = getPath(path1F, names = "lambda1.abs", row = 8), 
                          lambda2 = getPath(path1F, names = "lambda2.abs", row = 8), 
                          fixSigma = TRUE, control = list(constrain = TRUE))
-  expect_equal(as.double(coef(pfit_Fixed)), as.double(getPath(path1F, getLambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
+  expect_equal(as.double(coef(pfit_Fixed)), as.double(getPath(path1F, lambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
   
   ## find another solution when free
   # pfit_Free <- estimate(plvm.model,  data = df.data, lambda1 = getPath(path1F, names = "lambda1", row = 8), fixSigma = FALSE, control = list(constrain = TRUE))
-  # expect_equal(as.double(coef(pfit_Free)), as.double(getPath(path1F, getLambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
+  # expect_equal(as.double(coef(pfit_Free)), as.double(getPath(path1F, lambda = NULL, row = 8)), tolerance=test.tolerance, scale=test.scale)
 })
 
 #### > high dimensional ####
@@ -334,7 +334,7 @@ cat("  - proxGrad at the breakpoints \n")
 subsequence <- sample.int(length(seq_lambda), 10)
 
 for(iter_ll in 1:length(subsequence)){
-  iter_ll <- subsequence[iter_l]
+  iter_l <- subsequence[iter_ll]
   
   # fixed sigma
   eplvm.fit_tempo2 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE, lambda2 = lambda2,

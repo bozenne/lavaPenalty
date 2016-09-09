@@ -7,7 +7,7 @@ library(lava.penalty)
 # package.source("lava.penalty", Rcode = TRUE)
 source(file.path(path,"FCT.R"))
 
-context("LVM-lasso")
+context("#### LVM-lasso #### \n")
 
 #### > settings ####
 test.tolerance <- 1e-4
@@ -70,9 +70,8 @@ test_that("LVM vs pLVM (lambda > 0)", {
 })
 
 #### grid search
-res <- calcLambda(model = plvm.modelSim, seq_lambda1 = seq(0,400, length.out = 10), data.fit = df.data, 
-                  keep.fit = TRUE, refit.pLVM = TRUE, 
-                  trace = TRUE)
+res <- calcLambda(model = plvm.modelSim, seq_lambda1 = seq(0,400, length.out = 10), data.fit = df.data,
+                  trace = FALSE)
 res$regPath$pLVM
 plot(seq(0,400, length.out = 10),res$criterion)
 
@@ -85,8 +84,7 @@ plvm.ext1 <- penalize(lvm.ext1, c("Y1~X1","Y1~X2"))
 test_that("pLVM EPSODE vs proxGrad", {
   system.time(
     Path_For <- estimate(plvm.ext1,  data = df.data, increasing = TRUE, fit = NULL, estimator = "numDeriveSimple",
-                         regularizationPath = TRUE, lambda2 = 0, stopParam = 5, resolution_lambda1 = c(1e-1,1e-2),
-                         control = list(trace =5))
+                         regularizationPath = TRUE, lambda2 = 0, stopParam = 5, resolution_lambda1 = c(1e-1,1e-2))
   )
   test <- validPath.lvm(Path_For, data = df.data)
   expect_equal( unique(as.double(test$diff0)), 0)
@@ -94,8 +92,7 @@ test_that("pLVM EPSODE vs proxGrad", {
   
   system.time(             
     Path_Back <- estimate(plvm.ext1,  data = df.data, increasing = FALSE, fit = NULL, estimator = "numDeriveSimple",
-                          regularizationPath = TRUE, lambda2 = 0, stopParam = 3, resolution_lambda1 = c(1e-1,1e-2),
-                          control = list(trace =TRUE))
+                          regularizationPath = TRUE, lambda2 = 0, stopParam = 3, resolution_lambda1 = c(1e-1,1e-2))
   )
   test <- validPath.lvm(Path_Back, data = df.data)
   #expect_equal( test$diff.range, c(0,0), tolerance = 1e-3)

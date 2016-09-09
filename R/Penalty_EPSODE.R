@@ -32,7 +32,7 @@
 EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, 
                    indexPenalty, indexNuisance, increasing, stopLambda, stopParam, 
                    constrain, reversible, exportAllPath, trace,
-                   resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1, 
+                   resolution_lambda1, 
                    nstep_max = lava.options()$EPSODE$nstep_max,
                    ode.method = lava.options()$EPSODE$ode.method,
                    tol.0 = lava.options()$EPSODE$tol.0){
@@ -120,11 +120,6 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
     cv.ode <- NULL
     bridge.ode <- rbind(c(iter = 0, step = 0, lambda = iterLambda1, iterBeta))
     
-    # H1 <- hessian(iterBeta)
-    # H2 <- hessianGaussianO(iterBeta)
-    # Hdiff <- H1 - H2
-    # attr(Hdiff,"grad") <- attr(H1,"grad") - attr(H2,"grad")
-    # print(Hdiff)
     res.error <- try(deSolve::ode(y = iterBeta,
                                   times = lambda.ode,
                                   func = EPSODE_odeBeta, method = ode.method,

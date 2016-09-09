@@ -11,7 +11,6 @@
 #' @param keep.fit should the penalized LVM be exported
 #' @param refit.pLVM should the penalized LVM be fitted on only the non 0 parameters
 #' @param fit criterion to decide of the optimal model to retain among the penalized models.
-#' @param order the order of the sequence of penalties: according "lambda1" or "lambda1.abs"
 #' @param trace shoud the execution of the function be traced
 #' @param ... additional arguments - e.g. control argument for estimate.lvm
 #' 
@@ -35,23 +34,22 @@
 calcLambda <- function(path, model, 
                        seq_lambda1, data.fit, data.test, 
                        warmUp = lava.options()$calcLambda$warmUp, CI.coef = FALSE,
-                       fit = lava.options()$calcLambda$fit, order = "lambda1", trace = TRUE, ...){
-  
+                       fit = lava.options()$calcLambda$fit, trace = TRUE, ...){
+  missing.path <- missing(path)
   #### preparation
-  if(!missing(path)){
+  if(!missing.path){
     
     if("lvm" %in% class(model) == FALSE){
       stop("calcLambda: argument \'model\' must be an object of class \"lvm\" \n")
     }
     
-    regPath <- getPath(path, getLambda = c("lambda1","lambda1.abs"), getCoef = "coef0", order = order)
+    regPath <- getPath(path, lambda = c("lambda1","lambda1.abs"), coefficient = "coef0")
     seq_lambda1 <- unlist(lapply(regPath, function(x){attr(x,"lambda1")}))
     seq_lambda1.abs <- unlist(lapply(regPath, function(x){attr(x,"lambda1.abs")})) 
     seq_row <- unlist(lapply(regPath, function(x){attr(x,"row")}))
     seq_coef <- lapply(regPath, function(x){as.character(x)})
-    
-    penCoef <- path$penCoef
-    
+  
+    penCoef <- coef(path)
   }else{
     
     if("plvm" %in% class(model) == FALSE){
@@ -63,13 +61,14 @@ calcLambda <- function(path, model,
     
     path <- list(path = NULL,
                  increasing = all(diff(seq_lambda1)>0),
+                 lambda = "lambda1",
                  penCoef = model$penalty$name.coef,
                  performance = NULL,
                  optimum = NULL
     )
     class(path) <- "regPath"
-    seq_lambda1.abs <- NA
-    seq_row <- NA
+    seq_lambda1.abs <- rep(NA,length(seq_lambda1))
+    seq_row <- as.character(1:length(seq_lambda1))
   }
   
   if(fit %in% c("AIC","BIC","P_error") == FALSE){
@@ -106,19 +105,23 @@ calcLambda <- function(path, model,
   for(iterLambda in 1:n.lambda1){
     
     #### define the variables to include in the model
-    if(!missing(path)){
+    if(!missing.path){
       coef0_lambda <- seq_coef[[iterLambda]]
     }else{
       control1 <- control
       if(warmUp && !is.null(fitSave)){control1$start <- coef(fitSave)}
+      suppressWarnings(
       fitSave <- estimate(model, data = data.fit, lambda1 = seq_lambda1[iterLambda], control = control1)
+      )
       
-      path$path <- rbind(path$path, c(lambda1.abs = seq_lambda1[iterLambda],
-                                      lambda1 = NA, 
-                                      lambda2.abs = NA, 
-                                      lambda2 = NA, 
+      path$path <- rbind(path$path, c(lambda1.abs = fitSave$penalty$lambda1.abs,
+                                      lambda1 = fitSave$penalty$lambda1,
+                                      lambda2.abs = fitSave$penalty$lambda2.abs, 
+                                      lambda2 = fitSave$penalty$lambda2, 
                                       indexChange = NA, 
                                       coef(fitSave)))
+      seq_lambda1.abs[iterLambda] <- fitSave$penalty$lambda1.abs
+      seq_lambda1[iterLambda] <- fitSave$penalty$lambda1
       
       coef0_lambda <- coef0(fitSave, tol = 1e-6, penalized = TRUE, value = FALSE)
     }
@@ -140,7 +143,7 @@ calcLambda <- function(path, model,
     if(CI.coef){
       control2 <- control
       control2$start <- coef(fitSave)
-      pmodel2 <- penalize(model2, intersect(coef(model2), path$penCoef))
+      pmodel2 <- penalize(model2, intersect(coef(model2), coef(path)))
       fitTempo3 <- estimate(pmodel2, data = data.fit, lambda1 = seq_lambda1[iterLambda], control = control2)
       
       pathCI$estimation <- rbind(pathCI$estimation, fitTempo3$coef[,1])
@@ -161,13 +164,12 @@ calcLambda <- function(path, model,
     #### storage
     if(cv.lvm[iterLambda] && best.res>seq.criterion[iterLambda]){
       best.res <- seq.criterion[iterLambda]
-      best.lambda1 <- seq_lambda1[iterLambda]
       best.subset <- names(coef(fitTempo2))
       best.lvm <- fitTempo2
-      
-      if(!missing(path)){
+      best.lambda1 <- seq_lambda1[iterLambda]
+      best.lambda1.abs <-seq_lambda1.abs[iterLambda]
+      if(!missing.path){
         attr(best.lambda1,"row") <- seq_row[iterLambda]
-        best.lambda1.abs <- attr(regPath[[as.numeric(attr(best.lambda1,"row"))]],"lambda1.abs")
       }
     }
     
@@ -177,8 +179,10 @@ calcLambda <- function(path, model,
   if(trace){close(pb)}
   
   #### export
-  path$performance <- data.frame(lambda1 = seq_lambda1,
-                                 lambda1.abs = seq_lambda1.abs,
+  path$path <- as.data.frame(path$path)
+  
+  path$performance <- data.frame(lambda1.abs = seq_lambda1.abs,
+                                 lambda1 = seq_lambda1,
                                  value = seq.criterion,
                                  optimum = (seq.criterion == best.res),
                                  cv = cv.lvm,
@@ -188,8 +192,8 @@ calcLambda <- function(path, model,
                        value = best.res,
                        coef = coef(best.lvm),
                        lvm = best.lvm,
-                       lambda1 = best.lambda1[[1]],
                        lambda1.abs = best.lambda1.abs,
+                       lambda1 = best.lambda1[[1]],
                        row = attr(best.lambda1, "row"))
   
   return(path)

@@ -6,8 +6,7 @@
 \usage{
 calcLambda(path, model, seq_lambda1, data.fit, data.test,
   warmUp = lava.options()$calcLambda$warmUp, CI.coef = FALSE,
-  fit = lava.options()$calcLambda$fit, order = "lambda1", trace = TRUE,
-  ...)
+  fit = lava.options()$calcLambda$fit, trace = TRUE, ...)
 }
 \arguments{
 \item{path}{the penalized latent variable}
@@ -21,8 +20,6 @@ calcLambda(path, model, seq_lambda1, data.fit, data.test,
 \item{warmUp}{should the new model be initialized with the solution of the previous model (i.e. estimated for a different penalization parameter)}
 
 \item{fit}{criterion to decide of the optimal model to retain among the penalized models.}
-
-\item{order}{the order of the sequence of penalties: according "lambda1" or "lambda1.abs"}
 
 \item{trace}{shoud the execution of the function be traced}
 

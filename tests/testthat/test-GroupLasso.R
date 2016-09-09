@@ -6,7 +6,7 @@ library(lava.penalty)
 library(testthat)
 source(file.path(path,"FCT.R"))
 
-context("Reg-GroupLasso")
+context("#### Reg-GroupLasso #### \n")
 
 #### data ####
 library(gglasso)

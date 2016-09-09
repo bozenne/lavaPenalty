@@ -39,9 +39,9 @@
 #' 
 #' @export
 estimate.plvm <- function(x, data, 
-                          lambda1, lambda2, lambdaN, adaptive = FALSE, 
+                          lambda1 = NULL, lambda2 = NULL, lambdaN = NULL, adaptive = FALSE, 
                           control = list(), estimator = "penalized", 
-                          regularizationPath = FALSE, resolution_lambda1 = lava.options()$resolution_lambda1, increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
+                          regularizationPath = FALSE, resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1, increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
                           fit = lava.options()$calcLambda$fit,
                           fixSigma = FALSE, ...) {
   # names.coef <- coef(x)
@@ -70,13 +70,13 @@ estimate.plvm <- function(x, data,
   
   #### prepare penalty
   ## elastic net
-  if(!missing(lambda1)){
+  if(!is.null(lambda1)){
     penalty$lambda1 <- as.numeric(lambda1)
   }
-  if(!missing(lambda2)){
+  if(!is.null(lambda2)){
     penalty$lambda2 <- as.numeric(lambda2)
   }
-  if(!missing(adaptive)){
+  if(adaptive){
     penalty$adaptive <- as.numeric(adaptive)
   }
   
@@ -89,7 +89,7 @@ estimate.plvm <- function(x, data,
   
   ## penaltyNuclear
   if(!is.null(x$penaltyNuclear$name.coef)){
-    if(!missing(lambdaN)){
+    if(!is.null(lambdaN)){
       x$penaltyNuclear$lambdaN <- as.numeric(lambdaN)
     }
     if(length(endogenous(x))>1){
@@ -114,7 +114,8 @@ estimate.plvm <- function(x, data,
                            envir = environment() # pass x and data in case where fixSigma = TRUE
   )
   
-  control$regPath <- list(increasing = increasing,
+  control$regPath <- list(resolution_lambda1 = resolution_lambda1,
+                          increasing = increasing,
                           reversible = reversible,
                           stopParam = stopParam,
                           stopLambda = stopLambda,
@@ -222,33 +223,36 @@ estimate.plvm <- function(x, data,
 #' 
 initializer.plvm <- function(x, data, ...){
   
-  names.coef <- coef(x)
+  suppressWarnings(
+    start_init <- lava:::estimate.lvm(x = x, data = data, control = list(iter.max = 0))
+  )
+  
+  names.coef  <- names(coef(start_init))
   n.coef <- length(names.coef)
   n.data <- NROW(data)
-  penalty <- x$penalty
   
   #### normal model
+ 
   if(n.data > n.coef){
     suppressWarnings(
       initLVM <- try(lava:::estimate.lvm(x = x, data = data, ...), silent = TRUE)
     )
     
     if(("try-error" %in% class(initLVM) == FALSE)){ # should also check convergence
-      start_lambda0 <- setNames(rep(0,n.coef),names.coef)
-      start_lambda0[names(coef(initLVM))] <- coef(initLVM)
+      start_lambda0 <- coef(initLVM)
     }else{ 
       start_lambda0 <- NULL
     }
-  }else{
+  }else{ 
     start_lambda0 <- NULL
   }
   
-  #### hight dimensional model
+  #### high dimensional model
   x0 <- x
   start_lambdaMax <- setNames(rep(0,n.coef),names.coef)
   
   ## removed penalized variables
-  for(iter_link in penalty$name.coef){
+  for(iter_link in x$penalty$name.coef){
     x0 <- rmLink(x0, iter_link)
   }
   
@@ -327,12 +331,28 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
       newVar <- names(conversion.factor)[conversion.factor %in% all.vars(formulaTempo)[2]]
       return(paste0(all.vars(formulaTempo)[1],"~",newVar))
     })  
+    names(NewExogePenalty.factor) <- OldLinksPenalty.factors
     
-    name.NewlinksPenalty <- c(intersect(penalty$name.coef, name.Newlinks),
-                              unlist(NewExogePenalty.factor))
+    ## redefine the group of penalty
+    name.commonPenalty <- intersect(penalty$name.coef, name.Newlinks)
+    name.NewlinksPenalty <- c(name.commonPenalty,
+                              unname(unlist(NewExogePenalty.factor)))
+    group.NewlinksPenalty <- setNames(rep(NA, length(name.NewlinksPenalty)),
+                                      name.NewlinksPenalty)
+    group.NewlinksPenalty[name.commonPenalty] <- penalty$group.coef[na.omit(match(penalty$name.coef,name.commonPenalty))]
     
+    for(iterG in OldLinksPenalty.factors){
+      groupG <- penalty$group.coef[match(iterG,penalty$name.coef)]
+      if(groupG>1){ # if already a group, keep it
+        group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- groupG
+      }else{ # else create a new group
+        group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- floor(max(c(na.omit(group.NewlinksPenalty), penalty$group.coef))) + 1
+      }
+    }
+    
+    ## redefine V matrix
     x$penalty$V <- NULL
-    res <- penalize(x, value = name.NewlinksPenalty)
+    res <- penalize(x, value = name.NewlinksPenalty, group = group.NewlinksPenalty, add = FALSE)
     
     x$penalty <- res$penalty
   }
