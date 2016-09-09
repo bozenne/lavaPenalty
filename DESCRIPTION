@@ -42,5 +42,6 @@ Collate:
     'Penalty_plot.R'
     'Penalty_print.R'
     'Penalty_proxOperator.R'
+    'Penalty_simulation.R'
     'Utils.R'
 RoxygenNote: 5.0.1

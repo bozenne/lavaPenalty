@@ -62,9 +62,9 @@ beta <- setNames(c(0,gamma,betaI,1), names.param)
 beta[Xnames] <-  0
 
 #### lasso 
-test.penaltyLasso <- setNames(test.penaltyMC[-length(test.penaltyMC)], names(beta)[-length(test.penaltyMC)])
+test.penaltyLasso <- setNames(names(beta)[-length(beta)] %in% c(Znames, Xnames), c(Znames, Xnames))
 glmnet.fit <- glmnet:::glmnet(x = cbind(Z,X), y = Y, family = "gaussian", alpha = 0,
-                              penalty.factor = test.penaltyLV)
+                              penalty.factor = test.penaltyLasso)
 
 B.LS <- matrix(coef(glmnet.fit, s = 0)[-(1:(n.confounder+1))],
                nrow = xmax, ncol = ymax, byrow = TRUE)

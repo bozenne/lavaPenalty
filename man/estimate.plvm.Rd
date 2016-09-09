@@ -112,7 +112,38 @@ pfit <- estimate(plvm.model,  data = df.data, lambda1 = 80, control = list(const
 pfit
 
 #### nuclear norm penalty
+n.obs <- 100
+res <- simForm(n.obs, xmax = 25, ymax = 25, radius = 5)
+coords <- res$coords
+n.coord <- nrow(coords)
+betaI <- as.vector(res$X)
+X <- matrix(rnorm(n.obs*n.coord), nrow = n.obs, ncol = n.coord)
+Xnames <- paste0("X",1:n.coord)
 
+n.confounder <- 5
+gamma <- rep(1, n.confounder)
+Z <- matrix(rnorm(n.obs*n.confounder), nrow = n.obs, ncol = n.confounder)
+Znames <- paste0("Z",1:n.confounder)
+
+Y <- Z \%*\% gamma + X \%*\% betaI + rnorm(n.obs)
+formula.lvm <- as.formula( paste0("Y~", paste0("X",1:n.coord, collapse = "+") ) )
+
+dt.data <- data.table(Y=Y,data.frame(Z),data.frame(X))
+names(dt.data) <- c("Y",Znames,Xnames)
+dt.data[, (names(dt.data)) := lapply(.SD,scale), .SDcols = names(dt.data)]
+
+##
+lvm.image <- lvm(as.formula(paste0("Y~",paste(Znames, collapse = "+"))))
+plvm.image <- lvm.image
+penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
+
+for(lambda in c(1e0,1e1,1e2)){
+  elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, 
+                        control = list(iter.max = 100))
+  B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
+                 nrow = NROW(res$X), ncol = NCOL(res$X), byrow = TRUE)
+  fields:::image.plot(B.LS)
+}
 
 
 ####> Latent variable model ####
@@ -140,13 +171,14 @@ plot(pathLVM)
 plot(pathLVM, type = "path")
 # lava:::estimate.lvm(pm, scale(df.data))
 
-## local estimation
+## use the default proximal gradient (ISTA)
 proxGrad_options <- lava.options()$proxGrad
 proxGrad_options$method <- "ISTA"
 lava.options(proxGrad = proxGrad_options)
 
 e <- estimate(pm, df.data, lambda1 = 0, control = list(constrain = TRUE))
 
+## change the proximal gradient method to monotone FISTA
 proxGrad_options <- lava.options()$proxGrad
 proxGrad_options$method <- "mFISTA"
 lava.options(proxGrad = proxGrad_options)
