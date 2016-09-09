@@ -50,6 +50,11 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
   z_k <- if(method == "Nesterov"){z_k}else{NA}
   obj.y_k <- if(method %in% c("FISTA","mFISTA")){obj.x_k}else{NA} 
   grad.y_k <- if(method %in% c("FISTA","mFISTA")){grad.x_k}else{NA} 
+
+  if("function" %in% class(hessian)){
+    maxEigen <- 1/rARPACK::eigs_sym(hessian(x_k),k=1, which = "LM", opts = list(retvec = FALSE))$values
+    step <-  abs(maxEigen)
+  }
   
   test.cv <- FALSE
   iter <- 0

@@ -39,8 +39,8 @@
         names.Nselected <- unique(df.Path$coefficient[!df.Path$selected])
         n.selected <- length(names.selected)
         n.Nselected <- length(names.Nselected)
-        color.selected <- rgb(g = seq(0.3,0.7,length.out = n.selected), 0, 0)
-        color.Nselected <- rgb(r = seq(0.3,0.7,length.out = n.Nselected), 0, 0)
+        color.selected <- rgb(green = seq(0.3,0.7,length.out = n.selected), 0, 0)
+        color.Nselected <- rgb(red = seq(0.3,0.7,length.out = n.Nselected), 0, 0)
         
         color.order <- as.character(unique(df.Path$coefficient))
         color.order[color.order %in% names.selected] <- color.selected

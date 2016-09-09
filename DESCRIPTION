@@ -1,11 +1,11 @@
 Package: lava.penalty
 Type: Package
-Title: 
+Title: Penalized Latent Variable Models
 Version: 0.0
 Date: 2016-08-15
 Author: Brice Ozenne[aut, cre], Julien Peron[aut]
 Maintainer: brice ozenne <brice.ozenne@orange.fr>
-Description: Implementation of regularization tools for latent variables models. Available penalty are lasso, ridge, group lasso and nuclear norm regularization (linear model only). A generic regularization path algorithm enable to estimate the knots, i.e. penalisation at which the set of non-zero parameters changes. Information criteria (AIC, BIC) can be used to identify an "optimal" penalization value
+Description: Implementation of regularization tools for latent variables models. Available penalty are lasso, ridge, group lasso and nuclear norm regularization (linear model only). A generic regularization path algorithm enable to estimate the knots, i.e. penalisation at which the set of non-zero parameters changes. Information criteria (AIC, BIC) can be used to identify an "optimal" penalization value.
 License: GPL-3
 Depends:
     R (>= 2.10),
@@ -21,7 +21,7 @@ Imports:
     ggplot2,
     utils
 Suggests: 
-    abind, qualV, testthat, tmvtnorm
+    qualV, testthat, tmvtnorm, optimx
 Collate:
     'Lava_cv.R'
     'Lava_extract.R'
@@ -30,8 +30,8 @@ Collate:
     'lava_penalty-package.R'
     'Penalty_df.R'
     'Penalty_EPSODE.R'
-    'Penalty_estimateLambda.R'
     'Penalty_estimate.R'
+    'Penalty_estimateLambda.R'
     'Penalty_extractLVM.R'
     'Penalty_extractPath.R'
     'Penalty_gaussianMoment.R'

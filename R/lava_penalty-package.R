@@ -4,7 +4,7 @@
 #' @import lava
 #' @import data.table
 #' @import snowfall
-#' @importFrom abind abind
+#' @import ggplot2
 #' @importFrom deSolve ode
 #' @importFrom numDeriv jacobian hessian
 #' @importFrom parallel detectCores
@@ -15,3 +15,4 @@ NULL
 
 #####' @importFrom qualV LCS
 #####' @importFrom tmvtnorm tmvtnorm
+#####' @importFrom optimx optimx

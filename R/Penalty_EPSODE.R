@@ -409,7 +409,7 @@ EPSODE_odeBeta <- function(t, y, ls.args){
 
 initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty, 
                               constrain, indexNuisance){
-  
+
   max.grad <- max( abs(-gradient(beta) )[indexPenalty] )
   
   if(increasing){

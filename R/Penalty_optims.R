@@ -42,6 +42,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
                          index.constrain = index.constrain, type.constrain = control$constrain, expX = control$proxGrad$expX)
   }
   if(!is.na(newPenalty$lambdaN)){
+    hessian <- penaltyNuclear$hessian
     gradient <- penaltyNuclear$gradient
     objective <- penaltyNuclear$objective
     if(length(index.constrain)>0){index.constrain <- which(names(newPenalty$start) %in% name.coef[index.constrain])}
@@ -102,6 +103,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
 optim.regPath <- function(start, objective, gradient, hessian, control, ...){
   
   name.coef <- names(control$regPath$beta_lambdaMax)
+  penaltyNuclear <- control$penaltyNuclear
   
   #### update the penalty according to start 
   # (some coefficient have been removed as they are chosen as a reference)

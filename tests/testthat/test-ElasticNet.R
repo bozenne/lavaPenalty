@@ -219,13 +219,13 @@ ppenalized.PathL1 <- penalized(Y~.,data = df.data, steps = "Park", trace = FALSE
                                unpenalized = Y~ X2 + X4,
                                penalized = Y ~ X1 + X3 + X5)
 seq_lambda2 <- unlist(lapply(ppenalized.PathL1, function(x){x@lambda1}))
-
 plvm.model2 <- penalize(lvm.model, value = Y ~ X1 + X3 + X5)
 
 test_that("EPSODE-forward vs penalize with partial lasso", {
+           
   system.time(
-    PathFor_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = TRUE, fit = NULL,
-                               regularizationPath = TRUE, lambda2 = lambda2)
+    PathFor_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = TRUE, fit = NULL, fixSigma = TRUE,
+                               regularizationPath = TRUE, lambda2 = lambda2, control = list(constrain = TRUE))
   )
   lambda1path <- getPath(PathFor_fixed3, names = "lambda1.abs")[,1]
   indexLambda <- apply(outer(lambda1path,seq_lambda2,'-'), 2, function(x){which.min(abs(x))})
@@ -244,9 +244,9 @@ test_that("EPSODE-forward vs penalize with partial lasso", {
 
 test_that("EPSODE-backward vs penalize with partial lasso", {
   system.time(
-    PathBack_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = FALSE, fit = NULL,
+    PathBack_fixed3 <- estimate(plvm.model2,  data = df.data, increasing = FALSE, fit = NULL, fixSigma = TRUE,
                                 regularizationPath = TRUE, lambda2 = lambda2,
-                                control = list(trace = FALSE))
+                                control = list(constrain = TRUE))
   )
   lambda1path <- getPath(PathBack_fixed3, names = "lambda1.abs")[,1]
   indexLambda <- apply(outer(lambda1path,seq_lambda2,'-'), 2, function(x){which.min(abs(x))})

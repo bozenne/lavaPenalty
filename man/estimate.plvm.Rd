@@ -5,8 +5,9 @@
 \alias{estimate.plvm}
 \title{Penalized lvm model}
 \usage{
-\method{estimate}{plvm}(x, data, lambda1, lambda2, lambdaN, adaptive = FALSE,
-  control = list(), estimator = "penalized", regularizationPath = FALSE,
+\method{estimate}{plvm}(x, data, lambda1 = NULL, lambda2 = NULL,
+  lambdaN = NULL, adaptive = FALSE, control = list(),
+  estimator = "penalized", regularizationPath = FALSE,
   resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1,
   increasing = TRUE, reversible = FALSE, stopLambda = NULL,
   stopParam = NULL, exportAllPath = FALSE,
@@ -80,7 +81,7 @@ plvm.model <- penalize(lvm.model)
 ## regularization path
 path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE)
 
-# backward is faster
+# backward
 path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
                    increasing = FALSE, fixSigma = TRUE)
 

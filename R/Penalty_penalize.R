@@ -55,6 +55,7 @@ lvm2plvm <- function(x){
   
   x$penaltyNuclear <- list(FCTobjective = NULL,
                            FCTgradient = NULL,
+                           FCThessian = NULL,
                            lambdaN  = 0, 
                            name.coef = NULL,
                            name.Y = NULL,
@@ -240,6 +241,7 @@ lvm2plvm <- function(x){
   UseMethod("penalizeNuclear<-", x)
 }
 
+##' @export
 `penalizeNuclear.lvm` <- function(x, value = NULL, ...){
   
   penalizeNuclear(x, ...) <- value
@@ -247,6 +249,7 @@ lvm2plvm <- function(x){
   return(x)
 }
 
+##' @export
 `penalizeNuclear.plvm` <- `penalizeNuclear.lvm`
 
 `penalizeNuclear<-.lvm` <- function(x, ..., value){
@@ -261,7 +264,7 @@ lvm2plvm <- function(x){
   return(x)
 }
 
-`penalizeNuclear<-.plvm` <- function(x,  coords, objective = NULL, gradient = NULL, lambda = NULL, ..., value){
+`penalizeNuclear<-.plvm` <- function(x,  coords, objective = NULL, gradient = NULL, hessian = NULL, lambda = NULL, ..., value){
   
   ## add objective/gradient
   if(is.null(objective) && is.null(x$penaltyNuclear$FCTobjective)){
@@ -272,11 +275,18 @@ lvm2plvm <- function(x){
     x$penaltyNuclear$FCTgradient <- scoreGaussian
   }
   
+  if(is.null(hessian) && is.null(x$penaltyNuclear$FCThessian)){
+    x$penaltyNuclear$FCThessian <- hessianGaussian
+  }
+  
   if(!is.null(objective)){
     x$penaltyNuclear$FCTobjective <- objective
   }
   if(!is.null(gradient)){
     x$penaltyNuclear$FCTgradient <- gradient
+  }
+  if(!is.null(hessian)){
+    x$penaltyNuclear$FCThessian <- hessian
   }
   
   ## lambda

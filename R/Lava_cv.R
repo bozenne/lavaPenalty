@@ -33,9 +33,6 @@ cvCheck <- function (x, ...) {
 #' @export
 cvCheck.lvm <- function(object, data, factor.vcov = 9, n.init = 100, ncpus = 1, verbose = TRUE, ...){
   
-  require(lava)
-  require(tmvtnorm)
-  
   if(is.null(ncpus)){ ncpus <- parallel::detectCores()}
   
   dots <- list(...)
@@ -92,9 +89,8 @@ cvCheck.lvm <- function(object, data, factor.vcov = 9, n.init = 100, ncpus = 1, 
     if(verbose){.pb <- utils:::txtProgressBar(min = 0, max = n.init, style = 3)}
     Mres <- sapply(1:n.init, warper)
   }else{
-    require(snowfall)
     sfInit( parallel=TRUE, cpus=ncpus )
-    sfLibrary(lava) ; sfLibrary(snowfall)
+    sfLibrary(lava) ; sfLibrary("snowfall", character.only=TRUE)
     sfExportAll()
     
     Mres <- sfSapply(1:n.init, warper)
@@ -158,7 +154,6 @@ summary.cvlvm <- function(object, threshold = NULL){
 
 
 optimx1 <- function(start,objective,gradient,hessian,...) {
-  require(optimx)
   
   nlminbcontrols <- c("eval.max","iter.max","trace","abs.tol","rel.tol","x.tol","step.min","optim.method","optimx.method")
   dots <- list(...)

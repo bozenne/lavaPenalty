@@ -104,6 +104,10 @@ estimate.plvm <- function(x, data,
       x$penaltyNuclear$FCTgradient(coef, 
                                    Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
                                    X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+    x$penaltyNuclear$hessian <- function(coef){
+      x$penaltyNuclear$FCThessian(coef, 
+                                  Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
+                                  X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
     control$penaltyNuclear <- x$penaltyNuclear
   }
   
