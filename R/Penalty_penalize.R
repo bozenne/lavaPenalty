@@ -232,6 +232,7 @@ lvm2plvm <- function(x){
 
 
 #### Nuclear ####
+
 ##' @export
 `penalizeNuclear` <-
   function(x,...) UseMethod("penalizeNuclear")
@@ -252,6 +253,7 @@ lvm2plvm <- function(x){
 ##' @export
 `penalizeNuclear.plvm` <- `penalizeNuclear.lvm`
 
+##' @export
 `penalizeNuclear<-.lvm` <- function(x, ..., value){
   
   ## convert to plvm
@@ -264,6 +266,7 @@ lvm2plvm <- function(x){
   return(x)
 }
 
+##' @export
 `penalizeNuclear<-.plvm` <- function(x,  coords, objective = NULL, gradient = NULL, hessian = NULL, lambda = NULL, ..., value){
   
   ## add objective/gradient
