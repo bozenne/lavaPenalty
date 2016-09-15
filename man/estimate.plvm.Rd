@@ -137,7 +137,7 @@ lvm.image <- lvm(as.formula(paste0("Y~",paste(Znames, collapse = "+"))))
 plvm.image <- lvm.image
 penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
 
-for(lambda in c(1e0,1e1,1e2)){
+for(lambda in c(1e0,1e1,1e2,2e2)){
   elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, 
                         control = list(iter.max = 100))
   B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
