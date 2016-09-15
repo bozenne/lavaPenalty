@@ -1,10 +1,14 @@
 # library(ggplot2)
 # library(lava)
 library(lava.penalty)
+library(ggplot2)
 
 EPSODE_options <- lava.options()$EPSODE
 EPSODE_options$resolution_lambda1 <- c(1e-10,1)
 lava.options(EPSODE = EPSODE_options)
+options.proxGrad <- lava.options()$proxGrad
+options.proxGrad$export.iter <- TRUE
+lava.options(proxGrad = options.proxGrad)
 
 ####> linear regression ####
 set.seed(10)
@@ -50,6 +54,37 @@ plvm.model <- penalize(plvm.model, value = paste0("Y~X",5:9), group = 2)
 
 pfit <- estimate(plvm.model,  data = df.data, lambda1 = 80, control = list(constrain = TRUE), fixSigma = TRUE)
 pfit
+
+#### algorithm ISTA
+lambda1 <- 10
+
+pfit_ISTA <- estimate(plvm.model,  data = df.data, method.proxGrad = "ISTA",
+                      lambda1 = lambda1, iter.max = 100,
+                      control = list(constrain = TRUE), fixSigma = TRUE)
+
+pfit_FISTA_Vand <- estimate(plvm.model,  data = df.data, method.proxGrad = "FISTA_Beck",
+                            lambda1 = lambda1, iter.max = 100,
+                            control = list(constrain = TRUE), fixSigma = TRUE)
+
+pfit_FISTA_Beck <- estimate(plvm.model,  data = df.data, method.proxGrad = "FISTA_Vand",
+                            lambda1 = lambda1, iter.max = 100,
+                            control = list(constrain = TRUE), fixSigma = TRUE)
+
+pfit_mFISTA_Vand <- estimate(plvm.model,  data = df.data, method.proxGrad = "mFISTA_Vand",
+                             lambda1 = lambda1, iter.max = 100,
+                             control = list(constrain = TRUE), fixSigma = TRUE)
+
+
+df.cv <- rbind(data.frame(pfit_ISTA$opt$details.cv, method = "ISTA"),
+               data.frame(pfit_FISTA_Vand$opt$details.cv, method = "FISTA_Beck"),
+               data.frame(pfit_FISTA_Beck$opt$details.cv, method = "FISTA_Vand"),
+               data.frame(pfit_mFISTA_Vand$opt$details.cv, method = "mFISTA_Vand"))
+gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method)) 
+gg <- gg + geom_line() + geom_point()
+gg
+
+# gg + coord_cartesian(ylim = c(1470,1500))
+gg + coord_cartesian(ylim = c(1500,1510), xlim = c(0,100))
 
 #### nuclear norm penalty
 n.obs <- 100
@@ -111,23 +146,30 @@ plot(pathLVM)
 plot(pathLVM, type = "path")
 # lava:::estimate.lvm(pm, scale(df.data))
 
-## use the default proximal gradient (ISTA)
-proxGrad_options <- lava.options()$proxGrad
-proxGrad_options$method <- "ISTA"
-lava.options(proxGrad = proxGrad_options)
+#### algorithm ISTA
+lambda1 <- 10
 
-e <- estimate(pm, df.data, lambda1 = 0, control = list(constrain = TRUE))
+e_ISTA <- estimate(pm,  data = df.data, method.proxGrad = "ISTA",
+                      lambda1 = lambda1,
+                      control = list(constrain = TRUE))
 
-## change the proximal gradient method to monotone FISTA
-proxGrad_options <- lava.options()$proxGrad
-proxGrad_options$method <- "mFISTA"
-lava.options(proxGrad = proxGrad_options)
+e_FISTA_Vand <- estimate(pm,  data = df.data, method.proxGrad = "FISTA_Beck",
+                            lambda1 = lambda1,
+                            control = list(constrain = TRUE))
 
-e <- estimate(pm, df.data, lambda1 = 0, control = list(constrain = TRUE))
+e_FISTA_Beck <- estimate(pm,  data = df.data, method.proxGrad = "FISTA_Vand",
+                            lambda1 = lambda1,
+                            control = list(constrain = TRUE))
+
+e_mFISTA_Vand <- estimate(pm,  data = df.data, method.proxGrad = "mFISTA_Vand",
+                             lambda1 = lambda1,
+                             control = list(constrain = TRUE))
 
 
-e <- estimate(pm, df.data, lambda1 = 2e1, control = list(constrain = TRUE))
-
-
-
-
+df.cv <- rbind(data.frame(e_ISTA$opt$details.cv, method = "ISTA"),
+               data.frame(e_FISTA_Vand$opt$details.cv, method = "FISTA_Beck"),
+               data.frame(e_FISTA_Beck$opt$details.cv, method = "FISTA_Vand"),
+               data.frame(e_mFISTA_Vand$opt$details.cv, method = "mFISTA_Vand"))
+gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method)) 
+gg <- gg + geom_line() + geom_point()
+gg

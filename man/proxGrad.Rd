@@ -4,12 +4,13 @@
 \alias{proxGrad}
 \title{step of a proximal gradient algorithm}
 \usage{
-proxGrad(start, proxOperator, hessian, gradient, objective, iter.max, abs.tol,
-  rel.tol, trace, step = lava.options()$proxGrad$step,
-  BT.n = lava.options()$proxGrad$BT.n,
+proxGrad(start, proxOperator, method, hessian, gradient, objective, iter.max,
+  trace, abs.tol = lava.options()$proxGrad$abs.tol,
+  rel.tol = lava.options()$proxGrad$rel.tol,
+  step = lava.options()$proxGrad$step, BT.n = lava.options()$proxGrad$BT.n,
   BT.eta = lava.options()$proxGrad$BT.eta,
   force.descent = lava.options()$proxGrad$force.descent,
-  method = lava.options()$proxGrad$method)
+  export.iter = lava.options()$proxGrad$export.iter)
 }
 \arguments{
 \item{start}{initial values for the parameters}
@@ -24,11 +25,11 @@ proxGrad(start, proxOperator, hessian, gradient, objective, iter.max, abs.tol,
 
 \item{iter.max}{maximum number of iterations}
 
+\item{trace}{should the convergence diagnostics be displayed at each step}
+
 \item{abs.tol}{convergence is the difference in likelihood between two consecutive steps is below this threshold}
 
 \item{rel.tol}{convergence is the relative difference  in likelihood between two consecutive steps is below this threshold}
-
-\item{trace}{should the convergence diagnostics be displayed at each step}
 
 \item{step}{maximun step for the proximal gradient algorithm. 
 If NULL the step is estimated using the inverse of the maximal eigenvalue of the hessian (in absolute value) and re-estimated at each step

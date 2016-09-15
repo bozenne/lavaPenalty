@@ -41,7 +41,8 @@
 estimate.plvm <- function(x, data, 
                           lambda1 = NULL, lambda2 = NULL, lambdaN = NULL, adaptive = FALSE, 
                           control = list(), estimator = "penalized", 
-                          regularizationPath = FALSE, resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1, increasing = TRUE, reversible = FALSE, stopLambda = NULL, stopParam = NULL, exportAllPath = FALSE, 
+                          regularizationPath = FALSE, resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1, increasing = TRUE,stopLambda = NULL, stopParam = NULL, 
+                          method.proxGrad = lava.options()$proxGrad$method,
                           fit = lava.options()$calcLambda$fit,
                           fixSigma = FALSE, ...) {
   # names.coef <- coef(x)
@@ -112,19 +113,25 @@ estimate.plvm <- function(x, data,
   }
   
   #### control/optimisation parameters 
+  valid.proxGrad <- c("ISTA","FISTA_Beck","FISTA_Vand","mFISTA_Vand")
+  if(method.proxGrad %in% valid.proxGrad == FALSE){
+    stop("estimate.plvm: ",method.proxGrad," is not a valid method for the proximal gradient algorithm \n",
+         "available methods: ", paste(valid.proxGrad, collapse = " "),"\n")
+  }
+    
+  
   control$proxGrad <- list(expX = if(control$constrain){penalty$names.varCoef}else{NULL},
                            trace = if(regularizationPath == 0){control$trace}else{FALSE},
+                           method = method.proxGrad,
                            fixSigma = fixSigma,
                            envir = environment() # pass x and data in case where fixSigma = TRUE
   )
   
   control$regPath <- list(resolution_lambda1 = resolution_lambda1,
                           increasing = increasing,
-                          reversible = reversible,
                           stopParam = stopParam,
                           stopLambda = stopLambda,
                           fixSigma = fixSigma,
-                          exportAllPath = exportAllPath,
                           trace = if(regularizationPath > 0){control$trace}else{FALSE})
   
   #### initialization

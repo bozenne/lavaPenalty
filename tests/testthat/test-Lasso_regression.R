@@ -342,7 +342,7 @@ cat("  - at the breakpoints \n")
 for(iter_l in 1:length(seq_lambda)){
   
    # fixed sigma
-  eplvm.fit_tempo2 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE,
+  eplvm.fit_tempo2 <- estimate(plvm.model,  data = df.data, fixSigma = TRUE, method.proxGrad = "FISTA_Beck",
                                lambda1 = penalized.PathL1[[iter_l]]@lambda1,
                                control = list(constrain = TRUE))
   
@@ -350,7 +350,7 @@ for(iter_l in 1:length(seq_lambda)){
   test_that("penalized vs pLVM with lasso (high dimensional - sigmaFixed)", {
     expect_equal(object=coef(eplvm.fit_tempo2),
                  expected=coef2.penalized( penalized.PathL1[[iter_l]]),
-                 tolerance=1e-3)
+                 tolerance=1e-2)
   })
   
   # normal model - can find unexpected solution

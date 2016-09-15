@@ -6,7 +6,8 @@
 \usage{
 EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
   indexPenalty, indexNuisance, increasing, stopLambda, stopParam, constrain,
-  reversible, exportAllPath, trace, resolution_lambda1,
+  resolution_lambda1, trace, reversible = lava.options()$EPSODE$reversible,
+  exportAllPath = lava.options()$EPSODE$exportAllPath,
   nstep_max = lava.options()$EPSODE$nstep_max,
   ode.method = lava.options()$EPSODE$ode.method,
   tol.0 = lava.options()$EPSODE$tol.0)
@@ -38,14 +39,14 @@ EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
 
 \item{constrain}{the constrain on the variance parameters}
 
-\item{reversible}{should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)}
-
-\item{exportAllPath}{export all the regularization path (and not only the breakpoints)}
+\item{resolution_lambda1}{the first value is the maximum relative difference in parameter between two steps. 
+If this lead to a too small step, the second value is used as the minimum change in penalization parameter between two steps.}
 
 \item{trace}{should the function be traced}
 
-\item{resolution_lambda1}{the first value is the maximum relative difference in parameter between two steps. 
-If this lead to a too small step, the second value is used as the minimum change in penalization parameter between two steps.}
+\item{reversible}{should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)}
+
+\item{exportAllPath}{export all the regularization path (and not only the breakpoints)}
 
 \item{nstep_max}{the maximum number of iterations}
 

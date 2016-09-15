@@ -46,7 +46,9 @@ lvm.ext2 <- extendModel(lvm.modelSim, type = "all", covariance = TRUE)
 
 #### no penalty ####
 test_that("LVM vs pLVM (lambda = 0)", {
-  resLVM <- estimate(lvm.modelSim, data = scale(df.data))
+  df.data[] <-  scale(df.data)
+    
+  resLVM <- estimate(lvm.modelSim, data = df.data)
   
   resPLVM1 <- estimate(plvm.modelSim, data = df.data, lambda1 = 0)
   expect_equal(coef(resLVM), coef(resPLVM1), tolerance=test.tolerance, scale=test.scale)

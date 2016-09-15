@@ -11,7 +11,7 @@
 #' 
 #' @export 
 optim.regLL <- function(start, objective, gradient, hessian, control, ...){
-  PGcontrols <- c("iter.max","trace","abs.tol","rel.tol", "constrain", "proxOperator", "objectivePenalty",
+  PGcontrols <- c("iter.max","trace", "constrain", "proxOperator", "objectivePenalty",
                   "proxGrad")
   
   penalty <- control$penalty
@@ -49,10 +49,10 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   }
   
   if(control$trace>=0){cat("Proximal gradient ")}
-
-  res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, 
-                  hessian = hessian, gradient = gradient, objective = objective,
-                  iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = control$proxGrad$trace)
+  
+    res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, method = control$proxGrad$method,
+                  hessian = hessian, gradient = gradient, objective = objective, 
+                  iter.max = control$iter.max, trace = control$proxGrad$trace)
   if(control$trace>=0){cat("- done \n")}
 
   if(penalty$adaptive){
@@ -65,8 +65,9 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
     }
     
     if(control$trace>=0){cat("Proximal gradient (adaptive) ")}
-    res <- proxGrad(start = res$par, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                    iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = control$proxGrad$trace)
+    res <- proxGrad(start = res$par, proxOperator = proxOperator, method = control$proxGrad$method,
+                    hessian = hessian, gradient = gradient, objective = objective,
+                    iter.max = control$iter.max, trace = control$proxGrad$trace)
     if(control$trace>=0){cat("- done \n")}
   }
 
@@ -112,7 +113,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
   ##
   penalty <- newPenalty$penalty
   regPath <- newPenalty$regPath
-  PGcontrols <- c("iter.max","trace","abs.tol","rel.tol", "constrain", "proxGrad", "proxOperator", "regPath")
+  PGcontrols <- c("iter.max","trace", "constrain", "proxGrad", "proxOperator", "regPath")
   control <- control[names(control) %in% PGcontrols]
  
   ## nuisance parameter
@@ -144,8 +145,9 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
     }
     
     regPath$beta_lambda0 <- do.call("proxGrad",
-                                    list(start = start, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                                         iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = FALSE))$par
+                                    list(start = start, proxOperator = proxOperator, method = control$proxGrad$method,
+                                         hessian = hessian, gradient = gradient, objective = objective,
+                                         iter.max = control$iter.max, trace = FALSE))$par
     
     penalty$lambda1 <- 1e10
     newPenalty <- initPenalty(start = start, penalty = penalty, penaltyNuclear = NULL)
@@ -157,8 +159,9 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
                            index.constrain = index.constrain, type.constrain = control$constrain, expX = control$proxGrad$expX)
     }
     regPath$beta_lambdaMax <- do.call("proxGrad",
-                                      list(start = start, proxOperator = proxOperator, hessian = hessian, gradient = gradient, objective = objective,
-                                           iter.max = control$iter.max, abs.tol = control$abs.tol, rel.tol = control$rel.tol, trace = FALSE))$par
+                                      list(start = start, proxOperator = proxOperator,  method = control$proxGrad$method,
+                                           hessian = hessian, gradient = gradient, objective = objective,
+                                           iter.max = control$iter.max, trace = FALSE))$par
     
   }
   
@@ -167,7 +170,7 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
                       objective = objective, gradient = gradient, hessian = hessian, 
                       V = penalty$V, indexPenalty = which(name.coef %in% penalty$name.coef), indexNuisance = indexNuisance, lambda2 = penalty$lambda2,
                       resolution_lambda1 = regPath$resolution_lambda1, increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
-                      constrain = control$constrain, exportAllPath = control$regPath$exportAllPath, reversible = control$regPath$reversible, trace = control$trace)
+                      constrain = control$constrain, trace = control$trace)
 
  ## estimation of the nuisance parameter and update lambda/lambda.abs
  if(length(indexNuisance)>0){

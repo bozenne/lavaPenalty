@@ -31,8 +31,8 @@
 
 EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2, 
                    indexPenalty, indexNuisance, increasing, stopLambda, stopParam, 
-                   constrain, reversible, exportAllPath, trace,
-                   resolution_lambda1, 
+                   constrain, resolution_lambda1, trace,
+                   reversible = lava.options()$EPSODE$reversible, exportAllPath = lava.options()$EPSODE$exportAllPath,
                    nstep_max = lava.options()$EPSODE$nstep_max,
                    ode.method = lava.options()$EPSODE$ode.method,
                    tol.0 = lava.options()$EPSODE$tol.0){

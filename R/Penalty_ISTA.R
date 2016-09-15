@@ -26,14 +26,16 @@
 #' Bech and Teboulle - 2009 A Fast Iterative Shrinkage-Thresholding Algorithm
 #' Li 2015 - Accelerated Proximal Gradient Methods for Nonconvex Programming
 #' Simon 2013 - A sparse group Lasso
-proxGrad <- function(start, proxOperator, hessian, gradient, objective,
-                     iter.max, abs.tol, rel.tol, trace,
+proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
+                     iter.max, trace,
+                     abs.tol = lava.options()$proxGrad$abs.tol,
+                     rel.tol = lava.options()$proxGrad$rel.tol, 
                      step = lava.options()$proxGrad$step, 
                      BT.n = lava.options()$proxGrad$BT.n, 
                      BT.eta = lava.options()$proxGrad$BT.eta, 
-                     force.descent = lava.options()$proxGrad$force.descent, 
-                     method = lava.options()$proxGrad$method){
- 
+                     force.descent = lava.options()$proxGrad$force.descent,
+                     export.iter = lava.options()$proxGrad$export.iter){
+
   stepMax <- step 
   stepMin <- step*BT.eta^BT.n
   fct_errorLv <- function(e){warning("unable to compute the value of the likelihood - return Inf \n");return(Inf)}
@@ -45,11 +47,10 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
   if(is.na(obj.x_k)){obj.x_k <- Inf}
   grad.x_k <- try(gradient(x_k))
   
-  t_k <- t_kp1 <- if(method %in% c("FISTA","mFISTA")){1}else{NA}
-  y_k <- if(method %in% c("FISTA","mFISTA")){x_k}else{NA} 
-  z_k <- if(method == "Nesterov"){z_k}else{NA}
-  obj.y_k <- if(method %in% c("FISTA","mFISTA")){obj.x_k}else{NA} 
-  grad.y_k <- if(method %in% c("FISTA","mFISTA")){grad.x_k}else{NA} 
+  t_k <- t_kp1 <- if(method %in% c("FISTA_Beck")){1}else{NA}
+  y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){x_k}else{NA} 
+  obj.y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){obj.x_k}else{NA} 
+  grad.y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){grad.x_k}else{NA} 
 
   if("function" %in% class(hessian)){
     maxEigen <- 1/rARPACK::eigs_sym(hessian(x_k),k=1, which = "LM", opts = list(retvec = FALSE))$values
@@ -60,36 +61,32 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
   iter <- 0
   iterAll <- 0
   
-  if(trace>0){cat("stepBT"," ","iter_back", " ", "max(abs(x_k - x_km1))"," ","obj.x_k - obj.x_km1","\n")}
+  if(trace>0){cat("stepBT"," ","iter_back", " ", "max(abs(x_kp1 - x_k))"," ","obj.x_kp1 - obj.x_k","\n")}
+  if(export.iter){details.cv <- NULL}
   
     ## loop
   while(test.cv == FALSE && iter <= iter.max){
- 
+    iter <- iter + 1 
+    
     iter_back <- 0
     diff_back <- 1
     obj.x_kp1 <- +Inf
     
-    while( (iter_back < BT.n) && (is.infinite(obj.x_kp1) || diff_back > 0) ){ # obj.x_kp1 > obj.x_k should not be needed
+    while( (iter_back < BT.n) && (is.infinite(obj.x_kp1) || diff_back > 0) ){ # Backtracking
       stepBT <- step*BT.eta^iter_back
       iterAll <- iterAll + 1
       
       if(method == "ISTA"){
         res <- ISTA(x_k = x_k, obj.x_k = obj.x_k, grad.x_k = grad.x_k, 
                     proxOperator = proxOperator, step = stepBT)
-      }else if(method == "FISTA"){
-        res <- FISTA(x_k = x_k, y_k = y_k, t_kp1 = t_kp1, t_k = t_k,
-                     obj.y_k = obj.y_k, grad.y_k = grad.y_k,
-                     proxOperator = proxOperator, step = stepBT)
-      }else if(method == "mFISTA"){
-        res <- mFISTA(x_k = x_k, y_k = y_k, t_kp1 = t_kp1, t_k = t_k, 
-                      obj.x_k = obj.x_k, obj.y_k = obj.y_k, grad.x_k = grad.x_k, grad.y_k = grad.y_k,
-                      proxOperator = proxOperator, step = stepBT, objective = objective)
+      }else if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){
+        res <- ISTA(x_k = y_k, obj.x_k = obj.y_k, grad.x_k = grad.y_k, 
+                    proxOperator = proxOperator, step = stepBT)
       }
       
       obj.x_kp1 <- tryCatch(objective(res$x_kp1), error = fct_errorLv) 
       if(is.na(obj.x_kp1)){obj.x_kp1 <- Inf}
       
-      #diff_back <- max(obj.x_kp1 - res$Q, obj.x_kp1 - obj.x_k)
       if(force.descent == TRUE){
         diff_back <- obj.x_kp1 - obj.x_k
       }else{
@@ -101,43 +98,64 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
       # cat("obj.x_kp1:",obj.x_kp1," | obj.x_k:",obj.x_k, " | res$Q:",res$Q,"\n")
     }
     
+    if(method == "mFISTA_Vand"){
+      res$u <- res$x_kp1
+      if(obj.x_kp1>obj.x_k){
+        res$x_kp1 <- x_k
+        obj.x_kp1 <- obj.x_k
+        res$cv <- FALSE
+      }
+    }
+    
+    # if(obj.x_kp1 > obj.x_k){browser()}
     if(force.descent && obj.x_kp1 > obj.x_k){break}
     
     absDiff <- abs(obj.x_kp1 - obj.x_k) < abs.tol
     relDiff <- abs(obj.x_kp1 - obj.x_k)/abs(obj.x_kp1) < rel.tol
     test.cv <- (absDiff + relDiff > 0)
+    if("cv" %in% names(res)){test.cv <- res$cv}
+   
     
     #### update
-    x_km1 <- x_k
-    obj.x_km1 <- obj.x_k
-    grad.x_km1 <- grad.x_k
+    if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){
+        
+      if(method == "FISTA_Beck"){
+        t_k <- t_kp1
+        t_kp1 <- (1 + sqrt(1 + 4 * t_k^2)) / 2
+        y_k <- res$x_kp1 + (t_k-1)/t_kp1 * (res$x_kp1 - x_k) 
+      }else if(method == "FISTA_Vand"){
+        y_k <- res$x_kp1 + (iter-2)/(iter+1) * (res$x_kp1 - x_k) 
+      }else if(method == "mFISTA_Vand"){
+        theta_kp1 <- 2/(iter+1)
+        v_kp1 <- x_k + 1/theta_kp1 * (res$u - x_k)
+        y_k <- (1 - theta_kp1) * res$x_kp1 + theta_kp1 * v_kp1
+      }
+      
+      obj.y_k <- tryCatch(objective(y_k), error = fct_errorLv)
+      if(is.na(obj.y_k)){obj.y_k <- Inf}
+      grad.y_k <- try(gradient(y_k))
+      step <- min(stepMax, stepBT)#min(stepMax, stepBT/sqrt(BT.eta))#
+      
+    }else{
+      
+      step <- min(stepMax, stepBT)#min(stepMax, stepBT/sqrt(BT.eta))#
+      
+    }
+    if(trace>0){cat("|",stepBT," ",iter_back, " ", max(abs(res$x_kp1 - x_k))," ",obj.x_kp1 - obj.x_k,"\n")}
+    if(export.iter){
+      details.cv <- rbind(details.cv,
+                          c(iteration = iter, stepBT = stepBT, iter_back = iter_back, adiff_param = max(abs(res$x_kp1 - x_k)), obj = obj.x_kp1, diff_obj = obj.x_kp1 - obj.x_k))
+    }
     
     x_k <- res$x_kp1
     obj.x_k <- obj.x_kp1
     grad.x_k <- try(gradient(res$x_kp1))
-    
-    if(method %in% c("FISTA","mFISTA")){
-      y_km1 <- y_k
-      y_k <- res$y_kp1
-      t_k <- t_kp1
-      
-      t_kp1 <- (1 + sqrt(1 + 4 * t_k^2)) / 2
-      obj.y_k <- tryCatch(objective(y_k), error = fct_errorLv)
-      if(is.na(obj.y_k)){obj.y_k <- Inf}
-      grad.y_k <- try(gradient(y_k))
-    }
-    step <- min(stepMax, stepBT/sqrt(BT.eta))
-    
-    iter <- iter + 1 
-    
-    if(trace>0){cat("|",stepBT," ",iter_back, " ", max(abs(x_k - x_km1))," ",obj.x_k - obj.x_km1,"\n")}
   }
   if(trace>0){cat("\n")}
-  
   ## export
   message <- if(test.cv){"Sucessful convergence \n"
   }else{
-    paste("max absolute/relative difference: ",max(abs(obj.x_k - obj.x_km1)),"/",max(abs(obj.x_k - obj.x_km1)/abs(obj.x_k))," for parameter ",which.max(absDiff),"/",which.max(relDiff),"\n")
+    paste("max absolute/relative difference: ",max(abs(obj.x_kp1 - obj.x_k)),"/",max(abs(obj.x_kp1 - obj.x_k)/abs(obj.x_kp1))," for parameter ",which.max(absDiff),"/",which.max(relDiff),"\n")
   }
   
   return(list(par = x_k,
@@ -146,18 +164,11 @@ proxGrad <- function(start, proxOperator, hessian, gradient, objective,
               iterations = iter,
               iterationsAll = iterAll,
               evaluations = c("function" = 0, "gradient" = iter),
-              message = message
+              message = message,
+              details.cv = if(export.iter){details.cv}else{NULL}
   ))
 }
 
-
-
-#' @title Estimate an upper bound of obj.x
-Qbound <- function(diff.xy, obj.y, grad.y, L){
-  
-  return(obj.y + crossprod(diff.xy, grad.y) + L/2 * crossprod(diff.xy))
-  
-}
 
 ISTA <- function(x_k, obj.x_k, grad.x_k,
                  proxOperator, step){
@@ -172,70 +183,9 @@ ISTA <- function(x_k, obj.x_k, grad.x_k,
               Q = Q))
 }
 
-FISTA <- function(x_k, y_k, t_kp1, t_k, obj.y_k, grad.y_k,
-                  proxOperator, step){
+#' @title Estimate an upper bound of obj.x
+Qbound <- function(diff.xy, obj.y, grad.y, L){
   
-  ## step
-  x_kp1 <- proxOperator(x = y_k - step * grad.y_k, step = step)
-  y_kp1 <- x_kp1 + (t_k-1)/t_kp1 * (x_kp1 - x_k)
+  return(obj.y + crossprod(diff.xy, grad.y) + L/2 * crossprod(diff.xy))
   
-  ## Upper bound for backtracking
-  Q <- Qbound(diff.xy = x_kp1 - y_k, obj.y = obj.y_k, grad.y = grad.y_k, L = 1/step)
-  
-  ## export
-  return(list(x_kp1 = x_kp1,
-              y_kp1 = y_kp1,
-              Q = Q))
 }
-
-mFISTA <- function(x_k, t_kp1, t_k, y_k, obj.x_k, obj.y_k, grad.x_k, grad.y_k,
-                   proxOperator, step, objective){
-  
-  ## step
-  z_kp1 <- proxOperator(x = y_k - step * grad.y_k, step = step)
-  Qz <- Qbound(diff.xy = z_kp1 - y_k, obj.y = obj.y_k, grad.y = grad.y_k, L = 1/step)
-  
-  resV <- ISTA(x_k = x_k, obj.x_k = obj.x_k, grad.x_k = grad.x_k,
-               proxOperator = proxOperator, step = step)
-  v_kp1 <- resV$x_kp1
-  Qv <- resV$Q
-  
-  ## Upper bound for backtracking
-  if(Qz <= Qv){
-    x_kp1 <- z_kp1
-    Q <- Qz
-  }else{
-    x_kp1 <- v_kp1
-    Q <- Qv
-  }
-  
-  ## extrapolation
-  y_kp1 <- x_kp1 + t_k/t_kp1 * (z_kp1 - x_kp1) + (t_k-1)/t_kp1 * (x_kp1 - x_k)
-  
-  ## export
-  return(list(x_kp1 = x_kp1,
-              y_kp1 = y_kp1,
-              Q = Q))
-}
-
-# if(fast == 2){ # Monotone APG
-#   grad_tempo <- gradient(y_k)
-#   
-#    
-#   x_k <- if(objective(z_k)<=objective(v_k)){z_k}else{v_k}
-#   
-#   diff_tempo <- x_k - x_km1#x_k - y_k
-#   grad_tempo <- gradient(x_km1)#gradient(y_k)
-#   obj_tempo <- obj_km1#objective(y_k)
-#   
-# }else if(fast == 3){ # Nesterov step
-#   z_km1 <- z_k
-#   z_k <- proxOperator(x = x_km1 - stepBT * gradient(x_km1), 
-#                       step = stepBT, lambda1 = lambda1, lambda2 = lambda2, test.penalty1 = test.penalty1, test.penalty2 = test.penalty2)
-#   x_k <- z_km1 + (z_k - z_km1) * iter / (iter + 3)
-#   
-#   diff_tempo <- x_k - z_k#x_km1
-#   grad_tempo <- try(gradient(z_k))#(x_km1)#
-#   obj_tempo <- try(objective(z_k))#obj_km1#
-#   
-# }

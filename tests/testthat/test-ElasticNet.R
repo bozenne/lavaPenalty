@@ -25,7 +25,7 @@ context("#### Reg-elasticNet #### \n")
 #### > settings ####
 test.tolerance <- 1e-4
 test.scale <- NULL
-save <- FALSE
+save <- TRUE
 lambda2 <- 25
 lava.options(trace = FALSE)
 
