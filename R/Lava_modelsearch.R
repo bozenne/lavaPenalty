@@ -181,7 +181,7 @@ modelsearchLR.lvmfit <- function (object, na.omit = FALSE, display.warnings = FA
                                           error = function(x){NA},
                                           finally = function(x){x}))
     }
-    
+    browser()
     
     if("lvmfit" %in% class(newfit)){ # test lvmfit is not an error
       if(newfit$opt$convergence == 0){ # test whether lvmfit has correctly converged

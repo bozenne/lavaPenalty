@@ -173,11 +173,14 @@ plvm.image <- lvm.image
 penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
 
 for(lambda in c(1e0,1e1,1e2,2e2)){
-  elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, 
-                        control = list(iter.max = 100))
+  elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, method.proxGrad = "FISTA_Vand",
+                        control = list(iter.max = 500, constrain = TRUE))
   B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
                  nrow = NROW(res$X), ncol = NCOL(res$X), byrow = TRUE)
   fields:::image.plot(B.LS)
+  
+  plot(elvm.Path$opt$details.cv[,"obj"])
+  
 }
 
 

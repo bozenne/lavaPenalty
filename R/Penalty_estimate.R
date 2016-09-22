@@ -96,19 +96,22 @@ estimate.plvm <- function(x, data,
     if(length(endogenous(x))>1){
       stop("nuclear norm only implemented for a linear model \n")
     }
-    
+
     x$penaltyNuclear$objective <- function(coef){
       x$penaltyNuclear$FCTobjective(coef, 
                                     Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
-                                    X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+                                    X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]),
+                                    constrain = control$constrain)}
     x$penaltyNuclear$gradient <- function(coef){
       x$penaltyNuclear$FCTgradient(coef, 
                                    Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
-                                   X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+                                   X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]),
+                                   constrain = control$constrain)}
     x$penaltyNuclear$hessian <- function(coef){
       x$penaltyNuclear$FCThessian(coef, 
                                   Y = as.vector(scaledData[,x$penaltyNuclear$name.Y,drop=TRUE]), 
-                                  X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]))}
+                                  X = as.matrix(scaledData[,c(exogenous(x),x$penaltyNuclear$name.X),drop=FALSE]),
+                                  constrain = control$constrain)}
     control$penaltyNuclear <- x$penaltyNuclear
   }
   

@@ -165,13 +165,13 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
 #### explicit formula ####
 
 #' @export
-lvGaussian <- function(coef, Y, X, var = NULL){
+lvGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
- 
+  
   n <- length(Y)
   Xint <- cbind(1,X)
   sigma2 <- coef[length(coef)]
-  if(sigma2<0){return(Inf)}
+  if(constrain){sigma2 <- exp(sigma2)}else if(sigma2<0){return(Inf)}
   beta <- coef[-length(coef)]
   epsilon <- Y - Xint %*% cbind(beta)
   lv <-  - n/2 * log(2*pi*sigma2) - 1/(2*sigma2) * t(epsilon) %*% epsilon
@@ -180,12 +180,13 @@ lvGaussian <- function(coef, Y, X, var = NULL){
 }
 
 #' @export
-scoreGaussian <- function(coef, Y, X, var = NULL){
+scoreGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
   
   n <- length(Y)
   Xint <- cbind(1,X)
   sigma2 <- coef[length(coef)]
+  if(constrain){sigma2 <- exp(sigma2)}else if(sigma2<0){return(Inf)}
   beta <- coef[-length(coef)]
   epsilon <- Y - Xint %*% cbind(beta)
   
@@ -198,15 +199,16 @@ scoreGaussian <- function(coef, Y, X, var = NULL){
 }
 
 #' @export
-hessianGaussian <- function(coef, Y, X, var = NULL){
+hessianGaussian <- function(coef, Y, X, constrain, var = NULL){
   
-  G <- scoreGaussian(coef = coef, Y = Y, X = X, var = var)
+  G <- scoreGaussian(coef = coef, Y = Y, X = X, constrain = constrain, var = var)
   
   if(!is.null(var)){coef <- c(coef, var)}
   
   n <- length(Y)
   Xint <- cbind(1,X)
   sigma2 <- coef[length(coef)]
+  if(constrain){sigma2 <- exp(sigma2)}else if(sigma2<0){return(Inf)}
   beta <- coef[-length(coef)]
   epsilon <- Y - Xint %*% cbind(beta)
   

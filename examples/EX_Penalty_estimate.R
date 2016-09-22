@@ -83,7 +83,7 @@ gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method))
 gg <- gg + geom_line() + geom_point()
 gg
 
-# gg + coord_cartesian(ylim = c(1470,1500))
+ gg + coord_cartesian(ylim = c(1490,1510), xlim = c(0,100))
 gg + coord_cartesian(ylim = c(1500,1510), xlim = c(0,100))
 
 #### nuclear norm penalty
@@ -113,11 +113,14 @@ plvm.image <- lvm.image
 penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
 
 for(lambda in c(1e0,1e1,1e2,2e2)){
-  elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, 
-                        control = list(iter.max = 100))
+  elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, method.proxGrad = "FISTA_Vand",
+                        control = list(iter.max = 100, constrain = TRUE))
   B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
                  nrow = NROW(res$X), ncol = NCOL(res$X), byrow = TRUE)
   fields:::image.plot(B.LS)
+  
+  plot(elvm.Path$opt$details.cv[,"obj"])
+  
 }
 
 
@@ -171,5 +174,5 @@ df.cv <- rbind(data.frame(e_ISTA$opt$details.cv, method = "ISTA"),
                data.frame(e_FISTA_Beck$opt$details.cv, method = "FISTA_Vand"),
                data.frame(e_mFISTA_Vand$opt$details.cv, method = "mFISTA_Vand"))
 gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method)) 
-gg <- gg + geom_line() + geom_point()
+gg <- gg + geom_line() + geom_point() +
 gg

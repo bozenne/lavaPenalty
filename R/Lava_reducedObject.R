@@ -2,6 +2,28 @@
 `reduce` <-
   function(x,...) UseMethod("reduce")
 
+reduce.lvm <- function(object, response = NULL){
+  
+  index.reduce <- apply(object$index$Jy, 1, function(x){which(x==1)})
+  cov <-  apply(object$index$A[,index.reduce], 2,  function(x){which(x==1)})
+  if(is.null(response)){
+  response <- names(cov)#vars(object)[index.reduce]
+  }
+  
+  for(iterR in 1:length(index.reduce)){
+    name.response <- response[iterR]
+    name.cov <- names(cov[[iterR]])
+    
+    ## can be problematic as we don't know about "additive" or other possibly relevant arguments
+    for(iter in paste(name.response,name.cov,sep ="~")){
+      cancel(object) <- as.formula(iter)
+    }
+    
+    object <- regression.lvm(object, to = name.response, from = name.cov, reduce = TRUE)
+  }
+  
+  return(object)
+}
 
 # NOTE: the user should not be able to remove the intercept from a model that have been reduced
 
@@ -63,7 +85,6 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
     for(iterR in to){ ### I don't know where to get the constrains
       regression(object, to = iterR, from = paste0("LP",iterR), silent = silent) <- 1
       namesCoef <- paste(iterR, from, sep = "~")
-      
       if(iterR %in% names(object$lp)){ 
         object$lp[[iterR]]$coef <- c(object$lp[[iterR]]$coef, namesCoef)
         # object$lp[[iterR]]$indexCoef <- match(object$lp[[iterR]]$indexCoef, coef(object))
