@@ -16,7 +16,7 @@ gaussianReduced_logLik.lvm <- function(x, p, data, ...)  {
   bin <- tryCatch(match(do.call("binary",list(x=x)),y),error=function(x) NULL)
   status[match(ord,y)] <- 2
   
-  mu <- predict(x$mRed,data=resLP$data,p=p)## --mRed
+  mu <- predict(x,data=resLP$data,p=p) ## can be optimized
   S <- attributes(mu)$cond.var
   class(mu) <- "matrix"
   thres <- matrix(0,nrow=length(y),max(1,attributes(ord)$K-1)); rownames(thres) <- y
@@ -55,12 +55,14 @@ gaussianReduced_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   resLP <- calcLP.lvm(x, p = p, data = data)
   
   ## from normal_gradient.lvm
-  D <- lava:::deriv.lvm(x$mRed,p=p) ## --mRed
-  M <- moments(x$mRed,p)
-  Y <- as.matrix(resLP$data[,manifest(x$mRed)])
+  D <- lava:::deriv.lvm(x,p=p) ## can be optimized
+  M <- moments(x,p)
+  Y <- as.matrix(resLP$data[,manifest(x)])
   mu <- M$xi%x%rep(1,nrow(Y))
-  s <-mets::scoreMVN(Y,mu,M$C,D$dxi,D$dS)
-  colnames(s) <-  coef(x$mRed)
+  
+  index <- match(lp(x, type = "coef"),coef(x))
+  s <- mets::scoreMVN(Y,mu,M$C,D$dxi[,-index],D$dS[,-index])
+  colnames(s) <-  coef(x)[-index]
   
   names.pHidden <- setdiff(names(p),resLP$names$reduced)
   
