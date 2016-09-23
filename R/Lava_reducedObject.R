@@ -1,3 +1,99 @@
+#' @title Extract variable names from a reduced latent variable model
+#' @description Extract variable as in a standard lvm except that one can choose to also return the name of the linear predictors used to reduce the model
+#' 
+#' @param x \code{lvm}-object
+#' @param lp should the name of the variables corresponding to the linear predictors be returned?
+#' @param xlp should the name of the variables that the linear predictors aggregates be returned?
+#' @param type slot to be return. Can be \code{"coef"}, \code{"x"}, \code{"con"}, \code{"name"}, 
+#' 
+#' @details lp returns all the linear predictors of the \code{lvm}-object. 
+#' The other functions plays the same role as those defined in the lava package.
+#' 
+#' @examples 
+#' 
+#' ## regression
+#' m <- lvm()
+#' m <- regression(m, x=paste0("x",1:10),y="y", reduce = TRUE)
+#' vars(m)
+#' vars(m, lp = FALSE)
+#' vars(m, lp = FALSE, xlp = TRUE)
+#' 
+#' lp(m)
+#' 
+#' exogenous(m)
+#' exogenous(m, lp = FALSE)
+#' exogenous(m, xlp = TRUE)
+#' 
+#' endogenous(m)
+#' endogenous(m, lp = TRUE) # should not change
+#' endogenous(m, xlp = TRUE) # should not change
+#' 
+#' ## lvm
+#' m <- lvm()
+#' m <- regression(m, x=paste0("x",1:10),y="y1", reduce = TRUE)
+#' m <- regression(m, x=paste0("x",51:150),y="y2", reduce = TRUE)
+#' covariance(m) <- y1~y2
+#' 
+#' vars(m)
+#' vars(m, lp = TRUE)
+#' 
+#' lp(m)
+#' 
+#' exogenous(m)
+#' exogenous(m, lp = TRUE)
+#' 
+#' endogenous(m)
+#' endogenous(m, lp = TRUE) # should not change
+
+`lp` <- function(x,...) UseMethod("lp")
+
+lp.lvm.reduced <- function(x, type = "name", ...){
+  if(type %in% names(x$lp[[1]]) == FALSE){
+    stop("type ",type," is not valid \n",
+         "valid types: \"",paste(names(x$lp[[1]]), collapse = "\" \""),"\" \n")
+  }
+  return(unname(unlist(lapply(x$lp, function(x)x[[type]]))))
+}
+
+vars.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
+  
+  if(xlp){
+    hiddenX <- lp(x, type = "x")
+  }else{
+    hiddenX <- NULL
+  }
+  if(lp){
+    names.lp <- NULL
+  }else{
+    names.lp <- lp(x, type = "name", ...)
+  }
+  
+  class(x) <- setdiff(class(x),"lvm.reduced")
+  allVars <- unique(c(vars(x), hiddenX))
+  
+  return(setdiff(allVars,names.lp))
+}
+
+exogenous.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
+  
+  if(xlp){
+    hiddenX <- lp(x, type = "x")
+  }else{
+    hiddenX <- NULL
+  }
+  if(lp){
+    names.lp <- NULL
+  }else{
+    names.lp <- lp(x,...)
+  }
+  
+  class(x) <- setdiff(class(x),"lvm.reduced")
+  allExo <- unique(c(exogenous(x, ...), hiddenX))
+  
+  return(setdiff(allExo, names.lp))
+}
+
+
 # apply reduction to all equation of the LVM 
 `reduce` <-
   function(x,...) UseMethod("reduce")
@@ -7,7 +103,12 @@ reduce.lvm <- function(object, response = NULL){
   index.reduce <- apply(object$index$Jy, 1, function(x){which(x==1)})
   cov <-  apply(object$index$A[,index.reduce], 2,  function(x){which(x==1)})
   if(is.null(response)){
-  response <- names(cov)#vars(object)[index.reduce]
+    response <- names(cov)#vars(object)[index.reduce]
+  }
+  
+  if(is.null(response)){
+    cat("no regression model has been found in the object \n")
+    return(object)
   }
   
   for(iterR in 1:length(index.reduce)){
@@ -81,7 +182,7 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
   if(reduce){
     allCoef <- coef(regression(object, to = to, from = from, silent = silent, reduce = FALSE))
     
-    if("lp" %in% object == FALSE){object$lp <- list()}
+    if("lp" %in% names(object) == FALSE){object$lp <- list()}
     for(iterR in to){ ### I don't know where to get the constrains
       regression(object, to = iterR, from = paste0("LP",iterR), silent = silent) <- 1
       namesCoef <- paste(iterR, from, sep = "~")
@@ -98,9 +199,7 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
         object$lp[[iterR]]$name <- paste0("LP",iterR)
       }
     }
-    object$mRed <- object
     parameter(object) <- setdiff(allCoef,coef(object))
-    addvar(object) <- from
     class(object) <- append("lvm.reduced", class(object))
     return(object)
   }

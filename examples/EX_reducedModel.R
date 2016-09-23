@@ -29,6 +29,7 @@ colSums(score(m,data=d,p=coef(e),indiv=TRUE))
 mR <- lvm()
 regression(mR) <- y2~y1  
 mR <- regression(mR,y=c('y1','y2'),x='x'%++%1:20, reduce = TRUE) # need to be at the end ...
+startR <- start[match(coef(mR),coef(m))]
 
 mRR <- lvm()
 regression(mRR) <- y2~y1  
@@ -109,7 +110,7 @@ for(iterB in 1:2){
 
 #### estimation of the model ####
 resGS <- estimate(m, data = d, control = list(trace = 3, start = coef(e)))
-resRed <- estimate.lvm.reduced(mR, data = d, control = list(trace = 3, start = coef(e)[indexRED]),
+resRed <- estimate.lvm.reduced(mR, data = d, control = list(trace = 3, start = startR),
                                estimator = "gaussianReduced")
 expect_equal(coef(resRed),coef(resGS)[indexRED])
 

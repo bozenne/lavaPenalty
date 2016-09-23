@@ -4,6 +4,7 @@ gaussianReduced_objective.lvm <- function(x, p, data, ...){
   return(-l)
 }
 
+
 gaussianReduced_logLik.lvm <- function(x, p, data, ...)  {
   
   resLP <- calcLP.lvm(x, p = p, data = data)
