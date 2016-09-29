@@ -98,10 +98,9 @@ exogenous.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
 `reduce` <-
   function(x,...) UseMethod("reduce")
 
-reduce.lvm <- function(object, response = NULL){
-  
-  index.reduce <- apply(object$index$Jy, 1, function(x){which(x==1)})
-  cov <-  apply(object$index$A[,index.reduce], 2,  function(x){which(x==1)})
+reduce.lvm <- function(object, response = NULL, clean.exo = TRUE){
+  col.reg <- apply(object$index$Jy, 1, function(x){which(x==1)})
+  cov <-  apply(object$index$A[exogenous(object),col.reg], 2,  function(x){names(which(x==1))})
   if(is.null(response)){
     response <- names(cov)#vars(object)[index.reduce]
   }
@@ -111,9 +110,9 @@ reduce.lvm <- function(object, response = NULL){
     return(object)
   }
   
-  for(iterR in 1:length(index.reduce)){
+  for(iterR in 1:length(col.reg)){
     name.response <- response[iterR]
-    name.cov <- names(cov[[iterR]])
+    name.cov <- cov[[iterR]]
     
     ## can be problematic as we don't know about "additive" or other possibly relevant arguments
     for(iter in paste(name.response,name.cov,sep ="~")){
@@ -121,6 +120,11 @@ reduce.lvm <- function(object, response = NULL){
     }
     
     object <- regression.lvm(object, to = name.response, from = name.cov, reduce = TRUE)
+  }
+  
+  if(clean.exo){
+    indexClean <- which(rowSums(object$index$A[object$exogenous,]!=0)==0)
+    kill(object) <- object$exogenous[indexClean]
   }
   
   return(object)
@@ -235,3 +239,27 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
   
   return(object)
 }
+
+`cancelLP` <-
+  function(x,...) UseMethod("cancelLP")
+
+cancelLP.lvm.reduced  <- function(x, expar = TRUE){
+  
+  coefLP <- lp(x, type = "coef")
+  
+  rmvar(x) <- lp(x) 
+  
+  if(expar){
+  x$expar <- x$expar[setdiff(names(x$expar),coefLP)]
+  x$exfix <- x$exfix[setdiff(names(x$exfix),coefLP)]
+  if(length(x$exfix)==0){x$exfix <- NULL}
+  x$attributes$parameter <- x$attributes$parameter[setdiff(names(x$attributes$parameter),coefLP)]
+  x$index$npar.ex <- x$index$npar.ex[setdiff(names(x$index$npar.ex),coefLP)]
+  x$index$parval <- x$index$parval[setdiff(names(x$index$parval),coefLP)]
+  }
+  
+  class(x) <- setdiff(class(x),"lvm.reduced")
+  
+  return(x)
+}
+

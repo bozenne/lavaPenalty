@@ -213,12 +213,14 @@ setLink.lvm <- function(x, var1, var2 = NA, value, warnings = FALSE){
 #' 
 #' @examples 
 #' m <- lvm()
-#' regression(m) <- c(y1,y2,y3)~u
+#' regression(m) <- c(y1,y2,y3)~u+x1
 #' regression(m) <- u~x1+x2
 #' latent(m) <- ~u
 #' covariance(m) <- y1 ~ y2
 #' 
 #' lava.penalty:::rmLink(m, y3 ~ u)
+#' lava.penalty:::rmLink(m, u ~ x1)
+#' lava.penalty:::rmLink(m, y1 ~ x1)
 #' 
 #' coef(lava.penalty:::rmLink(m, y1 ~ y2))
 rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
