@@ -18,7 +18,71 @@ renameFactor <- function(var, ls.levels, data, sep = ""){
 
 
 formula2character <- function(x){
-  name.X <- all.vars(delete.response(terms(x)))
-  name.Y <- setdiff(all.vars(x), name.X)
-  return(paste(name.Y,name.X,sep="~"))
+  return(deparse(x))
+}
+
+
+#' @title Normalize var1 and var2
+#' @description Convert var1 and var2 from formula or covariance to character
+#' 
+#' @param var1 a character indicating the endogeneous variable or a formula
+#' @param var2 an optional character indicating the exogeneous variable
+#' @param repVar1 should var1 be duplicated to match var2 length. Only active if format = "list".
+#' @param format should the name of the variable be return (format = "list"), a vector of character formula ("txt.formula") or a list of formula ("formula")
+#' 
+#' @examples
+#' lava.penalty:::initVar_link(var1 = a~b)
+#' lava.penalty:::initVar_link(var1 = a ~ b)
+#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "list")
+#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "txt.formula")
+#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "formula")
+#' 
+#' lava.penalty:::initVar_link(var1 = "a,b")
+#' lava.penalty:::initVar_link(var1 = "a", var2 = "b")
+#' 
+#' lava.penalty:::initVar_link(var1 = Y~X1+X2)
+#' lava.penalty:::initVar_link(var1 = Y~X1+X2, repVar1 = TRUE)
+#' lava.penalty:::initVar_link(var1 = Y~X1+X2, format = "formula")
+#' lava.penalty:::initVar_link(var1 = Y~X1+X2, format = "txt.formula")
+initVar_link <- function(var1, var2, repVar1 = FALSE, format = "list"){
+  
+  if(missing(var2) && is.character(var1)){
+    if(grepl(",",var1)==TRUE){
+      var1 <- gsub(",","~", x = var1)
+      sep <- ","
+    }
+    if(grepl("~",var1)==TRUE){
+      var1 <- as.formula(var1)
+      sep <- "~"
+    }
+  }else{
+    sep <- "~"
+  }
+  
+  if(class(var1) == "formula"){
+    var2 <- all.vars(delete.response(terms(var1)))
+    n.var2 <- length(var2)
+    var1 <- setdiff(all.vars(var1),var2)
+  }
+  
+  #### convert to format
+  if(format == "formula"){
+    n.var2 <- length(var2)
+    var1 <- rep(var1, times = n.var2)
+    res <- sapply(1:n.var2, function(i){as.formula(paste(var1[i], var2[i], sep = sep))})
+    
+  }else if(format == "txt.formula"){
+    n.var2 <- length(var2)
+    var1 <- rep(var1, times = n.var2)
+    res <- sapply(1:n.var2, function(i){paste(var1[i], var2[i], sep = sep)})
+    
+  }else if(format == "list"){
+    if(repVar1){var1 <- rep(var1, length(var2))}
+    
+    res <- list(var1 = var1,
+                var2 = var2)
+  }
+ 
+  #### export ####
+  return(res)
 }

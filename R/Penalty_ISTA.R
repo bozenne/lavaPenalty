@@ -36,6 +36,14 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
                      force.descent = lava.options()$proxGrad$force.descent,
                      export.iter = lava.options()$proxGrad$export.iter){
 
+  #### check method
+  valid.method <- c("ISTA","FISTA_Beck","FISTA_Vand","mFISTA_Vand")
+  if(method %in% valid.method == FALSE){
+    stop(method," is not a valid method for the proximal gradient algorithm \n",
+         "available methods: ", paste(valid.method, collapse = " "),"\n")
+  }
+  
+  ## preparation
   stepMax <- step 
   stepMin <- step*BT.eta^BT.n
   fct_errorLv <- function(e){warning("unable to compute the value of the likelihood - return Inf \n");return(Inf)}
@@ -141,7 +149,7 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
       step <- min(stepMax, stepBT)#min(stepMax, stepBT/sqrt(BT.eta))#
       
     }
-    if(trace>0){cat("|",stepBT," ",iter_back, " ", max(abs(res$x_kp1 - x_k))," ",obj.x_kp1 - obj.x_k,"\n")}
+    if(trace>0){cat(iter,"|",stepBT," ",iter_back, " ", max(abs(res$x_kp1 - x_k))," ",obj.x_kp1 - obj.x_k,"\n")}
     if(export.iter){
       details.cv <- rbind(details.cv,
                           c(iteration = iter, stepBT = stepBT, iter_back = iter_back, adiff_param = max(abs(res$x_kp1 - x_k)), obj = obj.x_kp1, diff_obj = obj.x_kp1 - obj.x_k))

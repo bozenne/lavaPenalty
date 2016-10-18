@@ -1,3 +1,51 @@
+#### intialisation ####
+
+#' @title Initialize lasso, ridge, group lasso penalty
+initPenaltyL12 <- function(){
+  
+  penalty <- list(link = NULL,
+                  group = NULL,
+                  var.coef = NULL,
+                  lambda1 = 0, 
+                  lambda2 = 0,
+                  adaptive = FALSE,
+                  proxOperator = NULL,
+                  objectivePenalty = NULL,
+                  V = NULL)
+  
+  class(penalty) <- "penaltyL12"
+  return(penalty)
+  
+}
+
+#' @title Initialize nuclear norm penalty
+initPenaltNuclear <- function(){
+  
+  penaltyNuclear <- list(FCTobjective = NULL,
+                         FCTgradient = NULL,
+                         FCThessian = NULL,
+                         lambdaN  = 0, 
+                         name.coef = NULL,
+                         name.Y = NULL,
+                         name.X = NULL,
+                         nrow = NULL,
+                         ncol = NULL)
+  
+  class(penaltyNuclear) <- "penaltyNuclear"
+  return(penaltyNuclear)
+  
+}
+
+#' @title Add penalty to a latent variable model
+lvm2plvm <- function(x){
+  
+  x$penalty <- initPenaltyL12()
+  x$penaltyNuclear <- initPenaltNuclear()
+  class(x) <- append("plvm", class(x))
+  return(x)
+  
+}
+
 ##' @title Penalty term for LVM
 ##' @aliases penalize penalize<- penalize.lvm penalize.plvm
 ##' @param x a lvm model
@@ -43,29 +91,12 @@
 ##' coef(elvm.L1FreePath) - elvm.FreePath$opt$message[3,-1]
 ##' 
 ##' @export
-lvm2plvm <- function(x){
-  
-  x$penalty <- list(name.coef = NULL,
-                    group.coef = NULL,
-                    var.coef = NULL,
-                    lambda1 = 0, 
-                    lambda2 = 0,
-                    adaptive = FALSE,
-                    V = NULL)
-  
-  x$penaltyNuclear <- list(FCTobjective = NULL,
-                           FCTgradient = NULL,
-                           FCThessian = NULL,
-                           lambdaN  = 0, 
-                           name.coef = NULL,
-                           name.Y = NULL,
-                           name.X = NULL,
-                           nrow = NULL,
-                           ncol = NULL)
-  
-  class(x) <- append("plvm", class(x))
-  return(x)
-}
+##' 
+##' 
+
+
+
+
 
 
 #### 2- Penalty functions ####
@@ -88,27 +119,15 @@ lvm2plvm <- function(x){
   return(x)
 }
 
-##' @export
-`penalize.plvm` <- `penalize.lvm`
-
-##' @export
-`penalize<-.lvm` <- function(x, ..., value){
+`penalize<-.lvm` <- function(x,group, V, add = TRUE, reduce = FALSE,
+                             lambda1, lambda2, adaptive,
+                             intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
+                             value){
   
   ## convert to plvm
-  x <- lvm2plvm(x)
-  ## main (call `penalty<-.plvm`)
-  penalize(x, ...) <- value
-  # `penalize<-.plvm`(x, ..., value = value)
-  # do.call(`penalize<-.plvm`, args = list(x = x, ..., value = value))
-  
-  ## export
-  return(x)
-}
-
-`penalize<-.plvm` <- function(x, group, V, add = TRUE,
-                              lambda1, lambda2, adaptive,
-                              intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
-                              value){
+  if("plvm" %in% class(x) == FALSE){
+    x <- lvm2plvm(x)
+  }
   
   #### find coefficients from value
   if(!is.null(value)){
@@ -127,7 +146,7 @@ lvm2plvm <- function(x){
            "available coefficients: ",paste(coef(x)[coef(x) %in% value == FALSE], collapse = " "),"\n")
     }
     
-  } else if(is.null(x$penalty$name.coef)){
+  } else if(is.null(penalty(x, type = "link"))){
     
     index.penaltyCoef <- NULL
     if(intercept == TRUE){
@@ -157,21 +176,22 @@ lvm2plvm <- function(x){
   } 
   
   #### update the name of the penalized parameters
-  group.oldPenalty <- x$penalty$group.coef
+  group.oldPenalty <- penalty(x, type = "group")
   n.oldPenalty <- length(group.oldPenalty)
   
   if(add && n.oldPenalty>0){
-    x$penalty$name.coef <- c(x$penalty$name.coef, value)
+    
+    penalty(x, type = "link") <- c(penalty(x, type = "link"), value)
     
     allGroups <- seq(0.1, 0.9, length.out = n.oldPenalty+length(value))
     allGroups[which(group.oldPenalty>=1)] <- group.oldPenalty[which(group.oldPenalty>=1)]
-    x$penalty$group.coef <- allGroups[1:n.oldPenalty]
+    penalty(x, type = "group") <- allGroups[1:n.oldPenalty]
     newGroup <-  allGroups[-(1:n.oldPenalty)]
   }else{
-    x$penalty$name.coef <- value
+    penalty(x, type = "link") <- value
     
     allGroups <- seq(0.1, 0.9, length.out = length(value)) 
-    x$penalty$group.coef <- NULL
+    penalty(x, type = "group") <- NULL
     newGroup <- allGroups
   }
   
@@ -180,8 +200,8 @@ lvm2plvm <- function(x){
   #### group penalty
   if(missing(group) == FALSE){
     
-    if(length(group) == length(x$penalty$name.coef)){
-      x$penalty$group.coef <- group
+    if(length(group) == length(penalty(x, type = "link"))){
+      penalty(x, type = "group") <- group
     }else{
       
       if(length(group)!=1){
@@ -189,47 +209,113 @@ lvm2plvm <- function(x){
              "length(group): ",length(group),"\n")
       }
       
-      group.id <- if(all(x$penalty$group.coef<1)){1}else{max(x$penalty$group.coef+1)}
+      group.id <- if(all(penalty(x, type = "group")<1)){1}else{max(penalty(x, type = "group")+1)}
       
       if(group %in% lava::vars(x)){
-        newGroup[grep(group, x$penalty$name.coef)] <- group.id
+        newGroup[grep(group, penalty(x, type = "link"))] <- group.id
       }else{
         newGroup[] <- group.id
       }
-      x$penalty$group.coef <- c(x$penalty$group.coef,newGroup)
+      penalty(x, type = "group") <- c(penalty(x, type = "group"),newGroup)
     }
   }else{
-    x$penalty$group.coef <- c(x$penalty$group.coef,newGroup)
+    penalty(x, type = "group") <- c(penalty(x, type = "group"),newGroup)
   }
   
   #### V matrix
   if(!missing(V)){
-    x$penalty$V <- V
-  }else if(is.null(x$penalty$V)){
+    penalty(x, type = "V") <- V
+  }else{ # erase existing settings
     V <- matrix(0, nrow = length(coef(x)), ncol = length(coef(x)))
     colnames(V) <- coef(x)
     rownames(V) <- coef(x)
-    diag(V)[coef(x) %in% x$penalty$name.coef] <- 1
-    x$penalty$V <- V
+    diag(V)[coef(x) %in% penalty(x, type = "link")] <- 1
+    penalty(x, type = "V") <- V
   }
   
   #### penalization parameters
   if(!missing(lambda1)){
-    x$penalty$lambda1 <- as.numeric(lambda1)
+    penalty(x, type = "lambda1") <- as.numeric(lambda1)
   }
   
   if(!missing(lambda1)){
-    x$penalty$lambda2 <- as.numeric(lambda2)
+    penalty(x, type = "lambda2") <- as.numeric(lambda2)
   }
   
   if(!missing(adaptive)){
-    x$penalty$adaptive <- as.numeric(adaptive)
+    penalty(x, type = "adaptive") <- as.numeric(adaptive)
   }
+  
+  #### reduce 
+  if(reduce){
+    x <- reduce(x)
+  }
+  
   
   #### export
   return(x)
 }
 
+
+#' @title Remove penalty from a penalized latent variable model
+#' @name cancelPenalty
+#' @description Remove one or several penalties from a penalized latent variable model
+#' 
+#' @param x \code{plvm}-object
+#' @param link the penalty that should be removed
+#' @param value the penalty that should be removed
+#' @param simplify if the object contain no more penalty should it be converted to a non penalized lvm
+#' 
+#' @examples 
+#' m <- lvm()
+#' m <- regression(m, x=paste0("x",1:10),y="y")
+#' pm <- penalize(m)
+#' 
+#' cancelPenalty(pm, link = "y~x5")
+#' cancelPenalty(pm) <- "y~x1"
+#' cancelPenalty(pm) <- y~x1
+
+##' @export
+`cancelPenalty` <-
+  function(x,...) UseMethod("cancelPenalty")
+
+##' @export
+`cancelPenalty<-` <- function (x, ..., value) {
+  UseMethod("cancelPenalty<-", x)
+}
+
+`cancelPenalty.plvm` <- function(x, simplify = TRUE, link){
+  cancelPenalty(x, simplify) <- link
+  return(x)
+}
+
+`cancelPenalty<-.plvm` <- function(x, simplify = TRUE, value){
+  
+  penalty <- penalty(x, type = NULL)
+  cancelPenalty(penalty) <- value
+  x$penalty <- penalty
+  
+  if(simplify && length(penalty(x, type = "link")) == 0){
+    class(x) <- setdiff(class(x), "plvm")
+  }
+  
+  return(x)
+  
+}
+
+`cancelPenalty<-.penaltyL12` <- function(x, value){
+  
+  link <- x$link
+  index.rm <- which(link %in% value)
+  
+  x$group <- x$group[-index.rm]
+  
+  x$link <- setdiff(link, value)
+  x$V[value,] <- 0
+  x$V[,value] <- 0
+  
+  return(x)
+}
 
 #### Nuclear ####
 

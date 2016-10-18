@@ -15,29 +15,29 @@
   sapply(out, function(o){cat(o,"\n")})
   
   ## additional display - lasso
-  if(!is.null(x$penalty$name.coef)){
-    if(x$penalty$lambda1>0 && x$penalty$lambda2>0){
+  if(!is.null(penalty(x, type = "link"))){
+    if(penalty(x, type = "lambda1")>0 && penalty(x, type = "lambda2")>0){
       penaltyType <- "Elastic net"
-    }else if(x$penalty$lambda1>0){
+    }else if(penalty(x, type = "lambda1")>0){
       penaltyType <- "Lasso"
-    }else if(x$penalty$lambda1>0){
+    }else if(penalty(x, type = "lambda1")>0){
       penaltyType <- "Ridge"
     }else{
       penaltyType <- "None"
     }
     
-    if(all(x$penalty$group.coef<1)){
+    if(all(penalty(x, type = "group")<1)){
       cat("Penalty: ", penaltyType,"\n",
-          "On     : ", paste(x$penalty$name.coef, collapse = " "),"\n")
+          "On     : ", paste(penalty(x, type = "link"), collapse = " "),"\n")
     }else{
       
-      test.lasso <- (x$penalty$group.coef<1)*(x$penalty$group.coef>0)
+      test.lasso <- (penalty(x, type = "group")<1)
       if(any(test.lasso==1)){
         cat("Penalty: ", penaltyType,"\n",
-            "On     : ", paste(x$penalty$name.coef[test.lasso==1], collapse = " "),"\n")
+            "On     : ", paste(penalty(x, type = "link", group = 0), collapse = " "),"\n")
       }
       
-      ls.penalty <- tapply(x$penalty$name.coef[test.lasso!=1], x$penalty$group.coef[test.lasso!=1],list)
+      ls.penalty <- tapply(penalty(x, type = "link")[test.lasso!=1], penalty(x, type = "group")[test.lasso!=1],list)
       cat("Penalty: Grouped lasso \n")
       lapply(ls.penalty, function(x){cat("On     :",paste(x, collapse = " "),"\n")})
     }
@@ -65,16 +65,16 @@
     
     Mtempo <- CoefMat(x,labels=labels,level=level,...) 
     ncol.M <- ncol(Mtempo)
-    if(x$penalty$lambda1>0 || x$penalty$lambda2>0){
+    if(penalty(x, type = "lambda1")>0 || penalty(x, type = "lambda2")>0){
       Mtempo <- rbind(Mtempo, "Penalization:" = rep("", ncol.M))
     }
-    if(x$penalty$lambda1>0){
-      Mtempo <- rbind(Mtempo, "   L1 lambda (abs)" = c(x$penalty$lambda1.abs, rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L1 lambda" = c(x$penalty$lambda1, rep("",ncol.M-1)))
+    if(penalty(x, type = "lambda1")>0){
+      Mtempo <- rbind(Mtempo, "   L1 lambda (abs)" = c(penalty(x, type = "lambda1.abs"), rep("",ncol.M-1)))
+      Mtempo <- rbind(Mtempo, "   L1 lambda" = c(penalty(x, type = "lambda1"), rep("",ncol.M-1)))
     }
-    if(x$penalty$lambda2>0){
-      Mtempo <- rbind(Mtempo, "   L2 lambda (abs)" = c(x$penalty$lambda2.abs, rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L2 lambda" = c(x$penalty$lambda2, rep("",ncol.M-1)))
+    if(penalty(x, type = "lambda2")>0){
+      Mtempo <- rbind(Mtempo, "   L2 lambda (abs)" = c(penalty(x, type = "lambda2.abs"), rep("",ncol.M-1)))
+      Mtempo <- rbind(Mtempo, "   L2 lambda" = c(penalty(x, type = "lambda2"), rep("",ncol.M-1)))
     }
     
     print(Mtempo,quote=FALSE,right=TRUE)

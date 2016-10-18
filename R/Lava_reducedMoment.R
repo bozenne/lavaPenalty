@@ -1,10 +1,10 @@
-gaussianReduced_objective.lvm <- function(x, p, data, ...){ 
-  l <- gaussianReduced_logLik.lvm(x, p=p, data=data, ...)
+gaussianLP_objective.lvm <- function(x, p, data, ...){ 
+  l <- gaussianLP_logLik.lvm(x, p=p, data=data, ...)
   return(-l)
 }
 
 
-gaussianReduced_logLik.lvm <- function(x, p, data, ...)  {
+gaussianLP_logLik.lvm <- function(x, p, data, ...)  {
   dataLP <- calcLP.lvm(x, p = p, data = data)
   
   ## from normal_objective.lvm
@@ -38,8 +38,8 @@ gaussianReduced_logLik.lvm <- function(x, p, data, ...)  {
   return(l)
 }
 
-gaussianReduced_gradient.lvm <- function(x, p, data, ...){
-  val <- -gaussianReduced_score.lvm(x, p = p, data = data, ...)
+gaussianLP_gradient.lvm <- function(x, p, data, ...){
+  val <- -gaussianLP_score.lvm(x, p = p, data = data, ...)
   if (!is.null(nrow(val))) {
     val <- colSums(val)
   }
@@ -49,7 +49,7 @@ gaussianReduced_gradient.lvm <- function(x, p, data, ...){
 
 #' @details this function assumes that the external parameters in p are at the end of the vector
 #' 
-gaussianReduced_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
+gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   
   if(is.matrix(p)){
     p <- as.double(p)
@@ -71,17 +71,21 @@ gaussianReduced_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   colnames(s) <- coef(x)#c(name.intercept,name.regression,name.covariance)
   
   ## apply chain rule
+  lp.endo <- lp(x, type = "endogeneous")
+  lp.link <- lp(x, type = "link", format = "list")
+  lp.x <- lp(x, type = "x", format = "list")
   n.lp <- length(x$lp)
+  
   for(iterLP in 1:n.lp){ 
-    name.intercept <- names(x$lp)[iterLP]
-    name.lp <- x$lp[[iterLP]]$name
+    
+    name.intercept <- lp.endo[[iterLP]][iterLP]
     
     ## extract data
-    form <- as.formula(paste0("~0+",paste(x$lp[[iterLP]]$x,collapse = "+")))
+    form <- as.formula(paste0("~0+",paste(lp.x[[iterLP]],collapse = "+")))
     X <- as.matrix(model.matrix(form, dataLP))
     
     dlp <- X # - what about dB/db in presence of constrains
-    s[,x$lp[[iterLP]]$coef] <- apply(dlp, 2, function(j){j*s[,name.intercept]})
+    s[,lp.link[[iterLP]]] <- apply(dlp, 2, function(j){j*s[,name.intercept]})
   }
   
   if(indiv == FALSE){
@@ -91,16 +95,16 @@ gaussianReduced_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   return(s) 
 }
 
-gaussianReduced_hessian.lvm <- function(x,p,n,type,...) {
+gaussianLP_hessian.lvm <- function(x,p,n,type,...) {
   dots <- list(...);
-
+  
   if(type == "E"){
-    S <- -gaussianReduced_score.lvm(x,p=p,data=dots$data,indiv = TRUE)
+    S <- -gaussianLP_score.lvm(x,p=p,data=dots$data,indiv = TRUE)
     I <- t(S)%*%S
     attributes(I)$grad <- colSums(S)
     return(I)
   }else if(type=="num"){
-    myg <- function(p1){ -gaussianReduced_score.lvm(x,p=p1,n=n,data=dots$data,indiv=FALSE) }
+    myg <- function(p1){ -gaussianLP_score.lvm(x,p=p1,n=n,data=dots$data,indiv=FALSE) }
     I <- numDeriv::jacobian(myg,p) # , method = "simple"
     I <- (I+t(I))/2
     return( I )
@@ -122,7 +126,7 @@ gaussianReduced_hessian.lvm <- function(x,p,n,type,...) {
     I.all <- rbind(cbind(I, I.hiddenW), cbind(t(I.hiddenW),I.hiddenB))
     
     return(I.all)
-    stop("gaussianReduced_hessian.lvm not ready \n")
+    stop("gaussianLP_hessian.lvm not ready \n")
     # ## apply chain rule
     # I.hiddenW <- matrix(NA, ncol = length(names.pHidden), nrow = NROW(s))
     # I.hiddenB <- matrix(NA, ncol = length(names.pHidden), nrow = NROW(s)) 
@@ -132,57 +136,24 @@ gaussianReduced_hessian.lvm <- function(x,p,n,type,...) {
   
 }
 
-gaussianReduced1_logLik.lvm <- gaussianReduced_logLik.lvm
-gaussianReduced1_objective.lvm <- gaussianReduced_objective.lvm
-gaussianReduced1_score.lvm <- gaussianReduced_score.lvm
-gaussianReduced1_gradient.lvm <- gaussianReduced_gradient.lvm
-gaussianReduced1_hessian.lvm <- function(x, type, ...){
-  gaussianReduced_hessian.lvm(x, type = "num", ...)
+gaussian1LP_logLik.lvm <- gaussianLP_logLik.lvm
+gaussian1LP_objective.lvm <- gaussianLP_objective.lvm
+gaussian1LP_score.lvm <- gaussianLP_score.lvm
+gaussian1LP_gradient.lvm <- gaussianLP_gradient.lvm
+gaussian1LP_hessian.lvm <- function(x, type, ...){
+  gaussianLP_hessian.lvm(x, type = "num", ...)
 }
 
-gaussianReduced2_logLik.lvm <- gaussianReduced_logLik.lvm
-gaussianReduced2_objective.lvm <- gaussianReduced_objective.lvm
-gaussianReduced2_score.lvm <- gaussianReduced_score.lvm
-gaussianReduced2_gradient.lvm <- gaussianReduced_gradient.lvm
-gaussianReduced2_hessian.lvm <- function(x, type, ...){
-  gaussianReduced_hessian.lvm(x, type = "E", ...)
+gaussian2LP_logLik.lvm <- gaussianLP_logLik.lvm
+gaussian2LP_objective.lvm <- gaussianLP_objective.lvm
+gaussian2LP_score.lvm <- gaussianLP_score.lvm
+gaussian2LP_gradient.lvm <- gaussianLP_gradient.lvm
+gaussian2LP_hessian.lvm <- function(x, type, ...){
+  gaussianLP_hessian.lvm(x, type = "E", ...)
 }
 
 
-estimate.lvm.reduced <- function(x, data, control = list(), estimator = "gaussianReduced", ...){
-  
-  ## add observations for LP
-  names.LP <- unlist(lapply(x$lp, function(j){j$name}))
-  data <- cbind(data,
-                data.frame(matrix(0,nrow = NROW(data), ncol = length(names.LP), dimnames = list(NULL,names.LP)))
-  )
-  
-  ## intialisation of the LP paramters
-  if("start" %in% names(control) == FALSE){
-    
-    x0 <- cancelLP(x)
-    startLVM <- coef(lava:::estimate.lvm(x0, data))
-    
-    ls.coef <- lapply(names(x$lp), function(j){
-      coef <- lm.fit(y = data[[j]], x = as.matrix(data[x$lp[[j]]$x]))$coefficients
-      names(coef) <- paste(j,names(coef),sep="~")
-      return(coef)
-    })
-    startLP <- unlist(ls.coef)[na.omit(match(coef(x),names(unlist(ls.coef))))]
-    
-    
-    control$start <- setNames(rep(NA, length = length(coef(x))), coef(x))
-    control$start[names(startLP)] <- startLP
-    control$start[names(startLVM)] <- startLVM
-    control$start <- control$start[which(!is.na(control$start))]
-  }
-  
-  print(control$start)
-  
-  # elvm <- lava:::estimate.lvm(x, data = data, control = control, ...)
-  elvm <- estimate.lvm(x, data = data, control = control, estimator = estimator, ...)
-  return(elvm)
-}
+
 
 #' @description Compute the value of the linear predictors of a LVM and store it into the dataset
 calcLP.lvm <- function(x, p, data){
@@ -190,17 +161,20 @@ calcLP.lvm <- function(x, p, data){
   pext <- modelVar(x,p)$e # redefine p with names (only external parameters)
   n.lp <- length(x$lp)
   for(iterLP in 1:n.lp){
+    lp.link <- lp(x, type = "link", lp = iterLP)
+    lp.x <- lp(x, type = "x", lp = iterLP)
+    lp.name <- lp(x, type = "name", lp = iterLP)
+    
     ## extract coefficients according to constrains
-    b <- pext[x$lp[[iterLP]]$coef] # x$lp$y1$con
-   
+    b <- pext[lp.link] # x$lp$y1$con
+    
     ## extract data
-    form <- as.formula(paste0("~0+",paste(x$lp[[iterLP]]$x,collapse = "+")))
+    form <- as.formula(paste0("~0+",paste(lp.x,collapse = "+")))
     X <- as.matrix(model.matrix(form, data))
     
     ## compute linear predictor for the reduce model
-    data[,x$lp[[iterLP]]$name] <- data.frame(X %*% b)
+    data[,lp.name] <- data.frame(X %*% b)
   }
-  
   
   return(data)
 }

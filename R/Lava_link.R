@@ -83,6 +83,7 @@ findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
 #' 
 addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
  
+ browser()
   res <- initVar_link(var1, var2)
   var1 <- res$var1
   var2 <- res$var2
@@ -177,7 +178,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
 #' m2 <- lava.penalty:::setLink(m, y1 ~ y2, value = 0.5)
 #' estimate(m2, sim(m,1e2))
 #' 
-setLink.lvm <- function(x, var1, var2 = NA, value, warnings = FALSE){
+setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
   
   res <- initVar_link(var1, var2)
   var1 <- res$var1
@@ -223,7 +224,12 @@ setLink.lvm <- function(x, var1, var2 = NA, value, warnings = FALSE){
 #' lava.penalty:::rmLink(m, y1 ~ x1)
 #' 
 #' coef(lava.penalty:::rmLink(m, y1 ~ y2))
-rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
+#' 
+#' # external parameter
+#' parameter() <- y1 ~ y2
+#' 
+#' 
+rmLink.lvm <- function(x, var1, var2, warnings = FALSE){
   
   res <- initVar_link(var1, var2)
   var1 <- res$var1
@@ -233,11 +239,18 @@ rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
   if(is.na(var2)){
     cancel(x) <- as.formula(paste0("~",var1))
   }else if(paste(var1, var2, sep = "~") %in% coef(x)){
-    cancel(x) <- as.formula(paste(var1,var2, sep = "~"))
+    f <- paste(var1,var2, sep = "~")
+    if(f %in% parameter(x)){ # external parameter
+      parameter(x, remove = TRUE) <- f 
+    }else{
+      cancel(x) <- as.formula(f)
+    }
   }else if(paste(var1,var2, sep = ",") %in% coef(x)){
-    cancel(x) <-  as.formula(paste(var1,var2, sep = "~"))
+    f <- paste(var1,var2, sep = "~")
+    cancel(x) <-  as.formula(f)
   }else if(paste(var2,var1, sep = ",") %in% coef(x)){
-    cancel(x) <-  as.formula(paste(var2,var1, sep = "~"))
+    f <- paste(var2,var1, sep = "~")
+    cancel(x) <-  as.formula(f)
   }else{
     if(warnings){
       warning("addLink.lvm: no link was found from var1 to var2, no link is removed \n",
@@ -245,7 +258,6 @@ rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
               "var2: ",var2,"\n")
     }
   }
-  
   
   #### if unused variable remove it from the model
   if(length(grep(paste0("~",var1,"$|^",var1,"~|^",var1,"$"), x = coef(x), fixed = FALSE))==0){
@@ -255,31 +267,20 @@ rmLink.lvm <- function(x, var1, var2 = NA, warnings = FALSE){
     kill(x) <- as.formula(paste0(var2,"~1"))
   }
   
+  #### if penalised remove the penalty from the model
+  if("plvm" %in% class(x)){
+    if(f %in% penalty(x, type = "link")){
+      cancelPenalty(x, simplify = FALSE) <- f 
+    }
+  }
+  #### if belong to a LP remove the variable from the lp
+  if("lvm.reduced" %in% class(x)){
+    if(f %in% lp(x, type = "link")){
+      cancelLP(x, simplify = TRUE) <- f
+    }
+  }
+  
   return(x)
 }
 
-#' @title Normalize var1 and var2
-#' @description Convert var1 and var2 from formula or covariance to character
-#' 
-#' @examples
-#' lava.penalty:::initVar_link(var1 = a~b, var2 = NA)
-#' lava.penalty:::initVar_link(var1 = a ~ b, var2 = NA)
-#' 
-#' lava.penalty:::initVar_link(var1 = "a,b", var2 = NA)
-#' lava.penalty:::initVar_link(var1 = "a", var2 = "b")
-#' 
-initVar_link <- function(var1, var2){
-  
-  if(is.na(var2) && is.character(var1)){
-    if(grepl(",",var1)==TRUE){var1 <- gsub(",","~", x = var1)}
-    if(grepl("~",var1)==TRUE){var1 <- as.formula(var1)}
-  }
-  
-  if(class(var1) == "formula"){
-    var2 <- all.vars(var1)[2]
-    var1 <- all.vars(var1)[1]
-  }
-  
-  return(list(var1 = var1,
-              var2 = var2))
-}
+
