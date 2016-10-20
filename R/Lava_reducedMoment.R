@@ -1,20 +1,22 @@
+gaussianLP_method.lvm <- "nlminb2"
+
 gaussianLP_objective.lvm <- function(x, p, data, ...){ 
   l <- gaussianLP_logLik.lvm(x, p=p, data=data, ...)
   return(-l)
 }
 
 
-gaussianLP_logLik.lvm <- function(x, p, data, ...)  {
-  dataLP <- calcLP.lvm(x, p = p, data = data)
+gaussianLP_logLik.lvm <- function(object, p, data, ...)  {
+  dataLP <- calcLP.lvm(object, p = p, data = data)
   
   ## from normal_objective.lvm
-  y <- lava::index(x)$endogenous
-  ord <- lava::ordinal(x)
+  y <- lava::index(object)$endogenous
+  ord <- lava::ordinal(object)
   status <- rep(0,length(y))
-  bin <- tryCatch(match(do.call("binary",list(x=x)),y),error=function(x) NULL)
+  bin <- tryCatch(match(do.call("binary",list(x=object)),y),error=function(x) NULL)
   status[match(ord,y)] <- 2
   
-  mu <- predict(x,data=dataLP,p=p) ## can be optimized
+  mu <- predict(object,data=dataLP,p=p) ## can be optimized
   S <- attributes(mu)$cond.var
   class(mu) <- "matrix"
   thres <- matrix(0,nrow=length(y),max(1,attributes(ord)$K-1)); rownames(thres) <- y
@@ -62,12 +64,7 @@ gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   D <- deriv.lvm(x,p=p)
   mu <- M$xi%x%rep(1,nrow(Y))
   
-  
   s <- mets::scoreMVN(Y,mu,M$C,D$dxi,D$dS)
-  # print(head(s))
-  # name.intercept <- intersect(names(M$v),coef(x))
-  # name.regression <- names(M$e)
-  # name.covariance <- setdiff(coef(x), c(name.intercept,name.regression))
   colnames(s) <- coef(x)#c(name.intercept,name.regression,name.covariance)
   
   ## apply chain rule

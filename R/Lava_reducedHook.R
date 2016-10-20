@@ -25,11 +25,11 @@
 #' 
 #' em <- estimate(m, d)
 #' emR1 <- estimate(mR1, d) 
+#' coef(em)-coef(emR1)[names(coef(em))]
 #' 
 lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
-
-  dots <- list(...)
   
+  dots <- list(...)
   if("lvm.reduced" %in% class(x) && length(lp(x))>0){
     
     ## add observations for Linear predictors (to update data with the LP column)
@@ -39,12 +39,16 @@ lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
     )
     
     ## update estimator
-    validEstimator <- paste0("gaussian",c("",1,2))
+    if(estimator == "gaussian"){
+      estimator <- "gaussian1"
+    }
+    
+    validEstimator<- paste0("gaussian",c("",1,2))
     if(estimator %in% validEstimator){
       estimator <- paste0(estimator,"LP")
-    }else {
+    } else {
       stop("reduced estimator for ",estimator," not implemented \n",
-           "available estimators: ",paste(estimator, collapse = " "),"\n")
+           "available estimators: ",paste(validEstimator, collapse = " "),"\n")
     }
     
     ## intialisation of the parameters
@@ -52,8 +56,8 @@ lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
     if(is.null(dots$optim$start) && test.plvm == FALSE){
       
       ## non LP
-      x0 <- cancelLP(x) # remove LP and external parameters
-      startLVM <- coef(lava:::estimate.lvm(x0, data)) # starting value for the submodel without lp (i.e. values set to 0)
+      x0 <- cancelLP(x, simplify = TRUE) # remove LP and external parameters
+      startLVM <- coef(estimate(x0, data)) # starting value for the submodel without lp (i.e. values set to 0)
       
       ## LP
       # ls.coef <- lapply(names(x$lp), function(j){ # linear regression to initialize the value of the lp
@@ -70,6 +74,8 @@ lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
       dots$optim$start <- dots$optim$start[which(!is.na(dots$optim$start))]
     }
     
+    ## save original model
+    dots$optim$model <- x
   }
   
   return(c(list(x=x,data=data,weight=weight,weight2=weight2,estimator=estimator),dots)) 
@@ -77,6 +83,7 @@ lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
 
 #' @description add the LPs in the first and second empirical moment so that LP is not converted to a latent variable
 procdata.lvm.reduced <- function(x, data, ...){
+  
   name.LP <- lp(x)
   data <- cbind(data,
                 data.frame(matrix(0,nrow = NROW(data), ncol = length(name.LP), dimnames = list(NULL,name.LP)))
@@ -84,4 +91,14 @@ procdata.lvm.reduced <- function(x, data, ...){
 
   class(x) <- setdiff(class(x),"lvm.reduced")
   return(procdata(x, data=data, ...))
+}
+
+
+lava.reduced.post.hook <- function(x){
+  
+  ## add original model
+  x$model$model0 <- x$control$model
+  x$control$model <- NULL
+  return(x)
+  
 }

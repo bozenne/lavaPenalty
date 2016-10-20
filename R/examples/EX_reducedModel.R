@@ -1,9 +1,10 @@
 path.FCT <- butils:::dir.gitHub()
 
-library(lava) # install_github("kkholst/lava", ref = "develop")
+# install_github("kkholst/lava", ref = "develop")
 library(testthat)
 library(butils)
-package.source("lava", RorderDescription = FALSE)
+library(lava)
+# package.source("lava", RorderDescription = FALSE)
 package.source("lava.penalty", RorderDescription = FALSE)
 .onLoad() # gethook
 

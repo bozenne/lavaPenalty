@@ -44,8 +44,12 @@ estimate.plvm <- function(x, data,
                           method.proxGrad = lava.options()$proxGrad$method,
                           fit = lava.options()$calcLambda$fit,
                           fixSigma = FALSE, ...) {
-
+  
   #### prepare penalty
+  # update penalty (for new variables)
+  newV <- penalty(x, type = "V")
+  penalty(x, type = "V") <- newV[coef(x),coef(x)]
+  
   # update with potential user input
   penalty <- penalty(x, type = c("lambda1","lambda2","adaptive"))
   if(!is.null(lambda1)){penalty$lambda1 <- as.numeric(lambda1)}
@@ -70,7 +74,7 @@ estimate.plvm <- function(x, data,
   
   control$penalty <- penalty
   control$penaltyNuclear <- penaltyNuclear
-   
+  
   control$proxGrad <- list(expX = if(control$constrain){penalty$names.varCoef}else{NULL},
                            trace = if(regularizationPath == 0){control$trace}else{FALSE},
                            method = method.proxGrad,
@@ -79,6 +83,15 @@ estimate.plvm <- function(x, data,
   )
   
   if(regularizationPath){
+    
+    # if linear regression then use LARS algorithm
+    test.regression <- (length(endogenous(x)) == 1) && (length(latent(x)) == 0)
+    if(test.regression && "resolution_lambda1" %in% names(match.call()) == FALSE){
+      resolution_lambda1 <- c(1,1e-10)
+      fixSigma <- TRUE
+      increasing <- FALSE
+    }
+    
     control$regPath <- list(resolution_lambda1 = resolution_lambda1,
                             increasing = increasing,
                             stopParam = stopParam,
@@ -150,9 +163,9 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
       stop("prepareData.lvm: endogenous variables must not be categorical \n",
            "incorrect variables: ",paste(endogenous(x)[endogenous(x) %in% indexOld.factor == TRUE], collapse = " "),"\n")
     }
-    ls.factor <- lapply(indexOld.factor, function(var){unique(data[,var])})
+    ls.factor <- lapply(indexOld.factor, function(var){unique(data[[var]])})
     names(ls.factor) <- indexOld.factor
-    conversion.factor <- sapply(indexNew.factor, renameFactor, ls.factor)
+    conversion.factor <- sapply(indexNew.factor, renameFactor, ls.level = ls.factor)
   }else{
     conversion.factor <- NULL
   }
@@ -163,19 +176,20 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
   #### rescale data
   if(class(data)[1] != "data.frame"){data <- as.data.frame(data)}
   if(length(index.numeric)>0){
-    value.center <- sapply(index.numeric, function(x){do.call(method.center,args = list(data[[x]]))})
-    value.scale <- sapply(index.numeric, function(x){do.call(method.scale,args = list(data[[x]]))})
+    value.center <- sapply(index.numeric, function(x){do.call(method.center,args = list(na.omit(data[[x]])))})
+    value.scale <- sapply(index.numeric, function(x){do.call(method.scale,args = list(na.omit(data[[x]])))})
     data[, index.numeric] <- scale(data[, index.numeric, drop = FALSE], center = value.center, scale = value.scale)
   }
   
   #### update the penalty according to the dummy variables
   if(test.factor){
-    penalty <- penalty(x, type = NULL)
+    link.penalty <- penalty(x, type = "link")
+    group.penalty <- penalty(x, type = "group")
     
     ## find the new coefficients to penalize
     name.Newlinks <- coef(x)
     
-    OldLinksPenalty.factors <- setdiff(penalty$name.coef, name.Newlinks)
+    OldLinksPenalty.factors <- setdiff(link.penalty, name.Newlinks)
     NewExogePenalty.factor <- lapply(1:length(OldLinksPenalty.factors), function(x){
       formulaTempo <- as.formula(OldLinksPenalty.factors[x])
       newVar <- names(conversion.factor)[conversion.factor %in% all.vars(formulaTempo)[2]]
@@ -184,19 +198,19 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
     names(NewExogePenalty.factor) <- OldLinksPenalty.factors
     
     ## redefine the group of penalty
-    name.commonPenalty <- intersect(penalty$name.coef, name.Newlinks)
+    name.commonPenalty <- intersect(link.penalty, name.Newlinks)
     name.NewlinksPenalty <- c(name.commonPenalty,
                               unname(unlist(NewExogePenalty.factor)))
     group.NewlinksPenalty <- setNames(rep(NA, length(name.NewlinksPenalty)),
                                       name.NewlinksPenalty)
-    group.NewlinksPenalty[name.commonPenalty] <- penalty$group.coef[na.omit(match(penalty$name.coef,name.commonPenalty))]
+    group.NewlinksPenalty[name.commonPenalty] <- group.penalty[na.omit(match(link.penalty,name.commonPenalty))]
     
     for(iterG in OldLinksPenalty.factors){
-      groupG <- penalty$group.coef[match(iterG,penalty$name.coef)]
+      groupG <- group.penalty[match(iterG,link.penalty)]
       if(groupG>1){ # if already a group, keep it
         group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- groupG
       }else{ # else create a new group
-        group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- floor(max(c(na.omit(group.NewlinksPenalty), penalty$group.coef))) + 1
+        group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- floor(max(c(na.omit(group.NewlinksPenalty), group.penalty))) + 1
       }
     }
     

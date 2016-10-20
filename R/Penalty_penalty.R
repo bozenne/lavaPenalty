@@ -42,7 +42,7 @@
 #' @rdname penaltyExtract
 penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALSE, add.names = TRUE, ...){
   
-  if("plvm" %in% class(x) == FALSE){ ## no penalisation
+  if(is.null(x$penalty) && is.null(x$penaltyNuclear)){ ## no penalisation
     pen <- NULL
   }else if(nuclear){
     pen <- penalty(x$penaltyNuclear, type = type, ...)
@@ -86,10 +86,16 @@ penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALS
 }
 
 #' @rdname penaltyExtract
+penalty.lvmfit <- function(x, ...){
+  return(penalty.lvm(x, ...))
+}
+
+#' @rdname penaltyExtract
 penalty.penaltyL12 <- function(x, type, group = NULL, keep.list = FALSE){
-  
-  valideType <- c("link","lambda1","lambda2","adaptive", "proxOperator", "objectivePenalty","V","group")#names(x$penalty)
-  
+
+  valideType <- c("link","lambda1","lambda1.abs","lambda2","lambda2.abs",
+                  "adaptive", "proxOperator", "objectivePenalty","V","group")#names(x$penalty)
+
   ## extract penalty
   if(is.null(type)){
     res <- x

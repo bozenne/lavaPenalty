@@ -463,8 +463,8 @@ cancelLP.lvm.reduced  <- function(x, link = NULL, lp = NULL, expar = TRUE, simpl
   }
   
   ## update class
-  if(simplify && length(lp(x, type = "link", format = "vector") == 0) ){
-    class(x) <- setdiff(class(x), "lava.reduced")
+  if(simplify && length(lp(x, type = "link", format = "vector")) == 0 ){
+    class(x) <- setdiff(class(x), "lvm.reduced")
   }
   
   return(x)

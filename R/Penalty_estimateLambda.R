@@ -36,6 +36,7 @@ calcLambda <- function(path, model,
                        warmUp = lava.options()$calcLambda$warmUp, CI.coef = FALSE,
                        fit = lava.options()$calcLambda$fit, trace = TRUE, ...){
   missing.path <- missing(path)
+  
   #### preparation
   if(!missing.path){
     
@@ -153,6 +154,7 @@ calcLambda <- function(path, model,
     
     #### gof criteria
     if(fit %in% c("AIC","BIC")){
+      browser()
       seq.criterion[iterLambda] <- gof(fitTempo2)[[fit]]
     }else{
       predY <- as.data.frame(predict(fitTempo2,

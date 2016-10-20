@@ -5,30 +5,39 @@
 #' 
 #' m <- lvm()
 #' m <- regression(m,y='y1',x='x'%++%1:2)
-#' m <- regression(m,y='y1',x='z'%++%1:50)
+#' m <- regression(m,y='y1',x='z'%++%1:5)
 #' 
 #' # simul
 #' set.seed(10)
 #' d <- sim(m,5e2)
 #' d <- as.data.frame(scale(d))
 #' 
+#' suppressWarnings(
+#' start <- coef(estimate(m, data = d, control = list(iter.max = 0)))
+#' )
+#' 
 #' # penalized lvm 
 #' mp <- penalize(m)
 #' system.time(
-#' lassoLVM <- estimate(mp, data = d, lambda1 = 10, control = list(trace = 1, iter.max = 1000, constrain = TRUE))
+#' lassoLVM <- estimate(mp, data = d, lambda1 = 10, control = list(trace = 2, start = start[coef(mp)], iter.max = 1), estimator = "gaussian2")
 #' )
+#' 
 #' 
 #' # reduced penalized lvm
 #' mp.red <- reduce(mp)
 #' system.time(
-#' lassoRLVM <- estimate(mp.red, data = d, lambda1 = 10, control = list(trace = 2, iter.max = 1000, constrain = TRUE))
+#' lassoRLVM <- estimate(mp.red, data = d, lambda1 = 10, control = list(trace = 2, start = start[coef(mp.red)], iter.max = 1))
 #' )
+#' 
+#' coef(lassoRLVM)-coef(lassoLVM)[names(coef(lassoRLVM))]
+#' lassoRLVM$opt$iterations
+#' 
 #' @export
 lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
   
   dots <- list(...)
-  
-  if("plvm" %in% class(x) && "penalty" %in% names(dots$optim) ){
+   
+  if("plvm" %in% class(x) && "penalty" %in% names(dots$optim) ){ # 
     
     control <- dots$optim
     penalty <- control$penalty
@@ -49,13 +58,13 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
     n.coef <- length(names.coef)
     
     #### initialization
-    if(all(is.na(control$start)) || test.regularizationPath){
+     if(all(is.na(control$start)) || test.regularizationPath){
       if(control$trace>=0){cat("Initialization: ")}
       res.init  <- initializer.plvm(x, data = data, ...)
       
       if(test.regularizationPath){
-        control$regPath$beta_lambdaMax <- res.init$lambdaMax
-        control$regPath$beta_lambda0 <- res.init$lambda0
+        regPath$beta_lambdaMax <- res.init$lambdaMax
+        regPath$beta_lambda0 <- res.init$lambda0
         control$start <- res.init$lambdaMax
       }else {
         if(control$trace>=0){cat(" LVM where all penalized coefficient are shrinked to 0 \n")}
@@ -70,6 +79,7 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
                                      group.coef = control$penalty$group.coef,
                                      regularizationPath = test.regularizationPath)
     
+   
     penalty(x, type = "proxOperator") <- resOperator$proxOperator
     penalty(x, type = "objectivePenalty") <- resOperator$objectivePenalty
     
@@ -105,9 +115,13 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
 #' 
 initializer.plvm <- function(x, data, ...){
   
+  link.penalty <- penalty(x, type = "link")
+  class(x) <- setdiff(class(x),"plvm")
+  data <- data[,manifest(x, lp = FALSE, xlp = TRUE), drop = FALSE]
+  
   ## intialization 
   suppressWarnings(
-    start_init <- lava:::estimate.lvm(x = x, data = data, control = list(iter.max = 0))
+    start_init <- estimate(x = x, data = data, control = list(iter.max = 0))
   )
   
   names.coef  <- names(coef(start_init))
@@ -118,11 +132,15 @@ initializer.plvm <- function(x, data, ...){
   
   if(n.data > n.coef){
     suppressWarnings(
-      initLVM <- try(lava:::estimate.lvm(x = x, data = data, ...), silent = TRUE)
+      initLVM <- try(estimate(x = x, data = data, ...), silent = TRUE)
     )
     
     if(("try-error" %in% class(initLVM) == FALSE)){ # should also check convergence
       start_lambda0 <- coef(initLVM)
+      if(list(...)$optim$constrain){ ## apply constrain
+        start_lambda0[coefVar(x, value = TRUE)] <- log(start_lambda0[coefVar(x, value = TRUE)])
+      }
+      
     }else{ 
       start_lambda0 <- NULL
     }
@@ -133,20 +151,24 @@ initializer.plvm <- function(x, data, ...){
   #### high dimensional model
   x0 <- x
   start_lambdaMax <- setNames(rep(0,n.coef),names.coef)
-  
+
   ## removed penalized variables
-  for(iter_link in penalty(x, type = "link")){
+  for(iter_link in link.penalty){
     x0 <- rmLink(x0, iter_link)
   }
-  
+
   ## estimate the model
   suppressWarnings(
-    x0.fit <- lava:::estimate.lvm(x = x0, data = data, ...)
+    x0.fit <- estimate(x = x0, data = data, ...)
   )
-  
   newCoef <- coef(x0.fit, level = 9)[,"Estimate"]
   newCoef <- newCoef[names(newCoef) %in% names(start_lambdaMax)] # only keep relevant parameters
   start_lambdaMax[names(newCoef)] <- newCoef
+  
+  if(list(...)$optim$constrain){ ## apply constrain
+    start_lambdaMax[coefVar(x, value = TRUE)] <- log(start_lambdaMax[coefVar(x, value = TRUE)])
+  }
+  
   # start_lambdaMax[] <- coef(x0.fit, level = 9)[,"Estimate"]
   
   return(list(lambda0 = start_lambda0,
@@ -167,12 +189,12 @@ lava.penalty.post.hook <- function(x){
     #### add elements to object
     
     if(test.regularizationPath){
-      regPath <- res$opt$regPath
+      regPath <- x$opt$regPath
       
-      if(!is.null(regPath$fit)){ #### estimate the best model according to the fit parameter
+      if(!is.null(x$control$regPath$fit)){ #### estimate the best model according to the fit parameter
         
         if(x$control$trace>=0){cat("Best penalized model according to the",fit,"criteria",if(x$control$trace>=1){"\n"})}
-        resLambda <- calcLambda(path = regPath, fit = regPath$fit, model = x, data.fit = eval(x$call$data), trace = x$control$trace+1)
+        resLambda <- calcLambda(path = regPath, fit = x$control$regPath$fit, model = x$model, data.fit = x$data$model.frame, trace = x$control$trace+1)
         res <- resLambda$optimum$lvm
         resLambda$optimum$lvm <- NULL
         regPath <- resLambda

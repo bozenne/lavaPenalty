@@ -65,6 +65,7 @@
     
     Mtempo <- CoefMat(x,labels=labels,level=level,...) 
     ncol.M <- ncol(Mtempo)
+  
     if(penalty(x, type = "lambda1")>0 || penalty(x, type = "lambda2")>0){
       Mtempo <- rbind(Mtempo, "Penalization:" = rep("", ncol.M))
     }

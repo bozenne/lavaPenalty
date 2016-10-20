@@ -3,9 +3,6 @@
 library(lava.penalty)
 library(ggplot2)
 
-EPSODE_options <- lava.options()$EPSODE
-EPSODE_options$resolution_lambda1 <- c(1e-10,1)
-lava.options(EPSODE = EPSODE_options)
 options.proxGrad <- lava.options()$proxGrad
 options.proxGrad$export.iter <- TRUE
 lava.options(proxGrad = options.proxGrad)
@@ -19,11 +16,17 @@ df.data <- sim(mSim,n)
 
 lvm.model <- lvm(formula.lvm)
 plvm.model <- penalize(lvm.model)
+plvm.redmodel <- penalize(lvm.model, reduce = TRUE)
 
 #### lasso penalty
 
 ## regularization path
-path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE)
+path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE)
+path1F <- estimate(plvm.redmodel,  data = df.data, regularizationPath = TRUE)
+
+plot(path1F, type = "path", coefficient = "npenalized")
+
+estimate(lvm.model,  data = df.data)
 
 # backward
 path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
@@ -32,7 +35,7 @@ path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
 getPath(path1B)
 
 plot(path1B)
-plot(path1B, type = "path")
+plot(path1F, type = "path")
 
 ## proxGrad
 pfit <- estimate(plvm.model,  data = df.data,
