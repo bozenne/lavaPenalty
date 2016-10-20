@@ -16,31 +16,18 @@ df.data <- sim(mSim,n)
 
 lvm.model <- lvm(formula.lvm)
 plvm.model <- penalize(lvm.model)
-plvm.redmodel <- penalize(lvm.model, reduce = TRUE)
 
 #### lasso penalty
 
 ## regularization path
 path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE)
-path1F <- estimate(plvm.redmodel,  data = df.data, regularizationPath = TRUE)
-
-plot(path1F, type = "path", coefficient = "npenalized")
-
-estimate(lvm.model,  data = df.data)
-
-# backward
-path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
-                   increasing = FALSE, fixSigma = TRUE)
-
-getPath(path1B)
-
-plot(path1B)
 plot(path1F, type = "path")
+plot(path1F, type = "path", coefficient = "npenalized")
 
 ## proxGrad
 pfit <- estimate(plvm.model,  data = df.data,
                  lambda1 = getPath(path1B, names = "lambda1.abs")[6,1],
-                 control = list(constrain = TRUE), fixSigma = TRUE)
+                 control = list(trace = 2, constrain = TRUE), fixSigma = TRUE)
 pfit
 
 #### ridge penalty

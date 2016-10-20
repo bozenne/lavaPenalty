@@ -104,6 +104,10 @@ gaussian1_objective.lvm <- lava:::gaussian1_objective.lvm
 gaussian1_gradient.lvm <- lava:::gaussian1_gradient.lvm
 gaussian1_hessian.lvm <- lava:::gaussian1_hessian.lvm
 
+gaussian2_objective.lvm <- lava:::gaussian2_objective.lvm
+gaussian2_gradient.lvm <- lava:::gaussian2_gradient.lvm
+gaussian2_hessian.lvm <- lava:::gaussian2_hessian.lvm
+
 nlminb2 <- lava:::nlminb2
 cluster.post.hook <- lava:::cluster.post.hook
 nlminb1 <- lava:::nlminb1

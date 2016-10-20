@@ -283,11 +283,13 @@ reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
     name.endo <- endo[iterR]
     name.exo <- exo[[iterR]]
     
+    if(length(name.exo)>0){
     ## can be problematic as we don't know about "additive" or other possibly relevant arguments
     f <- as.formula(paste(name.endo,"~",paste(name.exo, collapse = "+")))
     cancel(object) <- f
     
     object <- regression.lvm(object, to = name.endo, from = name.exo, reduce = TRUE)
+    }
   }
   
   if(rm.exo){

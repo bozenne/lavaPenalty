@@ -1,32 +1,8 @@
 #' @title Hook to estimate a reduce lvm model
 #' @description Add LP to dataset, update the estimator for handling LP, and find initialisation.
 #' 
-#' @examples 
-#' 
-#' #### regression ####
-#' 
-#' ## simulation
-#' m <- lvm()
-#' m <- regression(m,y='y1',x='x'%++%1:2)
-#' m <- regression(m,y='y1',x='z'%++%1:20)
-#' 
-#' set.seed(10)
-#' d <- sim(m,100)
-#' 
-#' ## reduced model 1
-#' mR1 <- lvm()
-#' mR1 <- regression(mR1,y='y1',x='x'%++%1:2)
-#' mR1 <- regression(mR1,y='y1',x='z'%++%1:20, reduce = TRUE)
-#' 
-#' ## reduced model 2
-#' mR2 <- reduce(m)
-#' 
-#' identical(mR2[[2]], mR1[[1]])
-#' 
-#' em <- estimate(m, d)
-#' emR1 <- estimate(mR1, d) 
-#' coef(em)-coef(emR1)[names(coef(em))]
-#' 
+#' @example 
+#' R/examples/EX_BuyseTest.R
 lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
   
   dots <- list(...)
@@ -74,9 +50,8 @@ lava.reduced.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
       dots$optim$start <- dots$optim$start[which(!is.na(dots$optim$start))]
     }
     
-    ## save original model
-    dots$optim$model <- x
   }
+  
   
   return(c(list(x=x,data=data,weight=weight,weight2=weight2,estimator=estimator),dots)) 
 }
@@ -96,9 +71,6 @@ procdata.lvm.reduced <- function(x, data, ...){
 
 lava.reduced.post.hook <- function(x){
   
-  ## add original model
-  x$model$model0 <- x$control$model
-  x$control$model <- NULL
   return(x)
   
 }

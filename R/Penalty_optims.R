@@ -232,7 +232,7 @@ optim.Nuisance.plvm <- function(x, data,
  
   
   xConstrain <- x
-  class(xConstrain) <- "lvm"
+  class(xConstrain) <- setdiff(class(x),"plvm")
   
   index.keep <- which(setdiff(names.coef, coefPenalty) %in% names.coef)[1]  # leave the first coefficient to the model
   if(length(index.keep) == 0){
@@ -243,10 +243,11 @@ optim.Nuisance.plvm <- function(x, data,
     if(names(fit.coef)[iter_p] %in% coefPenalty && fit.coef[iter_p]==0){
       xConstrain <- rmLink(xConstrain, var1 = names.coef[iter_p])
     }else{
+      if("lvm.reduced" %in% class(xConstrain) && names.coef[iter_p] %in% lp(xConstrain, type = "link")){xConstrain <- cancelLP(xConstrain, link = names.coef[iter_p])}
       xConstrain <- setLink(xConstrain, var1 = names.coef[iter_p], value = fit.coef[iter_p])
     }
   }
- 
+  
   elvm <- estimate(xConstrain, data = data, control = control)
   
   return(coef(elvm)[coefNuisance])

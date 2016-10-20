@@ -154,7 +154,6 @@ calcLambda <- function(path, model,
     
     #### gof criteria
     if(fit %in% c("AIC","BIC")){
-      browser()
       seq.criterion[iterLambda] <- gof(fitTempo2)[[fit]]
     }else{
       predY <- as.data.frame(predict(fitTempo2,

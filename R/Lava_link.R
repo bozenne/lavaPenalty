@@ -279,8 +279,20 @@ rmLink.lvm <- function(x, var1, var2, warnings = FALSE){
       cancelLP(x, simplify = TRUE) <- f
     }
   }
-  
+ 
   return(x)
 }
 
 
+# rmLink.lvm.reduced <- function(x, var1, var2, warnings = FALSE, simplify = TRUE){
+#  
+#   x <- rmLink.lvm(x, var1, var2, warnings = FALSE)
+#   browser()
+#   ## update linear predictor
+#   f <- initVar_link(var1,var2, format = "txt.formula")
+#   if(f %in% lp(x, type = "link")){
+#    x <- cancelLP(x, link = f, simplify = simplify)  
+#   }
+#   
+#   return(x)
+# }
