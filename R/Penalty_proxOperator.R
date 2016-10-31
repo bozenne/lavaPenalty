@@ -51,7 +51,7 @@ proxNuclear <-  function(x, step, lambda, nrow, ncol){
 #' @description Generate the proximal operator for the requested penalty
 #' 
 #' @param lambda1 penalization parameter for the (group) lasso penalty
-#' @param lambda2 penalization parameter for the ridge penalty
+#' @param lambda2 ridge penalization parameter
 #' @param group.coef group of coefficients where a common lasso penalty should be applied
 #' @param lambdaN penalization parameter for the nuclear norm penalty
 #' @param nrow the number of rows of the matrix of coefficients
@@ -93,7 +93,7 @@ init.proxOperator <- function(lambda1, lambda2, group.coef,
   }else{
     objective$N <- function(...){0}
   }
-
+  
   #### Lasso penalty
   if(test.L1){
     if(any(group.coef>=1)){ ## group lasso
@@ -173,7 +173,7 @@ composeOperator <- function (...){
   ls.fct <- lapply(list(...), match.fun)
   
   newfct <- function(x, lambda1, lambda2, index.constrain = NULL, type.constrain, expX, ...) {
-   
+    
     if(length(index.constrain)>0){
       if(type.constrain){norm <- sum(exp(x[index.constrain]))
       }else{

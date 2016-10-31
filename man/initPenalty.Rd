@@ -4,13 +4,13 @@
 \alias{initPenalty}
 \title{Initialise the penalty}
 \usage{
-initPenalty(penalty, penaltyNuclear, start = NULL, name.coef = NULL,
+initPenalty(pen, penNuclear, start = NULL, name.coef = NULL,
   regPath = NULL)
 }
 \arguments{
-\item{penalty}{definition of the penalty}
+\item{pen}{definition of the penalty}
 
-\item{penaltyNuclear}{definition of the nuclear norm penalty}
+\item{penNuclear}{definition of the nuclear norm penalty}
 
 \item{start}{initialization value of the parameters}
 

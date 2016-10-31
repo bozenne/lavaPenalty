@@ -17,6 +17,12 @@ proxGrad(start, proxOperator, method, hessian, gradient, objective, iter.max,
 
 \item{proxOperator}{proximal operator corresponding to the penalization applied to the log likelihood}
 
+\item{method}{type of iteration
+ISTA correspond to the ISTA step as described in Bech 2009
+FISTA_Beck correspond to the FISTA step as described in Bech 2009
+FISTA_Vand correspond to ??
+mFISTA_Vand correspond to ??}
+
 \item{hessian}{second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL}
 
 \item{gradient}{first derivative of the likelihood given by lava.}
@@ -39,17 +45,9 @@ Otherwise backtracking is used.}
 
 \item{BT.eta}{multiplicative factor for the step}
 
-\item{lambda1}{L1 penalization parameter}
+\item{force.descent}{}
 
-\item{lambda2}{L2 penalization parameter}
-
-\item{group.lambda1}{group to which each parameter belongs. 0 mean individual lasso otherwise parameters are groupes according to their group.lambda1 value}
-
-\item{fast}{type of iteration
-0 correspond to the ISTA step as described in Bech 2009
-1 correspond to the FISTA step as described in Bech 2009
-2 correspond to the Monotone APG as described in Li 2015
-3 correspond to the Nesterov step as described in Simon 2013}
+\item{export.iter}{should all iterations be exported (details.cv)}
 }
 \references{
 Bech and Teboulle - 2009 A Fast Iterative Shrinkage-Thresholding Algorithm

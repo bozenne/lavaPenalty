@@ -4,7 +4,7 @@
 \alias{setLink.lvm}
 \title{Affect a given value to a link between two variables in a lvm}
 \usage{
-\method{setLink}{lvm}(x, var1, var2 = NA, value, warnings = FALSE)
+\method{setLink}{lvm}(x, var1, var2, value, warnings = FALSE)
 }
 \arguments{
 \item{x}{a lvm model}

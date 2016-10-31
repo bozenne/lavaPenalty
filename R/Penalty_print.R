@@ -7,11 +7,12 @@
   
   ## normal display
   out <- capture.output(lava:::print.lvm(x))
-  if(!is.null(x$penaltyNuclear$name.Y)){
-    charY <- paste0(x$penaltyNuclear$name.Y," ~ ")
-    indexEq <- grep(charY,out)
-    out[indexEq] <- gsub(charY, replacement = paste0(charY,LCSseq(x$penaltyNuclear$name.X),"(image)+"),x = out[indexEq])
-  }
+  # if(!is.null(x$penaltyNuclear$name.Y)){
+  #   browser()
+  #   charY <- paste0(x$penaltyNuclear$name.Y," ~ ")
+  #   indexEq <- grep(charY,out)
+  #   out[indexEq] <- gsub(charY, replacement = paste0(charY,LCSseq(x$penaltyNuclear$name.X),"(image)+"),x = out[indexEq])
+  # }
   sapply(out, function(o){cat(o,"\n")})
   
   ## additional display - lasso
@@ -116,13 +117,3 @@
 }
 
   
-##' @title get the common substring sequence in a vector of strings
-LCSseq <- function(x){
-  affixe <- strsplit(x[[1]], split = "")[[1]]
-  
-  for(iterX in 2:length(x)){
-    affixe <- qualV::LCS(affixe, strsplit(x[[iterX]], split = "")[[1]])$LCS
-  }
-  
-  return(affixe)
-}

@@ -7,7 +7,11 @@ gaussianLP_objective.lvm <- function(x, p, data, ...){
 
 
 gaussianLP_logLik.lvm <- function(object, p, data, ...)  {
-  dataLP <- calcLP.lvm(object, p = p, data = data)
+  
+  dataLP <- calcLP.lvm(object, p = p, data = data, 
+                       lp.x = lp(object, type = "x", format = "list"), 
+                       lp.link = lp(object, type = "link", format = "list"), 
+                       lp.endo = lp(object, type = "endogeneous"))
   
   ## from normal_objective.lvm
   y <- lava::index(object)$endogenous
@@ -49,6 +53,8 @@ gaussianLP_gradient.lvm <- function(x, p, data, ...){
   return(val)
 }
 
+#' @title Compute the score for a reduced lvm model
+#'
 #' @details this function assumes that the external parameters in p are at the end of the vector
 #' 
 gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
@@ -56,7 +62,11 @@ gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   if(is.matrix(p)){
     p <- as.double(p)
   }
-  dataLP <- calcLP.lvm(x, p = p, data = data)
+  lp.endo <- lp(x, type = "endogeneous")
+  lp.link <- lp(x, type = "link", format = "list")
+  lp.x <- lp(x, type = "x", format = "list")
+  dataLP <- calcLP.lvm(x, p = p, data = data, 
+                       lp.x = lp.x, lp.link = lp.link, lp.endo = lp.endo)
   
   ## from normal_gradient.lvm
   M <- moments(x,p)
@@ -68,19 +78,14 @@ gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   colnames(s) <- coef(x)#c(name.intercept,name.regression,name.covariance)
   
   ## apply chain rule
-  lp.endo <- lp(x, type = "endogeneous")
-  lp.link <- lp(x, type = "link", format = "list")
-  lp.x <- lp(x, type = "x", format = "list")
+  
   n.lp <- length(x$lp)
   
   for(iterLP in 1:n.lp){ 
-    
-    name.intercept <- lp.endo[[iterLP]][iterLP]
+    name.intercept <- lp.endo[iterLP]
     
     ## extract data
-    form <- as.formula(paste0("~0+",paste(lp.x[[iterLP]],collapse = "+")))
-    X <- as.matrix(model.matrix(form, dataLP))
-    
+    X <-  data[,lp.x[[iterLP]],drop = FALSE]
     dlp <- X # - what about dB/db in presence of constrains
     s[,lp.link[[iterLP]]] <- apply(dlp, 2, function(j){j*s[,name.intercept]})
   }
@@ -107,7 +112,11 @@ gaussianLP_hessian.lvm <- function(x,p,n,type,...) {
     return( I )
   }else if(type == "information"){ ## true part
     
-    dataLP <- calcLP.lvm(x, p = p, data = dots$data)
+    lp.endo <- lp(x, type = "endogeneous")
+    lp.link <- lp(x, type = "link", format = "list")
+    lp.x <- lp(x, type = "x", format = "list")
+    dataLP <- calcLP.lvm(x, p = p, data = data, 
+                         lp.x = lp.x, lp.link = lp.link, lp.endo = lp.endo)
     
     ## direct
     I <- information(x=x, p=p, n=n, data = dataLP)
@@ -151,27 +160,29 @@ gaussian2LP_hessian.lvm <- function(x, type, ...){
 
 
 
-
+#' @title Compute the linear predictor
 #' @description Compute the value of the linear predictors of a LVM and store it into the dataset
-calcLP.lvm <- function(x, p, data){
+calcLP.lvm <- function(x, p, data,
+                       lp.x, lp.link, lp.endo){
   
   pext <- modelVar(x,p)$e # redefine p with names (only external parameters)
-  n.lp <- length(x$lp)
+  lp.name <- lp(x, type = "name")
+  n.lp <- length(lp.name)
+  
   for(iterLP in 1:n.lp){
-    lp.link <- lp(x, type = "link", lp = iterLP)
-    lp.x <- lp(x, type = "x", lp = iterLP)
-    lp.name <- lp(x, type = "name", lp = iterLP)
-    
     ## extract coefficients according to constrains
-    b <- pext[lp.link] # x$lp$y1$con
-    
-    ## extract data
-    form <- as.formula(paste0("~0+",paste(lp.x,collapse = "+")))
-    X <- as.matrix(model.matrix(form, data))
+    b <- pext[lp.link[[iterLP]]] # x$lp$y1$con
     
     ## compute linear predictor for the reduce model
-    data[,lp.name] <- data.frame(X %*% b)
+    # form <- as.formula(paste0("~0+",paste(lp.x,collapse = "+")))
+    # as.matrix(model.matrix(form, data))
+    # if(is.data.table(data)){
+    #   data[,lp.name[[iterLP]] := as.matrix(.SD) %*% b, with = FALSE, .SDcols = lp.x[[iterLP]]] 
+    # }else{
+      X <- as.matrix(data[,lp.x[[iterLP]],drop = FALSE]) 
+      data[,lp.name[iterLP]] <- X %*% b
+    # }
+   
   }
-  
   return(data)
 }

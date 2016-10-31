@@ -7,7 +7,7 @@
 #' @param gradient first derivative of the likelihood given by lava. 
 #' @param hessian second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL
 #' @param V matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)
-#' @param lambda2 L2 penalization parameter
+#' @param lambda2 ridge penalization parameter
 #' 
 #' @param indexPenalty position of the penalised coefficients in beta
 #' @param indexNuisance index of the nuisance parameter to be treated as a constant

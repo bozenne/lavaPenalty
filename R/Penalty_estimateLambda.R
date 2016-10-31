@@ -130,15 +130,16 @@ calcLambda <- function(path, model,
     #### form the reduced model
     model2 <- model
     if(length(coef0_lambda)>0){
-      ToKill <- coef0_lambda
-      for(iterKill in ToKill){
-        model2 <- rmLink.lvm(model2, iterKill)  
+      
+      ls.formula <- lapply(combine.formula(coef0_lambda), formula2character)
+      for(iter_link in ls.formula){
+        model2 <- rmLink(model2, iter_link, simplify = TRUE)  
       }
     }
     
-    #### fit the reduced mode
-    fitTempo2 <- lava:::estimate.lvm(model2, data = data.fit, 
-                                     control = list(constrain = TRUE, trace = FALSE))
+    #### fit the reduced model
+    fitTempo2 <- estimate(model2, data = data.fit, 
+                          control = list(constrain = TRUE, trace = FALSE))
     cv.lvm[iterLambda] <- fitTempo2$opt$convergence==0
     
     if(CI.coef){

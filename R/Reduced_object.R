@@ -132,6 +132,7 @@ lp.lvm.reduced <- function(x, type = "name", lp = NULL, format = "vector", ...){
 }
 
 #' @rdname getReduce 
+#' @export
 vars.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
   
   if(xlp){
@@ -152,6 +153,7 @@ vars.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
 }
 
 #' @rdname getReduce 
+#' @export
 exogenous.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
   
   if(xlp){
@@ -172,6 +174,7 @@ exogenous.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
 }
 
 #' @rdname getReduce 
+#' @export
 endogenous.lvm.reduced <- function(x, top = FALSE, latent = FALSE, ...){
   
   observed <- manifest(x, lp = FALSE, xlp = FALSE)
@@ -189,7 +192,8 @@ endogenous.lvm.reduced <- function(x, top = FALSE, latent = FALSE, ...){
   
 }
 
-#' @rdname getReduce 
+#' @rdname getReduce
+#' @export
 manifest.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...) {
   
   vars <- vars(x, lp = lp, xlp = xlp)
@@ -234,11 +238,13 @@ manifest.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...) {
 #' pm <- penalize(m)
 #' reduce(pm)
 #' reduce(pm, link = y~x1+x2+x3)
-#' 
+#'
+#' @export
 `reduce` <-
   function(x,...) UseMethod("reduce")
 
-#' @rdname getReduce 
+#' @rdname getReduce
+#' @export 
 reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
   
   if(!is.null(link)){ # reduce specific links
@@ -301,6 +307,7 @@ reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
 }
 
 #' @rdname getReduce 
+#' @export
 reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
   
   if(is.null(link)){
@@ -312,6 +319,7 @@ reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
 }
 
 #' @title Update of the linear predictor
+#' @name lp
 #' @description Update one or several linear predictors
 #' 
 #' @param x \code{lvm}-object
@@ -333,8 +341,11 @@ reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
 #' lp(m, lp = 1) <- newLP
 #' lp(m, type = NULL)
 #' 
+#' @export
 `lp<-` <- function(x,...) UseMethod("lp<-")
 
+#' @rdname lp 
+#' @export
 `lp<-.lvm.reduced` <- function(x, lp = NULL, value){
   
   if(is.null(lp)){
@@ -395,10 +406,8 @@ reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
 #' pm <- penalize(m, reduce = TRUE)
 #' cancelLP(pm)
 #' coef(cancelLP(pm))
-
-
+#'
 #' @export
-#' @rdname cancelLP
 `cancelLP` <-
   function(x,...) UseMethod("cancelLP")
 
@@ -408,10 +417,14 @@ reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
   UseMethod("cancelLP<-", x)
 }
 
+#' @export
+#' @rdname cancelLP
 `cancelLP<-.lvm.reduced` <- function (x, ..., value) {
   return(cancelLP(x, link = value, ...))
 }
 
+#' @export
+#' @rdname cancelLP
 cancelLP.lvm.reduced  <- function(x, link = NULL, lp = NULL, expar = TRUE, simplify = TRUE){
   
   if(is.null(lp)){
@@ -441,7 +454,7 @@ cancelLP.lvm.reduced  <- function(x, link = NULL, lp = NULL, expar = TRUE, simpl
   }
   
   ## removing variable in the LP
-  for(iterLP in n.lp){
+  for(iterLP in 1:n.lp){
     newlp <- lp(x, type = NULL, lp = names.lp[iterLP])[[1]]
     
     indexRM <- which(newlp$link %in% link[[iterLP]])

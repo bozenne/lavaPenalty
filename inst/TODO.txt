@@ -1,0 +1,9 @@
+## to Klaus
+TO DO
+- Would it be possible to integrate the following method in lava : `procdata` <- function(x,...) UseMethod("procdata")
+You already have a function but procdata.lvm (in estimate.lvm) I would need to use a new function procdata.lvm.reduced instead 
+- I would need to overwrite the regression function to add a reduce argument. We should discuss that
+
+COMMENT
+- One limitation of reduce is that we need to have an intercept in the model so we cannot reduce all equation relating a LV
+- Is there a way to define which endogeneous will be taken as a reference

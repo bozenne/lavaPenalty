@@ -104,8 +104,7 @@ extendModel.lvm <- function(x, type, covariance = TRUE,
     return(lvmfit)
     
   }else{ # all
-    
-    newlinks <- findNewLink(x, rm.exoexo = TRUE)
+    newlinks <- findNewLink(x)
     for(iterLink in 1:nrow(newlinks)){
      x <- addLink(x, newlinks[iterLink,1], newlinks[iterLink,2], covariance = covariance,
                   warnings = FALSE)

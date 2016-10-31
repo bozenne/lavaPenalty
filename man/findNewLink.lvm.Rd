@@ -4,24 +4,30 @@
 \alias{findNewLink.lvm}
 \title{Find the new possible links between variables (copied from lava::modelsearch)}
 \usage{
-\method{findNewLink}{lvm}(x, rm.exoexo, output = "names")
+\method{findNewLink}{lvm}(x, rm.latent = FALSE, rm.endo = FALSE,
+  output = "names")
 }
 \arguments{
 \item{x}{a lvm model}
 
-\item{rm.exoexo}{ignore links between exogeneous variables}
+\item{rm.latent}{ignore links between latent variables}
+
+\item{rm.endo}{ignore links between endogenous variables}
 
 \item{output}{return the names of the variables to link ("names") or their position ("index")}
 }
 \examples{
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u
+lava.penalty:::findNewLink(m, rm.endo = FALSE)
+lava.penalty:::findNewLink(m, rm.endo = TRUE)
+
 regression(m) <- u~x1+x2
 latent(m) <- ~u
 
-lava.penalty:::findNewLink(m, rm.exoexo = FALSE)
-lava.penalty:::findNewLink(m, rm.exoexo = TRUE)
-lava.penalty:::findNewLink(m, rm.exoexo = TRUE, output = "index")
+lava.penalty:::findNewLink(m, rm.endo = FALSE)
+lava.penalty:::findNewLink(m, rm.endo = TRUE)
+lava.penalty:::findNewLink(m, rm.endo = TRUE, output = "index")
 
 }
 

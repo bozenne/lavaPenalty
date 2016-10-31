@@ -41,81 +41,44 @@ checkMoment <- function(lvmRed, elvm, param = coef(e), data = elvm$data$model.fr
   Hred_I <- gaussianLP_hessian.lvm(x = lvmRed, data=data, p=param[indexRED], type = "information")
   Hlava <- lava:::gaussian_hessian.lvm(x = elvm$model, data=data, p=param, n = elvm$data$n, mu = elvm$mu, S = elvm$S)
   # Hred_I-Hlava[indexRED,indexRED]
-
+  
   return(invisible(list(Hred_E = Hred_E,
                         Hred_num = Hred_num,
                         Hred_I = Hred_I,
                         Hlava = Hlava)))
 }
 
-# `parameter<-.lvm` <- function (x, constrain, start, remove = FALSE, ..., value) 
-# {
-#   if (inherits(value, "formula")) 
-#     value <- all.vars(value)
-#   if (remove) {
-#     x$expar[value] <- NULL
-#     x$exfix[value] <- NULL
-#     x$attributes$parameter[value] <- NULL
-#     index(x) <- reindex(x)
-#     return(x)
-#   }
-#   if (!missing(start)) {
-#     if (length(start) != length(value)) 
-#       stop("'start' and 'value' should be of the same lengths")
-#     start <- as.list(start)
-#     names(start) <- value
-#   }
-#   else {
-#     start <- as.list(rep(0, length(value)))
-#     names(start) <- value
-#   }
-#   if (!missing(constrain)) {
-#     newfix <- constrain
-#     if (!is.list(newfix)) 
-#       newfix <- as.list(newfix)
-#   }
-#   else {
-#     newfix <- as.list(value)
-#   }
-#   names(newfix) <- value
-#   x$expar[value] <- start
-#   x$exfix[value] <- newfix
-#   index(x) <- reindex(x)
-#   x$attributes$parameter[value] <- TRUE
-#   return(x)
-# }
-# 
-# 
-# 
 
-categorical2dummy <- lava:::categorical2dummy
-Debug <- lava:::Debug
-procdata.lvm <- lava:::procdata.lvm
-glm.estimate.hook <- lava:::glm.estimate.hook
 
-gaussian_objective.lvm <- lava:::gaussian_objective.lvm
-gaussian_logLik.lvm <- lava:::gaussian_logLik.lvm
-gaussian_score.lvm <- lava:::gaussian_score.lvm
-gaussian_gradient.lvm <- lava:::gaussian_gradient.lvm
-gaussian_hessian.lvm <- lava:::gaussian_hessian.lvm
-gaussian_method.lvm <- lava:::gaussian_method.lvm
-
-gaussian1_objective.lvm <- lava:::gaussian1_objective.lvm
-gaussian1_gradient.lvm <- lava:::gaussian1_gradient.lvm
-gaussian1_hessian.lvm <- lava:::gaussian1_hessian.lvm
-
-gaussian2_objective.lvm <- lava:::gaussian2_objective.lvm
-gaussian2_gradient.lvm <- lava:::gaussian2_gradient.lvm
-gaussian2_hessian.lvm <- lava:::gaussian2_hessian.lvm
-
-nlminb2 <- lava:::nlminb2
-cluster.post.hook <- lava:::cluster.post.hook
-nlminb1 <- lava:::nlminb1
-
+if(TRUE){
+  categorical2dummy <- lava:::categorical2dummy
+  Debug <- lava:::Debug
+  procdata.lvm <- lava:::procdata.lvm
+  glm.estimate.hook <- lava:::glm.estimate.hook
+  
+  gaussian_objective.lvm <- lava:::gaussian_objective.lvm
+  gaussian_logLik.lvm <- lava:::gaussian_logLik.lvm
+  gaussian_score.lvm <- lava:::gaussian_score.lvm
+  gaussian_gradient.lvm <- lava:::gaussian_gradient.lvm
+  gaussian_hessian.lvm <- lava:::gaussian_hessian.lvm
+  gaussian_method.lvm <- lava:::gaussian_method.lvm
+  
+  gaussian1_objective.lvm <- lava:::gaussian1_objective.lvm
+  gaussian1_gradient.lvm <- lava:::gaussian1_gradient.lvm
+  gaussian1_hessian.lvm <- lava:::gaussian1_hessian.lvm
+  
+  gaussian2_objective.lvm <- lava:::gaussian2_objective.lvm
+  gaussian2_gradient.lvm <- lava:::gaussian2_gradient.lvm
+  gaussian2_hessian.lvm <- lava:::gaussian2_hessian.lvm
+  
+  nlminb2 <- lava:::nlminb2
+  cluster.post.hook <- lava:::cluster.post.hook
+  nlminb1 <- lava:::nlminb1
+  
 estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", control = list(),
-          missing = FALSE, weight, weightname, weight2, id, fix, index = TRUE,
-          graph = FALSE, silent = lava.options()$silent, quick = FALSE,
-          method, param, cluster, p, ...)
+                          missing = FALSE, weight, weightname, weight2, id, fix, index = TRUE,
+                          graph = FALSE, silent = lava.options()$silent, quick = FALSE,
+                          method, param, cluster, p, ...)
 {
   if (length(exogenous(x) > 0)) {
     catx <- categorical2dummy(x, data)
@@ -131,6 +94,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
   if (!base::missing(method)) {
     control["method"] <- list(method)
   }
+
   optim <- list(iter.max = lava.options()$iter.max, trace = ifelse(lava.options()$debug,
                                                                    3, 0), gamma = lava.options()$gamma, gamma2 = 1, ngamma = lava.options()$ngamma,
                 lambda = 0.05, abs.tol = 1e-09, epsilon = 1e-10, delta = 1e-10,
@@ -170,7 +134,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
         colnames(weight) <- weightname
       }
       else {
-        yvar <- index(x)$endogenous
+        yvar <- lava::index(x)$endogenous
         nw <- seq_len(min(length(yvar), ncol(weight)))
         colnames(weight)[nw] <- yvar[nw]
       }
@@ -210,7 +174,8 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
         x <- latent(x, new.lat)
     }
   }
- myhooks <- gethook()
+ 
+  myhooks <- gethook()
   for (f in myhooks) {
     res <- do.call(f, list(x = x, data = data, weight = weight,
                            weight2 = weight2, estimator = estimator, optim = optim))
@@ -277,8 +242,9 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
   if (!optim$meanstructure) {
     mu <- NULL
   }
-  nparall <- index(x)$npar + ifelse(optim$meanstructure, index(x)$npar.mean +
-                                      index(x)$npar.ex, 0)
+  nparall <- lava::index(x)$npar + ifelse(optim$meanstructure, lava::index(x)$npar.mean +
+                                            lava::index(x)$npar.ex, 0)
+
   if (!missing(p)) {
     start <- p
     optim$start <- p
@@ -303,7 +269,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
                                           list(x = x, S = S, mu = mu, debug = lava.options()$debug,
                                                silent = silent, data = data, ...)))
         if (!is.null(x$expar) && length(start) < nparall) {
-          ii <- which(index(x)$e1 == 1)
+          ii <- which(lava::index(x)$e1 == 1)
           start <- c(start, structure(unlist(x$expar[ii]),
                                       names = names(x$expar)[ii]))
         }
@@ -347,7 +313,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
   lowmin <- -Inf
   lower <- rep(lowmin, length(optim$start))
   if (length(optim$constrain) == 1 & optim$constrain)
-    lower[variances(x) + index(x)$npar.mean] <- optim$tol
+    lower[variances(x) + lava::index(x)$npar.mean] <- optim$tol
   if (any(optim$constrain)) {
     if (length(optim$constrain) != length(lower))
       constrained <- is.finite(lower)
@@ -405,7 +371,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       myfun <- function(ii) {
         if (length(xfix) > 0)
           for (i in seq_along(myfix$var)) {
-            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],
+            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- lava::index(x0)$A[cbind(rowpos[[i]],
                                                                          colpos[[i]])] <- data[ii, xfix[i]]
           }
         if (is.list(weight2)) {
@@ -429,7 +395,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       myfun <- function(ii) {
         if (length(xfix) > 0)
           for (i in seq_along(myfix$var)) {
-            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],
+            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- lava::index(x0)$A[cbind(rowpos[[i]],
                                                                          colpos[[i]])] <- data[ii, xfix[i]]
           }
         if (is.list(weight2)) {
@@ -455,7 +421,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       myfun <- function(ii) {
         if (length(xfix) > 0)
           for (i in seq_along(myfix$var)) {
-            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],
+            x0$fix[cbind(rowpos[[i]], colpos[[i]])] <- lava::index(x0)$A[cbind(rowpos[[i]],
                                                                          colpos[[i]])] <- data[ii, xfix[i]]
           }
         if (is.list(weight2)) {
@@ -554,8 +520,8 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       if (optim$constrain) {
         S[constrained] <- S[constrained] * pp[constrained]
       }
-      if (is.null(mu) & index(x)$npar.mean > 0) {
-        return(S[-c(seq_len(index(x)$npar.mean))])
+      if (is.null(mu) & lava::index(x)$npar.mean > 0) {
+        return(S[-c(seq_len(lava::index(x)$npar.mean))])
       }
       if (length(S) < length(pp))
         S <- c(S, rep(0, length(pp) - length(S)))
@@ -565,8 +531,8 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       I <- do.call(InformationFun, list(p = pp, obj = myObj,
                                         x = x, data = data, S = S, mu = mu, n = n, weight = weight,
                                         weight2 = weight2, type = optim$information))
-      if (is.null(mu) && index(x)$npar.mean > 0) {
-        return(I[-seq_len(index(x)$npar.mean), -seq_len(index(x)$npar.mean)])
+      if (is.null(mu) && lava::index(x)$npar.mean > 0) {
+        return(I[-seq_len(lava::index(x)$npar.mean), -seq_len(lava::index(x)$npar.mean)])
       }
       return(I)
     }
@@ -622,7 +588,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       # myObj(optim$start)
       # setNames(myGrad(optim$start), names(optim$start))
       # myHess(optim$start)
-
+      
       opt <- do.call(optim$method, list(start = optim$start,
                                         objective = myObj, gradient = myGrad, hessian =  myHess,#hessian = myHess,   #
                                         lower = lower, control = optim, debug = debug))
@@ -710,7 +676,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
               mu = mu, S = S, model0 = mymodel, estimator = estimator,
               opt = opt, expar = x$expar, data = list(model.frame = data,
                                                       S = S, mu = mu, C = mom$C, v = mom$v, n = n, m = length(latent(x)),
-                                                      k = length(index(x)$manifest), weight2 = weight2),
+                                                      k = length(lava::index(x)$manifest), weight2 = weight2),
               weight = weight, weight2 = weight2, cluster = id, pp.idx = pp.idx,
               graph = NULL, control = optim)
   class(res) <- myclass
@@ -726,392 +692,5 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
   }
   return(res)
 }
-
-NR <- function (start, objective, gradient, hessian, debug = FALSE,
-          control, ...)
-{
-  control0 <- list(trace = 0, gamma = 1, lambda = 0, ngamma = 0,
-                   gamma2 = 0, backtrace = TRUE, iter.max = 200, tol = 1e-09,
-                   stabil = FALSE, epsilon = 1e-09)
-  if (!missing(control)) {
-    control0[names(control)] <- control
-  }
-  if (control0$trace > 0)
-    cat("\nIter=0;\t\n", "\tp=", paste0(formatC(start), collapse = " "),
-        "\n")
-  gradFun = !missing(gradient)
-  if (!gradFun & missing(hessian)) {
-    hessian <- function(p) {
-      ff <- objective(p)
-      res <- attributes(ff)$hessian
-      attributes(res)$grad <- as.vector(attributes(ff)$grad)
-      return(res)
-    }
-  }
-  oneiter <- function(p.orig, Dprev, return.mat = FALSE) {
-    if (is.null(hessian)) {
-      cat(".")
-      I <- -numDeriv::jacobian(gradient, p.orig, method = lava.options()$Dmethod)
-    }
-    else {
-      I <- -hessian(p.orig)
-    }
-    D <- attributes(I)$grad
-    if (is.null(D)) {
-      D <- gradient(p.orig)
-    }
-    if (return.mat)
-      return(list(D = D, I = I))
-    if (control0$stabil) {
-      if (control0$lambda != 0) {
-        if (control0$lambda < 0) {
-          sigma <- (t(D) %*% (D))[1]
-        }
-        else {
-          sigma <- control0$lambda
-        }
-        sigma <- min(sigma, 10)
-        I <- I + control0$gamma2 * sigma * diag(nrow = nrow(I))
-      }
-      else {
-        sigma <- ((D) %*% t(D))
-        I <- I + control0$gamma2 * (sigma)
-      }
-    }
-    svdI <- svd(I)
-    svdI$d0 <- numeric(length(svdI$d))
-    svdI$d0[abs(svdI$d) > control0$epsilon] <- 1/svdI$d[abs(svdI$d) >
-                                                          control0$epsilon]
-    iI <- with(svdI, (v) %*% diag(d0, nrow = length(d0)) %*%
-                 t(u))
-    Delta = control0$gamma * iI %*% D
-    Lambda <- 1
-    if (control0$backtrace) {
-      mD0 <- mean(Dprev^2)
-      mD <- mean(D^2)
-      p <- p.orig + Lambda * Delta
-      while (mD >= mD0) {
-        if (gradFun) {
-          D = gradient(p)
-        }
-        else {
-          DI <- oneiter(p, return.mat = TRUE)
-          D = DI$D
-        }
-        mD = mean(D^2)
-        if (is.nan(mD))
-          mD = mD0
-        Lambda <- Lambda/2
-        if (Lambda < 1e-06)
-          break
-        p <- p.orig + Lambda * Delta
-      }
-    }
-    else {
-      p <- p.orig + Lambda * Delta
-    }
-    return(list(p = p, D = D, iI = iI))
-  }
-  count <- count2 <- 0
-  thetacur <- start
-  gammacount <- 0
-  Dprev <- rep(Inf, length(start))
-  for (jj in seq_len(control0$iter.max)) {
-    gammacount <- gammacount + 1
-    count <- count + 1
-    count2 <- count2 + 1
-    oldpar <- thetacur
-    newpar <- oneiter(thetacur, Dprev)
-
-    Dprev <- newpar$D
-    thetacur <- newpar$p
-    if (!is.null(control0$ngamma) && control0$ngamma > 0) {
-      if (control0$ngamma <= gammacount) {
-        control0$gamma <- sqrt(control0$gamma)
-        gammacount <- 0
-      }
-    }
-    if (count2 == control0$trace) {
-      cat("Iter=", count, ";\n\tD=", paste0(formatC(newpar$D),
-                                            collapse = " "), "\n")
-      cat("\tp=", paste0(formatC(thetacur), collapse = " "),
-          "\n")
-      count2 <- 0
-    }
-    if (mean(newpar$D^2) < control0$tol)
-      break
-  }
-  res <- list(par = as.vector(thetacur), iterations = count,
-              method = "NR", gradient = newpar$D, iH = newpar$iI)
-  return(res)
 }
 
-
-
-
-# reindex <- function(x, sparse=FALSE,standard=TRUE,zeroones=FALSE,deriv=FALSE,mean=TRUE) { ## Extract indices of parameters from model
-#   x$parpos <- NULL
-#   M <- x$M
-# 
-#   eta <- latent(x) ## Latent variables/Factors
-#   m <- length(eta)
-#   obs <- manifest(x)  ## Manifest/Observed variables
-#   endo <- endogenous(x)
-#   exo <- exogenous(x) ##,index=FALSE)
-# 
-#   allvars <- vars(x)
-#   eta.idx <- na.omit(match(eta,allvars))
-#   obs.idx <- na.omit(match(obs,allvars))
-#   exo.idx <- na.omit(match(exo,allvars))
-#   exo.obsidx <- na.omit(match(exo,obs))
-#   endo.obsidx <- na.omit(match(endo,obs))
-# 
-#   fix.idx <- !is.na(x$fix) ## Index of fixed parameters
-#   covfix.idx <- !is.na(x$covfix) ## Index of fixed covariance parameters
-# 
-#   constrain.par <- NULL
-#   if (length(constrain(x))>0) constrain.par <- names(constrain(x))
-# 
-#   M0 <- M;  M0[fix.idx] <- 0 ## Matrix of indicators of free regression-parameters (removing fixed parameters)
-#   M1 <- M0; ## Matrix of indiciator of free _unique_ regression parameters (removing fixed _and_ duplicate parameters)
-#   parname <- unique(x$par[!is.na(x$par)])
-#   ##  parname.all <- unique(x$par[!is.na(x$par)])
-#   ##  parname <- setdiff(parname.all,constrain.par)
-#   for (p in parname) {
-#     ii <- which(x$par==p)
-#     if (length(ii)>1)
-#       M1[ii[-1]] <- 0
-#     if (p %in% constrain.par)
-#       M0[ii] <- M1[ii] <- 0
-#   }
-#   npar.reg <- sum(M1) ## Number of free regression parameters
-# 
-#   P <- x$cov;
-#   P0 <- P;  P0[covfix.idx] <- 0 ## Matrix of indicators of free covariance-parameters (removing fixed parameters)
-#   if (length(exo.idx)>0)
-#     P0[exo.idx,exo.idx] <- 0 ## 6/1-2011
-#   P1 <- P0 ## Matrix of indiciator of free _unique_ variance parameters (removing fixed _and_ duplicate parameters)
-#   covparname <- unique(x$covpar[!is.na(x$covpar)])
-#   for (p in covparname) {
-#     ii <- which(x$covpar==p)
-#     if (length(ii)>1)
-#       P1[ii[-1]] <- 0
-#     if (p%in%c(parname,constrain.par))
-#       P0[ii] <- P1[ii] <- 0
-#   }
-# 
-#   ##  P1. <- P1[-exo.idx,-exo.idx]
-#   npar.var <- sum(c(diag(P1),P1[lower.tri(P1)]))
-#   parnames <- paste0("p", seq_len(npar.reg+npar.var))
-# 
-#   A <- M
-#   A[fix.idx] <- x$fix[fix.idx] ## ... with fixed parameters in plac
-#   P[covfix.idx] <- x$covfix[covfix.idx] ## ... with fixed parameters in plac
-# 
-# 
-#   px <- Jy <- J <- I <- diag(nrow=length(vars(x)))
-#   if (m>0) {
-#     J[eta.idx,eta.idx] <- 0; J <- J[-eta.idx,,drop=FALSE]
-#   } ## Selection matrix (selecting observed variables)
-#   {
-#     ## Selection matrix (selection endogenous variables)
-#     if (length(c(eta.idx,exo.idx))>0) {
-#       Jy[c(eta.idx,exo.idx),c(eta.idx,exo.idx)] <- 0; Jy <- Jy[-c(eta.idx,exo.idx),,drop=FALSE]
-#     }
-#     ## Cancelation matrix (cancels rows with exogenous variables)
-#     px[exo.idx,exo.idx] <- 0
-#   }
-# 
-#   ## Creating indicitor of free mean-parameters
-#   fixed <- sapply(x$mean, function(y) is.numeric(y) & !is.na(y))
-#   named <- sapply(x$mean, function(y) is.character(y) & !is.na(y))
-#   mparname <- NULL
-#   if (length(named)>0)
-#     mparname <- unlist(unique(x$mean[named]))
-#   v0 <- rep(1,length(x$mean)) ## Vector of indicators of free mean-parameters
-# 
-#   v0[exo.idx] <- 0
-#   if (length(fixed)>0) v0[fixed] <- 0;
-#   v1 <- v0
-#   for (p in mparname) {
-#     idx <- which(x$mean==p)
-#     if (length(idx)>1) {
-#       ##      print(idx[-1])
-#       v1[idx[-1]] <- 0
-#     }
-#     if (p%in%c(parname,covparname,constrain.par))
-#       v0[idx] <- v1[idx] <- 0
-#   } ## duplicate parameters
-# 
-#   ###
-#   ### Extra parameters
-#   ###
-#   efixed <- sapply(x$exfix, function(y) is.numeric(y) & !is.na(y))
-#   enamed <- sapply(x$exfix, function(y) is.character(y) & !is.na(y))
-#   if(length(enamed)>0){
-#     eparname <- unlist(unique(x$exfix[enamed]))
-#   } else{
-#     eparname <- NULL
-#   }
-#   ## Extra parameters
-#   e0 <- rep(1,length(x$expar)) ## Indicators of free extra par.
-#   if (length(efixed)>0)
-#     e0[efixed] <- 0
-#   e1 <- e0
-#   for (p in eparname) {
-#     idx <- which(x$exfix==p)
-#     if (length(idx)>1) {
-#       e1[idx[-1]] <- 0
-#     }
-#     if (p%in%c(parname,covparname,constrain.par,mparname))
-#       e0[idx] <- e1[idx] <- 0
-#   } ## duplicate parameters
-# 
-# 
-#   ## Return:
-#   ## Adjacency-matrix (M)
-#   ## Matrix of regression-parameters (0,1) _with_ fixed parameters (A)
-#   ## Matrix of variance-parameters (indicators 0,1) (P)
-#   ## Manifest selection matrix (J),
-#   ## Position of variables matrix (Apos),
-#   ## Position of covariance variables matrix (Ppos),
-#   ## Position/Indicator matrix of free regression parameters (M0)
-#   res <- list(vars=allvars, manifest=obs, exogenous=exo, latent=eta,
-#               endogenous=endo,
-#               exo.idx=exo.idx, eta.idx=eta.idx,
-#               exo.obsidx=exo.obsidx, endo.obsidx=endo.obsidx,
-#               obs.idx=obs.idx,
-#               endo.idx=setdiff(obs.idx,exo.idx))
-# 
-#   if (standard) {
-#     res <- c(res, list(M=M, A=A, P=P,
-#                        P0=P0, P1=P1,
-#                        M0=M0, M1=M1,
-#                        v0=v0, v1=v1,
-#                        e0=e0, e1=e1,
-#                        npar=(npar.reg+npar.var),
-#                        npar.reg=npar.reg,
-#                        npar.var=npar.var,
-#                        npar.mean=sum(v1),
-#                        npar.ex=sum(e1),
-#                        constrain.par=constrain.par))
-#     npar.total <- res$npar+res$npar.mean+res$npar.ex
-#     which.diag <- NULL
-#     if (length(P1)>0)
-#       which.diag <- which(diag(P1==1))
-# 
-#     res <- c(res, list(parname.all=parname, parname=setdiff(parname,constrain.par),
-#                        which.diag=which.diag,
-#                        covparname.all=covparname,
-#                        covparname=setdiff(covparname,constrain.par),
-#                        meanfixed=fixed, meannamed=named,
-#                        mparname.all=mparname,
-#                        mparname=setdiff(mparname,constrain.par),
-#                        eparname.all=eparname,
-#                        eparname=setdiff(eparname,constrain.par),
-#                        J=J, Jy=Jy, px=px, sparse=sparse))
-# 
-#     parname.all.reg.idx <- parname.all.reg.tidx <-
-#       parname.reg.tidx <- parname.reg.idx <- c()
-#     for (p in res$parname.all) {
-#       ipos <- which((x$par==p))
-#       tipos <- which(t(x$par==p))
-#       if (p%in%res$parname) {
-#         parname.reg.idx <- c(parname.reg.idx, list(ipos))
-#         parname.reg.tidx <- c(parname.reg.tidx, list(tipos))
-#       }
-#       parname.all.reg.idx <- c(parname.all.reg.idx, list(ipos))
-#       parname.all.reg.tidx <- c(parname.all.reg.tidx, list(tipos))
-#     };
-#     if (length(parname.reg.idx)>0) {
-#       names(parname.reg.idx) <- names(parname.reg.tidx) <- res$parname
-#     }
-#     if (length(parname.all.reg.idx)>0) {
-#       names(parname.all.reg.idx) <- names(parname.all.reg.tidx) <- res$parname.all
-#     }
-#     covparname.all.idx <- covparname.idx <- c()
-#     for (p in res$covparname.all) {
-#       ipos <- which(x$covpar==p)
-#       if (p%in%res$covparname)
-#         covparname.idx <- c(covparname.idx, list(ipos))
-#       covparname.all.idx <- c(covparname.all.idx, list(ipos))
-#     };
-#     if (length(covparname.idx)>0)
-#       names(covparname.idx) <- res$covparname
-#     if (length(covparname.all.idx)>0)
-#       names(covparname.all.idx) <- res$covparname.all
-# 
-#     mparname.all.idx <- mparname.idx <- c()
-#     for (p in res$mparname.all) {
-#       ipos <- which(x$mean==p)
-#       if (p%in%mparname)
-#         mparname.idx <- c(mparname.idx, list(ipos))
-#       mparname.all.idx <- c(mparname.all.idx, list(ipos))
-#     };
-#     if (length(mparname.idx)>0)
-#       names(mparname.idx) <- res$mparname
-#     if (length(mparname.all.idx)>0)
-#       names(mparname.all.idx) <- res$mparname.all
-# 
-#     eparname.all.idx <- eparname.idx <- c()
-#     for (p in res$eparname.all) {
-#       ipos <- which(x$exfix==p)
-#       if (p%in%eparname)
-#         eparname.idx <- c(eparname.idx, list(ipos))
-#       eparname.all.idx <- c(eparname.all.idx, list(ipos))
-#     };
-#     if (length(eparname.idx)>0)
-#       names(eparname.idx) <- res$eparname
-#     if (length(eparname.all.idx)>0)
-#       names(eparname.all.idx) <- res$eparname.all
-# 
-# 
-#     res <- c(res, list(mparname.idx=mparname.idx,
-#                        covparname.idx=covparname.idx,
-#                        parname.reg.idx=parname.reg.idx,
-#                        parname.reg.tidx=parname.reg.tidx,
-#                        mparname.all.idx=mparname.all.idx,
-#                        eparname.all.idx=eparname.all.idx,
-#                        covparname.all.idx=covparname.all.idx,
-#                        parname.all.reg.idx=parname.all.reg.idx,
-#                        parname.all.reg.tidx=parname.all.reg.tidx
-#     ))
-# 
-#   } else {
-#     res <- index(x)
-#   }
-# 
-#   if (zeroones) {
-#     if (sparse) {
-#       if (!requireNamespace("Matrix",quietly=TRUE)) stop("package Matrix not available")
-#       Ik <- Matrix::Diagonal(length(obs))
-#       Im <- Matrix::Diagonal(ncol(A))
-#       Kkk <- NULL
-#       J <- as(J, "sparseMatrix")
-#       Jy <- as(Jy, "sparseMatrix")
-#       px <- as(px, "sparseMatrix")
-# 
-#     } else {
-#       Ik <- diag(nrow=length(obs))
-#       Im <- diag(nrow=ncol(A))
-#     }
-#     Kkk <- NULL
-# 
-# 
-#     res[c("Ik","Im","Kkk")] <- NULL
-#     res <- c(res, list(Ik=Ik, Im=Im, Kkk=Kkk))
-#   }
-#   if (deriv && length(P)>0) {
-#     if (res$npar.mean>0 & mean)
-#       D <- deriv.lvm(x,meanpar=rep(1,res$npar.mean),zeroones=TRUE)
-#     else
-#       D <- deriv.lvm(x,meanpar=NULL,zeroones=TRUE)
-#     res[c("dA","dP","dv")] <- NULL
-#     res <- c(res, list(dA=D$dA, dP=D$dP, dv=D$dv))
-#   }
-# 
-#   if (length(P)>0)
-#     res <- c(res,mat.lvm(x,res))
-# 
-#   return(res)
-# }

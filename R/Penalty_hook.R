@@ -38,7 +38,6 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
   dots <- list(...)
    
   if("plvm" %in% class(x) && "penalty" %in% names(dots$optim) ){ # 
-    
     control <- dots$optim
     penalty <- control$penalty
     penaltyNuclear <- control$penaltyNuclear
@@ -56,11 +55,13 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
     
     names.coef <- coef(x)
     n.coef <- length(names.coef)
+  
     
     #### initialization
      if(all(is.na(control$start)) || test.regularizationPath){
       if(control$trace>=0){cat("Initialization: ")}
-      res.init  <- initializer.plvm(x, data = data, ...)
+       
+       res.init  <- initializer.plvm(x, data = data, ...)
       
       if(test.regularizationPath){
         regPath$beta_lambdaMax <- res.init$lambdaMax
@@ -115,22 +116,19 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
 #' 
 initializer.plvm <- function(x, data, ...){
   
-  link.penalty <- penalty(x, type = "link")
+  link.penalty <- c(penalty(x, type = "link"),penalty(x, type = "link", nuclear = TRUE))
+  regPath <- list(...)$optim$regPath
+  test.regularizationPath <- !is.null(regPath)
   class(x) <- setdiff(class(x),"plvm")
   data <- data[,manifest(x, lp = FALSE, xlp = TRUE), drop = FALSE]
   
   ## intialization 
-  suppressWarnings(
-    start_init <- estimate(x = x, data = data, control = list(iter.max = 0))
-  )
-  
-  names.coef  <- names(coef(start_init))
+  names.coef  <- coef(lava::fixsome(x, measurement.fix = TRUE, n = NROW(data), debug = FALSE))
   n.coef <- length(names.coef)
   n.data <- NROW(data)
   
   #### normal model
-  
-  if(n.data > n.coef){
+  if(test.regularizationPath && n.data > n.coef){
     suppressWarnings(
       initLVM <- try(estimate(x = x, data = data, ...), silent = TRUE)
     )
@@ -149,17 +147,22 @@ initializer.plvm <- function(x, data, ...){
   }
   
   #### high dimensional model
-  x0 <- x
   start_lambdaMax <- setNames(rep(0,n.coef),names.coef)
 
-  ## removed penalized variables
-  for(iter_link in link.penalty){
-    x0 <- rmLink(x0, iter_link)
+  ## remove penalized variables
+  x0 <- x
+  indexLink.penalty <- which(sapply(link.penalty, function(link){grep("~",link)})==1)
+  ls.formula <- c(link.penalty[-indexLink.penalty],
+                  lapply(combine.formula(link.penalty[indexLink.penalty]), formula2character)
+  )
+  
+  for(iter_link in ls.formula){
+    x0 <- rmLink(x0, iter_link, simplify = TRUE)
   }
 
   ## estimate the model
   suppressWarnings(
-    x0.fit <- estimate(x = x0, data = data, ...)
+    x0.fit <- estimate(x = x0, data = data, quick = TRUE, ...)
   )
   newCoef <- coef(x0.fit, level = 9)[,"Estimate"]
   newCoef <- newCoef[names(newCoef) %in% names(start_lambdaMax)] # only keep relevant parameters
@@ -175,7 +178,7 @@ initializer.plvm <- function(x, data, ...){
               lambdaMax = start_lambdaMax))
 }
 
-
+#' @export
 lava.penalty.post.hook <- function(x){
   
   if("penalty" %in% names(x$control)){

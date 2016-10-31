@@ -5,11 +5,11 @@
 
 #' @export
 `plot.regPath` <- function(x, lambda = getLambda(x), type = NULL, 
-                           coefficient = "penalized", row = NULL,
+                           coefficient = "penalized", row = NULL, 
+                           xlim = NULL, ylim = NULL,
                            add.line = TRUE, line.size = 2,
                            add.point = TRUE, point.shape = 4, point.size = 2,
                            add.best = TRUE, color.selected = TRUE) {
-  
   if(is.null(type)){
     if(!is.null(x$performance)){
       type <- "criterion"
@@ -24,13 +24,14 @@
                                 measure=names(path)[-1], 
                                 value.name = "value", variable.name = "coefficient")
     
-    ggPath <- ggplot(df.Path, aes_string(y = "value", 
-                                         x = lambda, 
-                                         group = "coefficient", 
-                                         col = "coefficient")
-    )
-    if(add.line){ggPath <- ggPath + geom_line(size = line.size)}
-    if(add.point){ggPath <- ggPath + geom_point(size = point.size, shape = point.shape)}
+    ggPath <- ggplot() + coord_cartesian(xlim = xlim, ylim = ylim)
+    if(add.line){
+      ggPath <- ggPath + geom_line(aes_string(y = "value", x = lambda, group = "coefficient", col = "coefficient"),
+                                   size = line.size, data = df.Path)}
+    if(add.point){
+      ggPath <- ggPath + geom_point(aes_string(y = "value", x = lambda, group = "coefficient", col = "coefficient"),
+                                    size = point.size, shape = point.shape, data = df.Path)
+    }
     
     if(!is.null(x$performance)){
       if(color.selected){

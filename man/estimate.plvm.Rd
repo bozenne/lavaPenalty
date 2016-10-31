@@ -7,7 +7,7 @@
 \usage{
 \method{estimate}{plvm}(x, data, lambda1 = NULL, lambda2 = NULL,
   lambdaN = NULL, adaptive = FALSE, control = list(),
-  estimator = "penalized", regularizationPath = FALSE,
+  regularizationPath = FALSE,
   resolution_lambda1 = lava.options()$EPSODE$resolution_lambda1,
   increasing = TRUE, stopLambda = NULL, stopParam = NULL,
   method.proxGrad = lava.options()$proxGrad$method,
@@ -27,8 +27,6 @@
 \item{adaptive}{should the coefficient of the adaptive lasso be returned instead of the coefficient of the lasso}
 
 \item{control}{control/optimization parameters}
-
-\item{estimator}{the method used to compute the likelihood, gradient and hessian.}
 
 \item{regularizationPath}{should the regularization path be computed. If so the argument lambda1 is ignored but not lambda2.}
 
@@ -63,9 +61,6 @@ Available estimators are:
 library(lava.penalty)
 library(ggplot2)
 
-EPSODE_options <- lava.options()$EPSODE
-EPSODE_options$resolution_lambda1 <- c(1e-10,1)
-lava.options(EPSODE = EPSODE_options)
 options.proxGrad <- lava.options()$proxGrad
 options.proxGrad$export.iter <- TRUE
 lava.options(proxGrad = options.proxGrad)
@@ -83,21 +78,14 @@ plvm.model <- penalize(lvm.model)
 #### lasso penalty
 
 ## regularization path
-path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fixSigma = TRUE)
-
-# backward
-path1B <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
-                   increasing = FALSE, fixSigma = TRUE)
-
-getPath(path1B)
-
-plot(path1B)
-plot(path1B, type = "path")
+path1F <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE)
+plot(path1F, type = "path")
+plot(path1F, type = "path", coefficient = "npenalized")
 
 ## proxGrad
 pfit <- estimate(plvm.model,  data = df.data,
                  lambda1 = getPath(path1B, names = "lambda1.abs")[6,1],
-                 control = list(constrain = TRUE), fixSigma = TRUE)
+                 control = list(trace = 2, constrain = TRUE), fixSigma = TRUE)
 pfit
 
 #### ridge penalty
@@ -143,7 +131,7 @@ gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method))
 gg <- gg + geom_line() + geom_point()
 gg
 
-# gg + coord_cartesian(ylim = c(1470,1500))
+gg + coord_cartesian(ylim = c(1490,1510), xlim = c(0,100))
 gg + coord_cartesian(ylim = c(1500,1510), xlim = c(0,100))
 
 #### nuclear norm penalty
@@ -172,9 +160,12 @@ lvm.image <- lvm(as.formula(paste0("Y~",paste(Znames, collapse = "+"))))
 plvm.image <- lvm.image
 penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
 
+start <- setNames(rep(0, length = length(coef(plvm.image))), coef(plvm.image))
+start["Y,Y"] <- 1
+
 for(lambda in c(1e0,1e1,1e2,2e2)){
   elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, method.proxGrad = "FISTA_Vand",
-                        control = list(iter.max = 500, constrain = TRUE))
+                        control = list(trace = 2,iter.max = 10))
   B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
                  nrow = NROW(res$X), ncol = NCOL(res$X), byrow = TRUE)
   fields:::image.plot(B.LS)
@@ -234,7 +225,7 @@ df.cv <- rbind(data.frame(e_ISTA$opt$details.cv, method = "ISTA"),
                data.frame(e_FISTA_Beck$opt$details.cv, method = "FISTA_Vand"),
                data.frame(e_mFISTA_Vand$opt$details.cv, method = "mFISTA_Vand"))
 gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method)) 
-gg <- gg + geom_line() + geom_point()
+gg <- gg + geom_line() + geom_point() +
 gg
 }
 \references{

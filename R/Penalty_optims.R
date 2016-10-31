@@ -22,8 +22,8 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   name.coef <- names(start)
   n.coef <- length(name.coef)
   
- #### Proximal gradient algorithm
- # update penalty with the coefficients present in start
+  #### Proximal gradient algorithm
+  # update penalty with the coefficients present in start
   newPenalty <- initPenalty(start = start, pen = penalty, penNuclear = penaltyNuclear)
   
   # force equivariant
@@ -33,7 +33,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
   }else{
     index.constrain <- NULL
   }
- proxOperator <- function(x, step){
+  proxOperator <- function(x, step){
     penalty$proxOperator(x, step = step,
                          lambdaN = newPenalty$lambdaN, lambda1 = newPenalty$lambda1, lambda2 = newPenalty$lambda2, 
                          test.penaltyN = newPenalty$test.penaltyN, test.penalty1 = newPenalty$test.penalty1, test.penalty2 = newPenalty$test.penalty2,
@@ -41,25 +41,22 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
                          index.constrain = index.constrain, type.constrain = control$constrain, expX = control$proxGrad$expX)
   }
   
+  if(control$trace>=0){cat("Proximal gradient ")}
+  
   if(!is.na(newPenalty$lambdaN)){
-    hessian <- penaltyNuclear$hessian
-    gradient <- penaltyNuclear$gradient
-    objective <- penaltyNuclear$objective
-    if(length(index.constrain)>0){index.constrain <- which(names(newPenalty$start) %in% name.coef[index.constrain])}
+    hessian <- NULL
   }
   
-  if(control$trace>=0){cat("Proximal gradient ")}
- 
- # print(newPenalty$start)
- # print(gradient(newPenalty$start))
- #  print(objective(newPenalty$start))
- #  print(hessian(newPenalty$start))
- #  
-   res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, method = control$proxGrad$method,
+  # print(newPenalty$start)
+  # system.time(print(gradient(newPenalty$start)))
+  # system.time(print(objective(newPenalty$start)))
+  # system.time(print(hessian(newPenalty$start)))
+  
+  res <- proxGrad(start = newPenalty$start, proxOperator = proxOperator, method = control$proxGrad$method,
                   hessian = hessian, gradient = gradient, objective = objective, 
                   iter.max = control$iter.max, trace = control$proxGrad$trace)
   if(control$trace>=0){cat("- done \n")}
-
+  
   if(penalty$adaptive){
     
     proxOperator <- function(x, step){
@@ -75,7 +72,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
                     iter.max = control$iter.max, trace = control$proxGrad$trace)
     if(control$trace>=0){cat("- done \n")}
   }
-
+  
   ## update objective with penalty - one value for each penalty
   objective.pen <- lapply(control$objectivePenalty, 
                           function(fct){do.call(fct, args = list(res$par, 
@@ -86,7 +83,7 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
                           )})
   
   res$objective <- objective(res$par) + sum(unlist(objective.pen))
-
+  
   ### export
   attr(res$message,"par") <- res$par
   res$par <- res$par[name.coef]
@@ -115,13 +112,13 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
   #### update the penalty according to start 
   # (some coefficient have been removed as they are chosen as a reference)
   newPenalty <- initPenalty(name.coef = name.coef, pen = penalty, regPath = regPath, penNuclear = penaltyNuclear)
- 
+  
   ##
   penalty <- newPenalty$penalty
   regPath <- newPenalty$regPath
   PGcontrols <- c("iter.max","trace", "constrain", "proxGrad", "proxOperator", "regPath")
   control <- control[names(control) %in% PGcontrols]
- 
+  
   ## nuisance parameter
   if(regPath$fixSigma){
     #if(length(penalty$names.varCoef)>1){stop("Cannot fixSigma when having several variance parameters \n")}
@@ -155,37 +152,37 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
                                          hessian = hessian, gradient = gradient, objective = objective,
                                          iter.max = control$iter.max, trace = FALSE))$par
     
-  
+    
     
   }
   
   ## EPSODE
   link.penalty <- penalty(penalty, type = "link")
   indexPenalty <-  which(name.coef %in% link.penalty)
-   
+  
   resEPSODE <- EPSODE(beta_lambda0 = regPath$beta_lambda0, beta_lambdaMax = regPath$beta_lambdaMax,
                       objective = objective, gradient = gradient, hessian = hessian, 
                       V = penalty$V, indexPenalty = indexPenalty, indexNuisance = indexNuisance, lambda2 = penalty$lambda2,
                       resolution_lambda1 = regPath$resolution_lambda1, increasing = regPath$increasing, stopLambda = regPath$stopLambda, stopParam = regPath$stopParam,
                       constrain = control$constrain, trace = control$trace)
-
-   ## estimation of the nuisance parameter and update lambda/lambda.abs
- if(length(indexNuisance)>0){
-   if(control$trace>=0){cat("Estimation of the nuisance parameter ")}
-   resEPSODE$path[,name.coef[indexNuisance]] <- sapply(1:NROW(resEPSODE$path), function(x){
-     optim.Nuisance.plvm(x = control$proxGrad$envir$x, data = control$proxGrad$envir$data,
-                        coefEstimated = unlist(resEPSODE$path[x,name.coef]),
-                        coefNuisance = name.coef[indexNuisance], coefPenalty = penalty(penalty, type = "link"),
-                        control = control, ...)}
-   )
-   if(control$trace>=0){cat("- done \n")}
-   resEPSODE$path$lambda1 <- resEPSODE$path$lambda1.abs/resEPSODE$path[,name.coef[indexNuisance]]
-   resEPSODE$path$lambda2 <- resEPSODE$path$lambda2.abs/resEPSODE$path[,name.coef[indexNuisance]]
- }else{
-   sumSigma <- apply(resEPSODE$path[,penalty$var.coef,drop=FALSE],1,sum)
-   resEPSODE$path$lambda1.abs <- resEPSODE$path$lambda1*sumSigma
-   resEPSODE$path$lambda2.abs <- resEPSODE$path$lambda2*sumSigma
- }
+  
+  ## estimation of the nuisance parameter and update lambda/lambda.abs
+  if(length(indexNuisance)>0){
+    if(control$trace>=0){cat("Estimation of the nuisance parameter ")}
+    resEPSODE$path[,name.coef[indexNuisance]] <- sapply(1:NROW(resEPSODE$path), function(x){
+      optim.Nuisance.plvm(x = control$proxGrad$envir$x, data = control$proxGrad$envir$data,
+                          coefEstimated = unlist(resEPSODE$path[x,name.coef]),
+                          coefNuisance = name.coef[indexNuisance], coefPenalty = penalty(penalty, type = "link"),
+                          control = control, ...)}
+    )
+    if(control$trace>=0){cat("- done \n")}
+    resEPSODE$path$lambda1 <- resEPSODE$path$lambda1.abs/resEPSODE$path[,name.coef[indexNuisance]]
+    resEPSODE$path$lambda2 <- resEPSODE$path$lambda2.abs/resEPSODE$path[,name.coef[indexNuisance]]
+  }else{
+    sumSigma <- apply(resEPSODE$path[,penalty$var.coef,drop=FALSE],1,sum)
+    resEPSODE$path$lambda1.abs <- resEPSODE$path$lambda1*sumSigma
+    resEPSODE$path$lambda2.abs <- resEPSODE$path$lambda2*sumSigma
+  }
   
   #### conversion to regPath object
   message <- resEPSODE$message
@@ -221,15 +218,15 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
 #' @param control control arguments to be passed to estimate.lvm
 #' 
 optim.Nuisance.plvm <- function(x, data, 
-                              coefEstimated, coefNuisance, coefPenalty,
-                              control, ...){
+                                coefEstimated, coefNuisance, coefPenalty,
+                                control, ...){
   
   control$trace <- FALSE
   names.coef <- setdiff(names(coefEstimated), coefNuisance)
   n.coef <- length(names.coef)
   
   fit.coef <- coefEstimated[names.coef, drop = FALSE]
- 
+  
   
   xConstrain <- x
   class(xConstrain) <- setdiff(class(x),"plvm")
@@ -241,10 +238,15 @@ optim.Nuisance.plvm <- function(x, data,
   
   for(iter_p in setdiff(1:n.coef,index.keep)){
     if(names(fit.coef)[iter_p] %in% coefPenalty && fit.coef[iter_p]==0){
-      xConstrain <- rmLink(xConstrain, var1 = names.coef[iter_p])
+      xConstrain <- rmLink(xConstrain, var1 = names.coef[iter_p], simplify = TRUE)
     }else{
-      if("lvm.reduced" %in% class(xConstrain) && names.coef[iter_p] %in% lp(xConstrain, type = "link")){xConstrain <- cancelLP(xConstrain, link = names.coef[iter_p])}
+      ## remove the link from the linear predictor (if any)
+      if("lvm.reduced" %in% class(xConstrain) && names.coef[iter_p] %in% lp(xConstrain, type = "link")){
+        xConstrain <- cancelLP(xConstrain, link = names.coef[iter_p])
+        xConstrain <- addLink(xConstrain, var1 = names.coef[iter_p], covariance = FALSE)
+      }
       xConstrain <- setLink(xConstrain, var1 = names.coef[iter_p], value = fit.coef[iter_p])
+      
     }
   }
   
@@ -267,8 +269,11 @@ optim.Nuisance.plvm <- function(x, data,
 initPenalty <- function(pen, penNuclear, start = NULL, name.coef = NULL, regPath = NULL){
   if(is.null(name.coef)){name.coef <- names(start)}
   n.coef <- length(name.coef)
+
+  lambdaN <- lambda2 <- lambda1 <- NA 
+  test.penaltyN <- test.penalty2 <- test.penalty1 <- NULL
   
-  ## lasso
+  #### lasso ####
   penaltyLink <- penalty(pen, type = "link")
   if(length(penaltyLink)>0){
     
@@ -298,15 +303,9 @@ initPenalty <- function(pen, penNuclear, start = NULL, name.coef = NULL, regPath
     test.penalty2 <- lambda2>0
   }
   
-  ## nuclear norm
+  #### nuclear norm ####
   penaltyNuclearLink <- penalty(penNuclear, type = "link")
   if(length(penaltyNuclearLink)>0){
-    
-    if(any(penaltyNuclearLink %in% name.coef == FALSE)){
-    start <- c(start[setdiff(name.coef,penaltyNuclearLink)],
-               setNames(rep(0,length(penaltyNuclearLink)),penaltyNuclearLink),
-               start[penalty$names.varCoef])  
-    }
     
     name.coef <- names(start)
     n.coef <- length(start)

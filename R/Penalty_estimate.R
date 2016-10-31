@@ -34,7 +34,7 @@
 #' @return a plvmfit object
 #' 
 #' @example 
-#' examples/EX_Penalty_estimate.R
+#' R/examples/EX_Penalty_estimate.R
 #' 
 #' @export
 estimate.plvm <- function(x, data, 
@@ -60,6 +60,7 @@ estimate.plvm <- function(x, data,
   penaltyNuclear <- penalty(x, type = "lambdaN", nuclear = TRUE, keep.list = TRUE)
   if(!is.null(lambdaN)){penaltyNuclear$lambdaN <- as.numeric(lambdaN)}
   
+    
   #### prepare control 
   # overwrite lava standard setting for the optimisation
   controlUser <- control
@@ -108,23 +109,12 @@ estimate.plvm <- function(x, data,
   data <- resData$data
   
   #### optimisation
-  if(all(c("objective", "gradient", "hessian") %in% names(list(...)))){
-    
-    if(regularizationPath == 0){
-      res <- optim.regLL(start = control$start, 
-                         objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
-                         control = control)
-    }else{
-      res <- optim.regPath(objective = list(...)$objective, gradient = list(...)$gradient, hessian = list(...)$hessian, 
-                           control = control)
-    }
-    return(res)
-    
-  }else{
-    res <- estimate.lvm(x = x, data = data, 
-                        method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
-                        control = control, ...)
-  }
+  # res <- lava:::estimate.lvm(x = x, data = data, 
+  #                            method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
+  #                            control = control, ...)
+  res <- estimate.lvm(x = x, data = data, 
+                      method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
+                      control = control, ...)
   
   #### export
   return(res)

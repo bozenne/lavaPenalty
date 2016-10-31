@@ -52,12 +52,19 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
     object$parpos <- NULL
     return(object)
   }
-  if(reduce){
+  if(identical(reduce,TRUE)  || is.character(reduce)){
+    
+    
     allCoef <- coef(regression(object, to = to, from = from, silent = silent, reduce = FALSE))
+    if(!identical(reduce,TRUE) && length(reduce)!=length(to)){
+      stop("wrong specification of argument \'reduce\' \n",
+           "must be TRUE or a character vector of size ",length(to),"\n")
+    }
     
     if("lp" %in% names(object) == FALSE){object$lp <- list()}
     for(iterR in to){ ### I don't know where to get the constrains
-      regression(object, to = iterR, from = paste0("LP",iterR), silent = silent) <- 1
+      name.LP <- if(reduce==TRUE){paste0("LP",iterR)}else{reduce}
+      regression(object, to = iterR, from = name.LP, silent = silent) <- 1
       namesCoef <- paste(iterR, from, sep = "~")
       if(iterR %in% names(object$lp)){ 
         object$lp[[iterR]]$link <- c(object$lp[[iterR]]$link, namesCoef)
@@ -69,7 +76,7 @@ regression.lvm <- function(object = lvm(), to, from, fn = NA, silent = lava.opti
         # object$lp[[iterR]]$indexCoef <- match(namesCoef, coef(object))
         object$lp[[iterR]]$x <- from
         object$lp[[iterR]]$con <- rep(NA,length(from))
-        object$lp[[iterR]]$name <- paste0("LP",iterR)
+        object$lp[[iterR]]$name <- name.LP
       }
     }
     parameter(object) <- setdiff(allCoef,coef(object))

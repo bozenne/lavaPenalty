@@ -9,7 +9,7 @@
 #' @references 
 #' R. Lockhart, J. Taylor, R. J. Tibshirani and R. Tibshirani. A significance test for the lasso. Ann Stat. 2014 42(2):413-468
 #'
-#' @example 
+#' @examples 
 #' m <- lvm(Y ~ X1+X2+X3+X4+X5)
 #' 
 #' ## simulation
@@ -85,7 +85,6 @@ covTestLasso <- function(beta, lambda, Y, X){
   Tk$lambda <- lambda
   
   for(iterKnot in 2:n.lambda){
-    # iterKnot 
     
     ## true prediction
     iter.beta <- beta[iterKnot,]
@@ -109,9 +108,6 @@ covTestLasso <- function(beta, lambda, Y, X){
   test.intercept <- apply(X,2, function(x){length(unique(x))})
   lmXY <- lsfit(x = X, y = Y, intercept = all(test.intercept!=1))
   sigma <- sqrt(sum(lmXY$res^2)/(n - p))
-  print(sigma)
-  print(n)
-  print(p)
   
   Tk$statistic <- ((Tk$covT - Tk$cov0)/sigma^2)
   Tk$p.value <- 1 - pf(Tk$statistic, 2, n - p)

@@ -34,7 +34,9 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
                      BT.eta = lava.options()$proxGrad$BT.eta, 
                      force.descent = lava.options()$proxGrad$force.descent,
                      export.iter = lava.options()$proxGrad$export.iter){
-
+  
+  stepMax <- step 
+  
   #### check method
   valid.method <- c("ISTA","FISTA_Beck","FISTA_Vand","mFISTA_Vand")
   if(method %in% valid.method == FALSE){
@@ -57,7 +59,7 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
   y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){x_k}else{NA} 
   obj.y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){obj.x_k}else{NA} 
   grad.y_k <- if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){grad.x_k}else{NA} 
-
+  
   if("function" %in% class(hessian)){
     maxEigen <- 1/rARPACK::eigs_sym(hessian(x_k),k=1, which = "LM", opts = list(retvec = FALSE))$values
     step <-  abs(maxEigen)
@@ -70,7 +72,7 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
   if(trace>0){cat("stepBT"," ","iter_back", " ", "max(abs(x_kp1 - x_k))"," ","obj.x_kp1 - obj.x_k","\n")}
   if(export.iter){details.cv <- NULL}
   
-    ## loop
+  ## loop
   while(test.cv == FALSE && iter < iter.max){
     iter <- iter + 1 
     
@@ -100,7 +102,7 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
       }
       
       iter_back <- iter_back + 1
-    
+      
       # cat("obj.x_kp1:",obj.x_kp1," | obj.x_k:",obj.x_k, " | res$Q:",res$Q,"\n")
     }
     
@@ -119,11 +121,11 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
     relDiff <- abs(obj.x_kp1 - obj.x_k)/abs(obj.x_kp1) < rel.tol
     test.cv <- (absDiff + relDiff > 0)
     if("cv" %in% names(res)){test.cv <- res$cv}
-   
+    
     
     ## update
     if(method %in% c("FISTA_Beck","FISTA_Vand","mFISTA_Vand")){
-        
+      
       if(method == "FISTA_Beck"){
         t_k <- t_kp1
         t_kp1 <- (1 + sqrt(1 + 4 * t_k^2)) / 2
@@ -150,12 +152,12 @@ proxGrad <- function(start, proxOperator, method, hessian, gradient, objective,
       details.cv <- rbind(details.cv,
                           c(iteration = iter, stepBT = stepBT, iter_back = iter_back, adiff_param = max(abs(res$x_kp1 - x_k)), obj = obj.x_kp1, diff_obj = obj.x_kp1 - obj.x_k))
     }
-    step <- stepBT
+    step <- min(stepMax, stepBT/sqrt(BT.eta))# stepBT
     x_k <- res$x_kp1
     obj.x_k <- obj.x_kp1
     grad.x_k <- try(gradient(res$x_kp1))
     
-   
+    
   }
   if(trace>0){cat("\n")}
   

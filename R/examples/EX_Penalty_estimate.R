@@ -73,7 +73,7 @@ gg <- ggplot(df.cv, aes(x = iteration, y = obj, group = method, color = method))
 gg <- gg + geom_line() + geom_point()
 gg
 
- gg + coord_cartesian(ylim = c(1490,1510), xlim = c(0,100))
+gg + coord_cartesian(ylim = c(1490,1510), xlim = c(0,100))
 gg + coord_cartesian(ylim = c(1500,1510), xlim = c(0,100))
 
 #### nuclear norm penalty
@@ -102,9 +102,12 @@ lvm.image <- lvm(as.formula(paste0("Y~",paste(Znames, collapse = "+"))))
 plvm.image <- lvm.image
 penalizeNuclear(plvm.image, coords = coords) <- as.formula(paste0("Y~",paste0(Xnames,collapse = "+")))
 
+start <- setNames(rep(0, length = length(coef(plvm.image))), coef(plvm.image))
+start["Y,Y"] <- 1
+
 for(lambda in c(1e0,1e1,1e2,2e2)){
   elvm.Path <- estimate(plvm.image,  data = dt.data, lambdaN = lambda, method.proxGrad = "FISTA_Vand",
-                        control = list(iter.max = 100, constrain = TRUE))
+                        control = list(trace = 2,iter.max = 10))
   B.LS <- matrix(attr(elvm.Path$opt$message,"par")[paste0("Y~",Xnames)],
                  nrow = NROW(res$X), ncol = NCOL(res$X), byrow = TRUE)
   fields:::image.plot(B.LS)

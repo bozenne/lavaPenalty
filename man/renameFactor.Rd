@@ -2,12 +2,25 @@
 % Please edit documentation in R/Utils.R
 \name{renameFactor}
 \alias{renameFactor}
-\title{Find the categorical variable matching the name of the coefficient in lava}
+\title{Link levels and coefficients}
 \usage{
 renameFactor(var, ls.levels, data, sep = "")
 }
+\arguments{
+\item{var}{the name of the coefficient (binary indicator)}
+
+\item{ls.levels}{a named list containing the levels for each variable}
+
+\item{data}{the dataset used to find the possible categorical/factor variables}
+
+\item{sep}{the character used to collapse the variable name and its levels in var}
+}
+\description{
+Find the categorical variable matching the name of the coefficient in lava
+}
 \examples{
-renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
+
+lava.penalty:::renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
 
 }
 

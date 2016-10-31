@@ -4,7 +4,8 @@
 \alias{addLink.lvm}
 \title{Add a new link between two variables in a lvm}
 \usage{
-\method{addLink}{lvm}(x, var1, var2 = NA, covariance, warnings = FALSE)
+\method{addLink}{lvm}(x, var1, var2, covariance, allVars = vars(x),
+  warnings = FALSE)
 }
 \arguments{
 \item{x}{a lvm model}

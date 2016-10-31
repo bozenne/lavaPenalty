@@ -14,20 +14,24 @@
 #' @title Find the new possible links between variables (copied from lava::modelsearch)
 #' 
 #' @param x a lvm model
-#' @param rm.exoexo ignore links between exogeneous variables
+#' @param rm.latent ignore links between latent variables
+#' @param rm.endo ignore links between endogenous variables
 #' @param output return the names of the variables to link ("names") or their position ("index")
 #' 
 #' @examples 
 #' m <- lvm()
 #' regression(m) <- c(y1,y2,y3)~u
+#' lava.penalty:::findNewLink(m, rm.endo = FALSE)
+#' lava.penalty:::findNewLink(m, rm.endo = TRUE)
+#' 
 #' regression(m) <- u~x1+x2
 #' latent(m) <- ~u
 #' 
-#' lava.penalty:::findNewLink(m, rm.exoexo = FALSE)
-#' lava.penalty:::findNewLink(m, rm.exoexo = TRUE)
-#' lava.penalty:::findNewLink(m, rm.exoexo = TRUE, output = "index")
+#' lava.penalty:::findNewLink(m, rm.endo = FALSE)
+#' lava.penalty:::findNewLink(m, rm.endo = TRUE)
+#' lava.penalty:::findNewLink(m, rm.endo = TRUE, output = "index")
 #' 
-findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
+findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "names"){
   
   match.arg(output, choices = c("names","index"))
   
@@ -36,12 +40,15 @@ findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
   restricted <- c()
   for (i in seq_len(ncol(AP) - 1)){
     for (j in seq(i + 1, nrow(AP))){
-      test.exo <- (rownames(AP)[i] %in% exogenous(x)) + (colnames(AP)[j] %in% exogenous(x))
-      if (AP[j, i] == 0 && (rm.exoexo == FALSE || test.exo!=2)){
+      test.latent <- (rownames(AP)[i] %in% latent(x)) + (colnames(AP)[j] %in% latent(x))
+      test.endo2 <- (rownames(AP)[i] %in% endogenous(x)) + (colnames(AP)[j] %in% endogenous(x))
+      
+      if (AP[j, i] == 0 && (rm.latent == FALSE || test.latent!=2) && (rm.endo == FALSE || test.endo2!=2)){
           restricted <- rbind(restricted, c(i, j))
       }
     }
   }
+
   
   if (is.null(restricted)){
     return(NULL)
@@ -81,14 +88,13 @@ findNewLink.lvm <- function(x, rm.exoexo, output = "names"){
 #' lava.penalty:::addLink(m, "y1", "x1")
 #' coef(lava.penalty:::addLink(m, "y1", "y2", covariance = TRUE))
 #' 
-addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
+addLink.lvm <- function(x, var1, var2, covariance, allVars = vars(x), warnings = FALSE){
  
- browser()
-  res <- initVar_link(var1, var2)
+  res <- initVar_link(var1, var2, format = "list")
   var1 <- res$var1
   var2 <- res$var2
   
-  if(var1 %in% vars(x) == FALSE){
+  if(var1 %in% allVars == FALSE){
     if(warnings){
       warning("addLink.lvm: var1 does not match any variable in x, no link is added \n",
               "var1: ",var1,"\n")
@@ -110,7 +116,7 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
     }
     
     
-    if(var2 %in% vars(x) == FALSE){
+    if(var2 %in% allVars == FALSE){
       if(warnings){
         warning("addLink.lvm: var2 does not match any variable in x, no link is added \n",
                 "var2: ",var2,"\n")
@@ -141,18 +147,22 @@ addLink.lvm <- function(x, var1, var2 = NA, covariance, warnings = FALSE){
     }else if(covariance){
       covariance(x) <- as.formula(paste(var1, var2, sep = "~"))  
     }else {
-      if(var1 %in% endogenous(x) && var2 %in% latent(x)){
+      if(var1 %in% endogenous(x)){
         regression(x) <- as.formula(paste(var1, var2, sep = "~"))  
-      }else if(var2 %in% endogenous(x) && var1 %in% latent(x)){
+      }else if(var2 %in% endogenous(x)){
         regression(x) <- as.formula(paste(var2, var1, sep = "~"))  
       }else{
-        stop("addLink.lvm: unknow configuration \n")
+        stop("unknow configuration \n")
       }
       
     }
   }
   
   return(x)
+}
+
+addLink.lvm.reduced <- function(x, ...){
+  return(addLink.lvm(x, allVars = vars(x, lp = FALSE, xlp = TRUE) , ...))
 }
 
 #' @title Affect a given value to a link between two variables in a lvm 
@@ -211,72 +221,92 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
 #' @param var1 the first variable (character) or a formula describing the link
 #' @param var2 the second variable (character). Only used if var1 is a character.
 #' @param warnings should a warning be displayed when the link is not found in the lvm.
+#' @param other parameters to be passed to cancelPenalty and cancelLP
 #' 
 #' @examples 
 #' m <- lvm()
 #' regression(m) <- c(y1,y2,y3)~u+x1
 #' regression(m) <- u~x1+x2
 #' latent(m) <- ~u
-#' covariance(m) <- y1 ~ y2
+#' covariance(m) <- y1 ~ y2+y3
 #' 
 #' lava.penalty:::rmLink(m, y3 ~ u)
 #' lava.penalty:::rmLink(m, u ~ x1)
-#' lava.penalty:::rmLink(m, y1 ~ x1)
+#' lava.penalty:::rmLink(m, y1 ~ x1+u)
+#' lava.penalty:::rmLink(m, u ~ x1+x2)
 #' 
 #' coef(lava.penalty:::rmLink(m, y1 ~ y2))
+#' coef(lava.penalty:::rmLink(m, y1 ~ y2+y3))
 #' 
 #' # external parameter
 #' parameter() <- y1 ~ y2
 #' 
 #' 
-rmLink.lvm <- function(x, var1, var2, warnings = FALSE){
+rmLink.lvm <- function(x, var1, var2, warnings = FALSE, ...){
   
   res <- initVar_link(var1, var2)
   var1 <- res$var1
   var2 <- res$var2
   
   #### remove the link
-  if(is.na(var2)){
+  if(length(var2)==0){
     cancel(x) <- as.formula(paste0("~",var1))
-  }else if(paste(var1, var2, sep = "~") %in% coef(x)){
-    f <- paste(var1,var2, sep = "~")
-    if(f %in% parameter(x)){ # external parameter
-      parameter(x, remove = TRUE) <- f 
-    }else{
+  }else{
+    
+    index.coef <- which(paste(var1, var2, sep = "~") %in% setdiff(coef(x), parameter(x)))
+    index.ext <- which(paste(var1, var2, sep = "~") %in% parameter(x))
+    index.cov1 <- which(paste(var1, var2, sep = ",") %in% coef(x))
+    index.cov2 <- which(paste(var2, var1, sep = ",") %in% coef(x))
+    
+    if(length(index.coef)>0){
+      f <- paste(var1,paste(var2[index.coef], collapse = " + "), sep = "~")
       cancel(x) <- as.formula(f)
     }
-  }else if(paste(var1,var2, sep = ",") %in% coef(x)){
-    f <- paste(var1,var2, sep = "~")
-    cancel(x) <-  as.formula(f)
-  }else if(paste(var2,var1, sep = ",") %in% coef(x)){
-    f <- paste(var2,var1, sep = "~")
-    cancel(x) <-  as.formula(f)
-  }else{
-    if(warnings){
-      warning("addLink.lvm: no link was found from var1 to var2, no link is removed \n",
-              "var1: ",var1,"\n",
-              "var2: ",var2,"\n")
+    if(length(index.ext)>0){
+      f <- paste(var1,paste(var2[index.ext], collapse = " + "), sep = "~")
+      parameter(x, remove = TRUE) <- f
     }
+    if(length(index.cov1)>0){
+      f <- paste(var1,paste(var2[index.cov1], collapse = " + "), sep = "~")
+      cancel(x) <- as.formula(f)
+    }
+    if(length(index.cov2)>0){
+      f <- paste(var1,paste(var2[index.cov2], collapse = " + "), sep = "~")
+      cancel(x) <- as.formula(f)
+    }
+    
+    if(length(c(index.coef,index.ext, index.cov1, index.cov2))!= length(var2) && warnings){
+        warning("addLink.lvm: no link was found from var1 to var2, no link is removed \n",
+                "var1: ",var1,"\n",
+                "var2: ",paste(setdiff(var2, c(index.coef,index.ext, index.cov1, index.cov2)), collapse = " "),"\n")
+    }
+    
   }
   
   #### if unused variable remove it from the model
-  if(length(grep(paste0("~",var1,"$|^",var1,"~|^",var1,"$"), x = coef(x), fixed = FALSE))==0){
-      kill(x) <- as.formula(paste0(var1,"~1"))
-  }
-  if(!is.na(var2) && length(grep(paste0("~",var2,"$|^",var2,"~|^",var2,"$"), x = coef(x), fixed = FALSE))==0){
-    kill(x) <- as.formula(paste0(var2,"~1"))
+  if(length(var2)>0){
+    length.var2 <- sapply(var2, function(var){length(grep(paste0("~",var,"$|^",var,"~|^",var,"$"), x = coef(x), fixed = FALSE))})
+    kill(x) <- as.formula(paste0(paste(var2[length.var2==0],collapse = "+"),"~1"))
   }
   
   #### if penalised remove the penalty from the model
   if("plvm" %in% class(x)){
-    if(f %in% penalty(x, type = "link")){
-      cancelPenalty(x, simplify = FALSE) <- f 
+    f <- c(paste(var1,var2[index.coef], sep = "~"),
+           paste(var1,var2[index.ext], sep = "~"),
+           paste(var1,var2[index.cov1], sep = ","),
+           paste(var1,var2[index.cov2], sep = ",")
+    )
+    if(any(f %in% penalty(x, type = "link"))){
+      cancelPenalty(x, ...) <- f[f %in% penalty(x, type = "link")]
     }
   }
   #### if belong to a LP remove the variable from the lp
   if("lvm.reduced" %in% class(x)){
-    if(f %in% lp(x, type = "link")){
-      cancelLP(x, simplify = TRUE) <- f
+    f <- c(paste(var1,var2[index.coef], sep = "~"),
+           paste(var1,var2[index.ext], sep = "~")
+    )
+    if(any(f %in% lp(x, type = "link"))){
+      cancelLP(x, ...) <- f[f %in% lp(x, type = "link")]
     }
   }
  
