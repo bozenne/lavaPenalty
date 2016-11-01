@@ -96,6 +96,7 @@ penalty.penaltyL12 <- function(x, type, group = NULL, keep.list = FALSE){
   valideType <- c("link","lambda1","lambda1.abs","lambda2","lambda2.abs",
                   "adaptive", "proxOperator", "objectivePenalty","V","group")#names(x$penalty)
 
+  
   ## extract penalty
   if(is.null(type)){
     res <- x
@@ -104,6 +105,12 @@ penalty.penaltyL12 <- function(x, type, group = NULL, keep.list = FALSE){
     stop("type ",paste(type[type %in% valideType == FALSE], collapse = " ")," is not valid \n",
          "valid types: \"",paste(valideType, collapse = "\" \""),"\" \n")
   }else{
+    if("link" %in% type){
+      if(is.null(x$V)){return(NULL)}
+      yNames <- x$V@Dimnames[[1]][unique(x$V@i)+1]
+      xNames <- unlist(mapply(rep, x  = x$V@Dimnames[[2]], times = diff(x$V@p)))
+      x$link <- paste(yNames, tapply(xNames, x$V@i, paste, collapse = "+"), sep = lava.options()$symbols[1]) 
+    }
     res <- x[type]
   }
   

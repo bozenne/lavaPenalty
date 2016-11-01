@@ -21,7 +21,7 @@ Imports:
     ggplot2,
     utils
 Suggests: 
-    qualV, testthat, tmvtnorm, optimx
+    testthat
 Collate:
     '0Lava_toBeUpdated.R'
     'Lava_cv.R'

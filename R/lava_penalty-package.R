@@ -12,7 +12,3 @@
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' 
 NULL
-
-#####' @importFrom qualV LCS
-#####' @importFrom tmvtnorm tmvtnorm
-#####' @importFrom optimx optimx

@@ -78,7 +78,6 @@ gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   colnames(s) <- coef(x)#c(name.intercept,name.regression,name.covariance)
   
   ## apply chain rule
-  
   n.lp <- length(x$lp)
   
   for(iterLP in 1:n.lp){ 
@@ -93,7 +92,7 @@ gaussianLP_score.lvm <- function(x, p, data, indiv = FALSE, ...)  {
   if(indiv == FALSE){
     s <- rbind(apply(s,2,sum))
   }
-  
+  print(s)
   return(s) 
 }
 

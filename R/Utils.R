@@ -7,9 +7,10 @@
 #' @param sep the character used to collapse the variable name and its levels in var
 #' 
 #' @examples 
-#' 
-#' lava.penalty:::renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
-#' 
+#' \dontrun{
+#' renameFactor <- lava.penalty:::renameFactor
+#' renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
+#' }
 renameFactor <- function(var, ls.levels, data, sep = ""){
   
   if(!missing(data)){
@@ -36,8 +37,10 @@ formula2character <- function(x){
 #' @param x a list of character
 #'
 #' @examples 
-#' lava.penalty:::LCSseq(list("ad","a","ad"))
-#'
+#' \dontrun{
+#' LCSseq <- lava.penalty:::LCSseq
+#' LCSseq(list("ad","a","ad"))
+#' }
 LCSseq <- function(x){
   affixe <- strsplit(x[[1]], split = "")[[1]]
   
@@ -58,32 +61,46 @@ LCSseq <- function(x){
 #' @param format should the name of the variable be return (format = "list"), a vector of character formula ("txt.formula") or a list of formula ("formula")
 #' 
 #' @examples
-#' lava.penalty:::initVar_link(var1 = a~b)
-#' lava.penalty:::initVar_link(var1 = a ~ b)
-#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "list")
-#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "txt.formula")
-#' lava.penalty:::initVar_link(var1 = a ~ b+c+d*e, format = "formula")
+#' \dontrun{
+#' initVar_link <-  lava.penalty:::initVar_link
 #' 
-#' lava.penalty:::initVar_link(var1 = "a,b")
-#' lava.penalty:::initVar_link(var1 = "a", var2 = "b")
+#' lava.options(symbol = c("~",","))
+#' initVar_link(var1 = a~b)
+#' initVar_link(var1 = a ~ b)
+#' initVar_link(var1 = a ~ b+c+d*e, format = "list")
+#' initVar_link(var1 = a ~ b+c+d*e, format = "txt.formula")
+#' initVar_link(var1 = a ~ b+c+d*e, format = "formula")
 #' 
-#' lava.penalty:::initVar_link(var1 = Y~X1+X2)
-#' lava.penalty:::initVar_link(var1 = Y~X1+X2, repVar1 = TRUE)
-#' lava.penalty:::initVar_link(var1 = Y~X1+X2, format = "formula")
-#' lava.penalty:::initVar_link(var1 = Y~X1+X2, format = "txt.formula")
+#' initVar_link(var1 = "a,b")
+#' initVar_link(var1 = "a", var2 = "b")
+#' 
+#' initVar_link(var1 = Y~X1+X2)
+#' initVar_link(var1 = Y~X1+X2, repVar1 = TRUE)
+#' initVar_link(var1 = Y~X1+X2, format = "formula")
+#' initVar_link(var1 = Y~X1+X2, format = "txt.formula")
+#' 
+#' lava.options(symbol = c("<-","<->"))
+#' initVar_link(var1 = "Y<-X1+X2", repVar1 = TRUE)
+#' initVar_link(var1 = "Y<-X1+X2", format = "formula")
+#' initVar_link(var1 = "Y<-X1+X2", format = "txt.formula")
+#' 
+#' }
 initVar_link <- function(var1, var2, repVar1 = FALSE, format = "list"){
   
+  Slink <- lava.options()$symbol[1]
+  Scov <- lava.options()$symbol[2]
+  
   if(missing(var2) && is.character(var1)){
-    if(grepl(",",var1)==TRUE){
-      var1 <- gsub(",","~", x = var1)
-      sep <- ","
+    if(grepl(Scov,var1)==TRUE){
+      var1 <- gsub(Scov,"~", x = var1)
+      sep <- Scov
     }
-    if(grepl("~",var1)==TRUE){
-      var1 <- as.formula(var1)
-      sep <- "~"
+    if(grepl(Slink,var1)==TRUE){
+      var1 <- as.formula(gsub(Slink,"~",var1))
+      sep <- if(format == "formula"){"~"}else{Slink}
     }
   }else{
-    sep <- "~"
+    sep <- if(format == "formula"){"~"}else{Slink}
   }
   
   if(class(var1) == "formula"){
@@ -120,7 +137,9 @@ initVar_link <- function(var1, var2, repVar1 = FALSE, format = "list"){
 #' @param formula a formula
 #' 
 #' @examples
+#' \dontrun{
 #' select.response(Y1~X1+X2)
+#' }
 select.response <- function(formula){
   return(
   setdiff(all.vars(formula),
@@ -135,21 +154,22 @@ select.response <- function(formula){
 #' @param as.formula should as.formula be applied to each element of the list
 #' 
 #' @examples
+#' \dontrun{#' 
 #' combine.formula(list(Y~X1,Y~X3+X5,Y1~X2))
+#' lava.options(symbol = c("~",","))
 #' combine.formula(list("Y~X1","Y~X3+X5","Y1~X2"))
+#' lava.options(symbol = c("<-","<->"))
+#' combine.formula(list("Y<-X1","Y<-X3+X5","Y1<-X2"))
 #' 
 #' combine.formula(list(Y~X1,Y~X3+X1,Y1~X2))
 #' combine.formula(list(Y~X1,Y~X3+X1,Y1~X2), as.unique = TRUE)
-#' 
+#' }
 combine.formula <- function(ls.formula, as.formula = TRUE, as.unique = FALSE){
   
   if(length(ls.formula)==0){return(NULL)}
+  if(class(ls.formula)=="formula"){ls.formula <- list(ls.formula)}
   
-  ls.Vars <- lapply(ls.formula, function(x){
-    if(as.formula){x <- as.formula(x)}
-    res <- initVar_link(x)
-  })
-  
+  ls.Vars <- lapply(ls.formula, initVar_link)
   
   ls.endogeneous <- unlist(lapply(ls.Vars, "[[", 1))
   ls.X <- lapply(ls.Vars, "[[", 2)

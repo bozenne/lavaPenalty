@@ -3,8 +3,7 @@
 #' @title Initialize lasso, ridge, group lasso penalty
 initPenaltyL12 <- function(){
   
-  penalty <- list(link = NULL,
-                  group = NULL,
+  penalty <- list(group = NULL,
                   var.coef = NULL,
                   lambda1 = 0, 
                   lambda2 = 0,
@@ -128,7 +127,7 @@ lvm2plvm <- function(x){
     x <- lvm2plvm(x)
   }
   
-  #### find coefficients from value
+   #### find coefficients from value
   if(!is.null(value)){
     
     if("formula" %in% class(value)){
@@ -164,13 +163,11 @@ lvm2plvm <- function(x){
     
     ## no penalization on parameters related to the latent variables
     if(length(x$latent) && latent == FALSE){
-      request <- paste( paste0("^",names(x$latent),"~|~",names(x$latent),"$"), collapse = "|")
-      ls.penaltyCoefLatent <- sapply(request, grep, x = coef(x), value = FALSE)
-      index.penaltyCoef <- setdiff(index.penaltyCoef, unique(unlist(ls.penaltyCoefLatent)))
+      test.latent <- sapply(coef(x)[index.penaltyCoef], function(pen){initVar_link(pen)$var1 %in% latent(x)})
+      index.penaltyCoef <- setdiff(index.penaltyCoef, index.penaltyCoef[which(test.latent)])
     }
     
     value <- coef(x)[index.penaltyCoef]
-    
   } 
   
   #### update the name of the penalized parameters
@@ -179,21 +176,19 @@ lvm2plvm <- function(x){
   
   if(add && n.oldPenalty>0){
     
-    penalty(x, type = "link") <- c(penalty(x, type = "link"), value)
+    value <- c(penalty(x, type = "link"), value)
     
     allGroups <- seq(0.1, 0.9, length.out = n.oldPenalty+length(value))
     allGroups[which(group.oldPenalty>=1)] <- group.oldPenalty[which(group.oldPenalty>=1)]
     penalty(x, type = "group") <- allGroups[1:n.oldPenalty]
     newGroup <-  allGroups[-(1:n.oldPenalty)]
   }else{
-    penalty(x, type = "link") <- value
-    
     allGroups <- seq(0.1, 0.9, length.out = length(value)) 
     penalty(x, type = "group") <- NULL
     newGroup <- allGroups
   }
   
-  x$penalty$var.coef <- paste(c(endogenous(x),latent(x)),c(endogenous(x),latent(x)),sep =",") # useless
+  x$penalty$var.coef <- coefVar(x, value = TRUE)
   
   #### group penalty
   if(missing(group) == FALSE){
@@ -222,12 +217,20 @@ lvm2plvm <- function(x){
   
   #### V matrix
   if(!missing(V)){
+    if("Matrix" %in% is(V)){
+      stop("V must herit from the class Matrix \n")
+    }
     penalty(x, type = "V") <- V
   }else{ # erase existing settings
-    V <- matrix(0, nrow = length(coef(x)), ncol = length(coef(x)))
-    colnames(V) <- coef(x)
-    rownames(V) <- coef(x)
-    diag(V)[coef(x) %in% penalty(x, type = "link")] <- 1
+    ls.names <- lapply(value,initVar_link)
+    
+    V <- Matrix::Matrix(c(0,1), sparse = TRUE, doDiag = FALSE,  # force to be non symetric
+                        nrow = length(ls.names), ncol = length(ls.names),
+                        dimnames = list(unlist(lapply(ls.names, "[[", 1)),
+                                        unlist(lapply(ls.names, "[[", 2))
+                        ))
+    V[] <- 0
+    Matrix::diag(V) <- 1 
     penalty(x, type = "V") <- V
   }
   

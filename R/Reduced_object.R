@@ -1,3 +1,19 @@
+#' @title Initialize new latent variable model with linear predictors
+#' @description Function that constructs a new latent variable model object with linear predictors
+#' 
+#' @param ... arguments to be passed to the lvm function
+#' 
+#' @examples 
+#' m <- lvm.reduced(Y ~ X1+X2)
+#' class(m)
+#' 
+#' @export
+lvm.reduced <- function(...){
+  x <- lvm(...)
+  class(x) <- append("lvm.reduced",class(x))
+  return(x)
+}
+
 #' @title Extract variables from a reduced latent variable model
 #' @name getReduce
 #' @description Extract variables as in a standard lvm but including or not the variables that compose the linear predictor
@@ -14,42 +30,42 @@
 #' 
 #' @examples  
 #' ## regression
-#' m <- lvm()
+#' m <- lvm.reduced()
 #' m <- regression(m, x=paste0("x",1:10),y="y", reduce = TRUE)
 #' vars(m)
 #' vars(m, lp = TRUE)
-#' vars(m, lp = FALSE, xlp = FALSE)
+#' vars(m, lp = FALSE, xlp = TRUE)
 #' 
 #' lp(m)
 #' 
 #' exogenous(m)
-#' exogenous(m, lp = TRUE)
-#' exogenous(m, xlp = FALSE)
+#' exogenous(m, lp = FALSE)
+#' exogenous(m, xlp = TRUE)
 #' 
 #' endogenous(m)
-#' endogenous(m, lp = TRUE) # should not change
-#' endogenous(m, xlp = FALSE) # should not change
+#' endogenous(m, lp = FALSE) # should not change
+#' endogenous(m, xlp = TRUE) # should not change
 #' 
 #' coef(m)
 #' 
 #' ## lvm
-#' m <- lvm()
+#' m <- lvm.reduced()
 #' m <- regression(m, x=paste0("x",1:10),y="y1", reduce = TRUE)
 #' m <- regression(m, x=paste0("x",51:150),y="y2", reduce = TRUE)
 #' covariance(m) <- y1~y2
 #' 
 #' vars(m)
-#' vars(m, lp = TRUE)
+#' vars(m, lp = FALSE)
 #' 
 #' lp(m)
 #' lp(m, type = "x", format = "list")
 #' lp(m, index = 1)
 #' 
 #' exogenous(m)
-#' exogenous(m, lp = TRUE)
+#' exogenous(m, lp = FALSE)
 #' 
 #' endogenous(m)
-#' endogenous(m, lp = TRUE) # should not change
+#' endogenous(m, lp = FALSE) # should not change
 #' @export
 `lp` <- function(x,...) UseMethod("lp")
 
@@ -76,6 +92,13 @@ lp.lvm.reduced <- function(x, type = "name", lp = NULL, format = "vector", ...){
            "valid types: \"",paste(validNames, collapse = "\" \""),"\" \n")
     }
     size <- FALSE
+  }
+  
+  ## add links
+  if("link" %in% type){
+    for(iterLP in names(x$lp)){
+      x$lp[[iterLP]]$link <- paste(iterLP,x$lp[[iterLP]]$x,sep=lava.options()$symbol[1])
+    }
   }
   
   ## format
@@ -134,7 +157,6 @@ lp.lvm.reduced <- function(x, type = "name", lp = NULL, format = "vector", ...){
 #' @rdname getReduce 
 #' @export
 vars.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...){
-  
   if(xlp){
     hiddenX <- lp(x, type = "x")
   }else{
@@ -245,32 +267,32 @@ manifest.lvm.reduced <- function(x, lp = TRUE, xlp = FALSE, ...) {
 
 #' @rdname getReduce
 #' @export 
-reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
+reduce.lvm <- function(object, ...){
+  class(object) <- append("lvm.reduced",class(object))
+  reduce(object, ...)
+}
+
+#' @rdname getReduce
+#' @export 
+reduce.lvm.reduced <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
   
+  #### define the links
   if(!is.null(link)){ # reduce specific links
     
-    if("formula" %in% class(link)){
-      ls.link <- initVar_link(link, repVar1 = TRUE)
-      vec.endo <- ls.link$var1
-      vec.exo <- ls.link$var2
-    }else{
-      ls.link <- lapply(link, initVar_link, repVar1 = TRUE)
-      vec.endo <- unlist(lapply(ls.link, "[[", 1))
-      vec.exo <- unlist(lapply(ls.link, "[[", 2))
-    }
+    if("formula" %in% class(link)){ link <- list(link) }
+    ls.link <- lapply(link, initVar_link, repVar1 = TRUE)
+    vec.endo <- unlist(lapply(ls.link, "[[", 1))
+    vec.exo <- unlist(lapply(ls.link, "[[", 2))
     
     exo <- tapply(vec.exo, vec.endo, list)
     endo <- names(exo)
     
   }else{ # reduce the linear predictor of specific endogeneous variables
-    col.reg <- apply(object$index$Jy, 1, function(x){which(x==1)}) # find endo having exo
+    M <- object$M[,endogenous(object, lp = FALSE), drop = FALSE]
     
-    if(length(col.reg)==1){ # find exo corresponding to endo
-      exo <- list(names(which(object$index$A[exogenous(object),col.reg]==1)))
-      if(length(exo[[1]])>0){names(exo) <- colnames(object$index$A)[col.reg]}
-    }else{
-      exo <-  apply(object$index$A[exogenous(object),col.reg, drop = FALSE], 2,  function(x){names(which(x==1))})
-    }
+    col.reg <- names(which(apply(M, 2, function(x){any(x==1)}))) # find endo having exo
+    exo <- lapply(col.reg, function(var){names(which(M[,var]==1))})
+    names(exo) <- col.reg
     
     if(is.null(endo)){
       if(is.null(names(exo))){
@@ -283,6 +305,7 @@ reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
     
   }
   
+  #### reduce
   n.endo <- length(endo)
   
   for(iterR in 1:n.endo){
@@ -290,13 +313,14 @@ reduce.lvm <- function(object, link = NULL, endo = NULL, rm.exo = TRUE){
     name.exo <- exo[[iterR]]
     
     if(length(name.exo)>0){
-    ## can be problematic as we don't know about "additive" or other possibly relevant arguments
-    f <- as.formula(paste(name.endo,"~",paste(name.exo, collapse = "+")))
-    cancel(object) <- f
-    
-    object <- regression.lvm(object, to = name.endo, from = name.exo, reduce = TRUE)
+      ## can be problematic as we don't know about "additive" or other possibly relevant arguments
+      f <- as.formula(paste(name.endo,"~",paste(name.exo, collapse = "+")))
+      cancel(object) <- f
+      
+      object <- regression(object, to = name.endo, from = name.exo, reduce = TRUE)
     }
   }
+  
   
   if(rm.exo){
     indexClean <- which(rowSums(object$index$A[object$exogenous,]!=0)==0)

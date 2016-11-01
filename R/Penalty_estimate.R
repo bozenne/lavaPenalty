@@ -114,7 +114,7 @@ estimate.plvm <- function(x, data,
   #                            control = control, ...)
   res <- estimate.lvm(x = x, data = data, 
                       method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"}, 
-                      control = control, ...)
+                      control = control, quick = TRUE, index = TRUE, ...)
   
   #### export
   return(res)

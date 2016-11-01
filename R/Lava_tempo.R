@@ -76,7 +76,7 @@ if(TRUE){
   nlminb1 <- lava:::nlminb1
   
 estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", control = list(),
-                          missing = FALSE, weight, weightname, weight2, id, fix, index = TRUE,
+                          missing = FALSE, weight, weightname, weight2, id, fix, index=!quick,
                           graph = FALSE, silent = lava.options()$silent, quick = FALSE,
                           method, param, cluster, p, ...)
 {
@@ -174,7 +174,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
         x <- latent(x, new.lat)
     }
   }
- 
+  
   myhooks <- gethook()
   for (f in myhooks) {
     res <- do.call(f, list(x = x, data = data, weight = weight,
@@ -220,7 +220,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
       "nlminb1"
     else Method
   }
-  if (!quick & index) {
+  if (index) {
     x <- fixsome(x, measurement.fix = fix, S = S, mu = mu,
                  n = n, debug = !silent)
     if (!silent)
@@ -586,13 +586,14 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
 
       # [OB DEBUG]
       # myObj(optim$start)
-      # setNames(myGrad(optim$start), names(optim$start))
+      # print(optim$start)
+      # print(setNames(myGrad(optim$start), names(optim$start)))
       # myHess(optim$start)
       
       opt <- do.call(optim$method, list(start = optim$start,
                                         objective = myObj, gradient = myGrad, hessian =  myHess,#hessian = myHess,   #
                                         lower = lower, control = optim, debug = debug))
-
+      
       if (is.null(opt$estimate))
         opt$estimate <- opt$par
       if (optim$constrain) {
@@ -623,7 +624,7 @@ estimate.lvm <- function (x, data = parent.frame(), estimator = "gaussian", cont
   else if (!is.null(opt$gradient) && mean(opt$gradient)^2 >
            0.001)
     warning("Lack of convergence. Increase number of iteration or change starting values.")
-  if (quick) {
+  if (quick>0) {
     return(opt$estimate)
   }
   pp <- rep(NA, length(coefname))

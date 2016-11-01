@@ -3,7 +3,6 @@ path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
 library(testthat)
 library(lava.penalty) # butils:::package.source("lava.penalty", Rcode = TRUE, RorderDescription = FALSE)
 
-
 context("#### Reduce #### \n")
 
 iter.max <- 1
@@ -21,7 +20,7 @@ d <- sim(m,5e2)
 d <- as.data.frame(scale(d))
 
 suppressWarnings(
-  start <- coef(estimate(m, data = d, control = list(iter.max = 0)))
+  start <- coef(estimate.lvm(m, data = d, control = list(iter.max = 0), quick = FALSE))
 )
 
 ## models
@@ -121,13 +120,15 @@ covariance(m) <- y2~y1
 set.seed(10)
 d <- sim(m,5e2)
 d <- as.data.frame(scale(d))
-
+d <- d[,setdiff(names(d),"eta")]
 start <- setNames(rep(0, length(coef(m))), coef(m))
 start[grep("~", names(start))] <- 1
 suppressWarnings(
   startLVM <- coef(estimate(m, data = d, control = list(iter.max = 0)))
 )
 start[names(startLVM)] <- startLVM
+names(start) <- gsub("~~",",",names(start))
+names(startLVM) <- gsub("~~",",",names(startLVM))
 
 ## models
 m.red <- reduce(m)
@@ -143,7 +144,6 @@ index <- match(coef(m.red),coef(m))
 
 ## tests moment
 test_that("LVM: moment reduce", {
-  
  
   g1 <- gaussian1LP_gradient.lvm(m.red, p = start[index], data = d, indiv = FALSE)
   g2 <- lava:::gaussian1_gradient.lvm(x = e$model, data=d, p=startLVM, S = e$S, n = e$data$n, mu = e$mu)
@@ -158,14 +158,18 @@ test_that("LVM: lvm vs lvm.reduce", {
   
   method <- lava:::gaussian_method.lvm
   suppressWarnings(
-    LVM1 <- estimate(m, data = d,  control = list(iter.max = iter.max, start = startLVM, method = method), estimator = "gaussian1")
+    LVM1 <- estimate(m, data = d,  
+                     control = list(iter.max = iter.max, start = start, method = method), quick = FALSE, 
+                     estimator = "gaussian1")
   )
   suppressWarnings(
-    LVM1.red <- estimate(m.red, data = d, control = list(iter.max = iter.max, start = start[index], method = method), estimator = "gaussian1")
+    LVM1.red <- estimate(m.red, data = d, 
+                         control = list(iter.max = iter.max, start = start[index], method = method, trace = 2), quick = TRUE, 
+                         estimator = "gaussian1")
   )
   
-  expect_equal(coef(LVM1)[intersect(names(coef(LVM1)),names(coef(LVM1.red)))],
-               coef(LVM1.red)[intersect(names(coef(LVM1)),names(coef(LVM1.red)))])
+  expect_equal(LVM1[intersect(names(LVM1),names(LVM1.red))],
+               LVM1.red[intersect(names(LVM1),names(LVM1.red))])
   
   method <- lava:::gaussian2_method.lvm
   suppressWarnings( 
