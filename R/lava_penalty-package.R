@@ -2,6 +2,7 @@
 #' @title lava.penalty: Regularization tools for latent variables models
 #' @name lava.penalty
 #' @import lava
+#' @import lava.reduce
 #' @import data.table
 #' @import snowfall
 #' @import ggplot2

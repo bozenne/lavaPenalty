@@ -1,5 +1,3 @@
-path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
-
 library(testthat)
 library(lava.penalty) # butils:::package.source("lava.penalty", Rcode = TRUE, RorderDescription = FALSE)
 

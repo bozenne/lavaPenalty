@@ -1,8 +1,6 @@
 '.onLoad' <- function(lib, pkg="lava.penalty") {
   
-  lava::addhook("lava.reduced.estimate.hook", hook = "estimate.hooks")
   lava::addhook("lava.penalty.estimate.hook", hook = "estimate.hooks")
-  lava::addhook("lava.reduced.post.hook", hook = "post.hooks")
   lava::addhook("lava.penalty.post.hook", hook = "post.hooks")
   
   lava::lava.options(proxGrad = list(method = "ISTA", iter.max = 1000, step = 1, BT.n = 100, BT.eta = 0.8, abs.tol = 1e-9, rel.tol = 1e-10, force.descent = FALSE, export.iter = FALSE),

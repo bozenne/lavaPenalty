@@ -1,6 +1,14 @@
 #### intialisation ####
 
-#' @title Initialize lasso, ridge, group lasso penalty
+#' @title Initialize penalty terms
+#' @name initPenalty
+#' @description Initialise lasso, ridge, group lasso, and nuclear norm penalties
+#' 
+#' @details 
+#' initPenaltyL12 contains the specification of the lasso, ridge, group lasso penalties
+#' initPenaltNuclear contains the specification of the nuclear norm penalty
+
+#' @rdname initPenalty
 initPenaltyL12 <- function(){
   
   penalty <- list(group = NULL,
@@ -17,7 +25,7 @@ initPenaltyL12 <- function(){
   
 }
 
-#' @title Initialize nuclear norm penalty
+#' @rdname initPenalty
 initPenaltNuclear <- function(){
   
   penaltyNuclear <- list(link = NULL,
@@ -32,15 +40,26 @@ initPenaltNuclear <- function(){
   
 }
 
-#' @title Add penalty to a latent variable model
+#### convertion ####
+
+#' @title Conversion to a penalized latent variable model
+#' 
+#' @param x \code{lvm}-object
+#' 
 lvm2plvm <- function(x){
   
-  x$penalty <- initPenaltyL12()
-  x$penaltyNuclear <- initPenaltNuclear()
-  class(x) <- append("plvm", class(x))
-  return(x)
+  if("plvm" %in% class(x) == FALSE){
+    x$penalty <- initPenaltyL12()
+    x$penaltyNuclear <- initPenaltNuclear()
+    class(x) <- append("plvm", class(x))
+  }else{
+    warning("x is already a penalized latent variable model \n")
+  }
   
+  return(x)
 }
+
+#### user interface (specification) ####
 
 #' @title Penalize a latent variable model
 #' @description Add a penalty term to a latent variable model
@@ -127,7 +146,7 @@ lvm2plvm <- function(x){
     x <- lvm2plvm(x)
   }
   
-   #### find coefficients from value
+  #### find coefficients from value
   if(!is.null(value)){
     
     if("formula" %in% class(value)){
@@ -277,25 +296,14 @@ lvm2plvm <- function(x){
   return(x)
 }
 
-#' @export
-`penalizeNuclear.plvm` <- `penalizeNuclear.lvm`
-
-#' @export
-`penalizeNuclear<-.lvm` <- function(x, ..., value){
-  
-  ## convert to plvm
-  x <- lvm2plvm(x)
-  
-  ## main
-  penalizeNuclear(x, ...) <- value
-  
-  ## export
-  return(x)
-}
-
 #' @name penalize
 #' @export
 `penalizeNuclear<-.plvm` <- function(x, coords, lambdaN = NULL, ..., value){
+  
+  ## convert to plvm
+  if("plvm" %in% class(x) == FALSE){
+    x <- lvm2plvm(x)
+  }
   
   ## lambda
   if(!is.null(lambdaN)){
@@ -342,10 +350,12 @@ lvm2plvm <- function(x){
   
   #### update object
   x <- regression(x, from = name.X, to = name.Y, reduce = paste0("Image_",LCSseq(name.X),"_")) 
-
+  
   #### export
   return(x)
 }
+
+#### internal (remove) ####
 
 #' @title Remove penalty from a penalized latent variable model
 #' @name cancelPenalty
