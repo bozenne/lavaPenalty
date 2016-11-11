@@ -17,17 +17,20 @@
 \item{output}{return the names of the variables to link ("names") or their position ("index")}
 }
 \examples{
+\dontrun{
+findNewLink <- lava.penalty:::findNewLink
+
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u
-lava.penalty:::findNewLink(m, rm.endo = FALSE)
-lava.penalty:::findNewLink(m, rm.endo = TRUE)
+findNewLink(m, rm.endo = FALSE)
+findNewLink(m, rm.endo = TRUE)
 
 regression(m) <- u~x1+x2
 latent(m) <- ~u
 
-lava.penalty:::findNewLink(m, rm.endo = FALSE)
-lava.penalty:::findNewLink(m, rm.endo = TRUE)
-lava.penalty:::findNewLink(m, rm.endo = TRUE, output = "index")
-
+findNewLink(m, rm.endo = FALSE)
+findNewLink(m, rm.endo = TRUE)
+findNewLink(m, rm.endo = TRUE, output = "index")
+}
 }
 

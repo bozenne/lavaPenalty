@@ -10,7 +10,7 @@ init.proxOperator(lambda1, lambda2, group.coef, lambdaN, nrow, ncol,
 \arguments{
 \item{lambda1}{penalization parameter for the (group) lasso penalty}
 
-\item{lambda2}{penalization parameter for the ridge penalty}
+\item{lambda2}{ridge penalization parameter}
 
 \item{group.coef}{group of coefficients where a common lasso penalty should be applied}
 

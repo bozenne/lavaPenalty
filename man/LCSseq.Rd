@@ -13,7 +13,9 @@ LCSseq(x)
 get the common substring sequence among a vector of strings
 }
 \examples{
-lava.penalty:::LCSseq(list("ad","a","ad"))
-
+\dontrun{
+LCSseq <- lava.penalty:::LCSseq
+LCSseq(list("ad","a","ad"))
+}
 }
 

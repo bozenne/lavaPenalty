@@ -4,12 +4,14 @@
 \alias{coefCov.lvm}
 \title{Extract the name or the position of the covariance coefficients}
 \usage{
-\method{coefCov}{lvm}(x, value = FALSE)
+\method{coefCov}{lvm}(x, value = FALSE, keep.var = TRUE)
 }
 \arguments{
 \item{x}{a lvm model}
 
 \item{value}{should the name of the coefficient be returned? Else return the coefficients}
+
+\item{keep.var}{should the variance parameters be output?}
 }
 \examples{
 m <- lvm()
@@ -20,9 +22,16 @@ latent(m) <- ~u
 coefCov(m)
 coefCov(m, value = TRUE)
 
+coefCov(m, keep.var = FALSE)
+coefCov(m, value = TRUE, keep.var = FALSE)
+
 covariance(m) <- y1 ~ y2
 coefCov(m)
 coefCov(m, value = TRUE)
+
+coefCov(m, keep.var = FALSE)
+coefCov(m, value = TRUE, keep.var = FALSE)
+
 
 }
 

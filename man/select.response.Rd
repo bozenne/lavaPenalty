@@ -13,6 +13,8 @@ select.response(formula)
 Return the reponse variable contained in the formula
 }
 \examples{
+\dontrun{
 select.response(Y1~X1+X2)
+}
 }
 

@@ -11,14 +11,14 @@
 #' @rdname initPenalty
 initPenaltyL12 <- function(){
   
-  penalty <- list(group = NULL,
-                  var.coef = NULL,
-                  lambda1 = 0, 
+  penalty <- list(lambda1 = 0, 
                   lambda2 = 0,
                   adaptive = FALSE,
                   proxOperator = NULL,
                   objectivePenalty = NULL,
-                  V = NULL)
+                  Vlasso = NULL,
+                  Vridge = NULL,
+                  Vgroup = NULL)
   
   class(penalty) <- "penaltyL12"
   return(penalty)
@@ -59,7 +59,7 @@ lvm2plvm <- function(x){
   return(x)
 }
 
-#### user interface (specification) ####
+#### specification ####
 
 #' @title Penalize a latent variable model
 #' @description Add a penalty term to a latent variable model
@@ -87,6 +87,8 @@ lvm2plvm <- function(x){
 #' penaltyNuclear functions can be used to add a nuclear penalty to the model.
 #' 
 #' @examples 
+#' 
+#' #### lasso penalty ####
 #' set.seed(10)
 #' n <- 500
 #' formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:5), collapse = "+")))
@@ -97,23 +99,27 @@ lvm2plvm <- function(x){
 #' 
 #' lvm.model <- lvm(formula.lvm)
 #' plvm.model <- penalize(lvm.model)
-#' 
-#' #### regularization
-#' elvm.L2 <- estimate(plvm.model,  data = df.data, lambda2 = 50)
-#' elvm.L1 <- estimate(plvm.model,  data = df.data, lambda1 = 65)
-#' elvm.L12 <- estimate(plvm.model,  data = df.data, lambda1 = 50, lambda2 = 50)
-#' 
-#' #### path regularization
-#' elvm.FixedPath <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fix.sigma = TRUE,
-#'                            control = list(data = df.data))
-#'                            
-#' elvm.L1Fixedpath <- estimate(plvm.model,  data = df.data, lambda1 = elvm.FixedPath$opt$message[3,"lambda"],
-#'                         fix.sigma = TRUE)                           
-#' coef(L1Fixedpath) - elvm.FixedPath$opt$message[3,-1]
 #'
-#' elvm.FreePath <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, control = list(data = df.data))                                                        
-#' elvm.L1FreePath <- estimate(plvm.model,  data = df.data, lambda1 = elvm.FreePath$opt$message[3,"lambda"])                           
-#' coef(elvm.L1FreePath) - elvm.FreePath$opt$message[3,-1]
+#' #### group penalty ####
+#' m <- lvm(Y1 ~ X1+X2+X3+X4)
+#' categorical(m, labels = c("A","B","C")) <- "X1"
+#' categorical(m, labels = c("A","B","C")) <- "X2"
+#' 
+#' pm <- penalize(m, value = c("Y1~X1","Y1~X3","Y1~X4"))
+#' pm$penalty
+#' pm1 <- penalize(m, value = c("Y1~X1"))
+#' pm1 <- penalize(pm1, value = c("Y1~X2","Y1~X3"))
+#' 
+#'
+#'
+#'m <- lvm(list(Y1 ~ X1+X2+X3+X4+eta, Y2 ~ X1+X2+X3+eta, Y3 ~ eta))
+#'categorical(m, labels = c("A","B","C")) <- "X1"
+#'latent(m) <- ~eta
+#'
+#'penalize(m)
+#'
+
+
 #'
 #' @export
 `penalize` <-
@@ -189,68 +195,39 @@ lvm2plvm <- function(x){
     value <- coef(x)[index.penaltyCoef]
   } 
   
-  #### update the name of the penalized parameters
-  group.oldPenalty <- penalty(x, type = "group")
-  n.oldPenalty <- length(group.oldPenalty)
-  
-  if(add && n.oldPenalty>0){
-    
-    value <- c(penalty(x, type = "link"), value)
-    
-    allGroups <- seq(0.1, 0.9, length.out = n.oldPenalty+length(value))
-    allGroups[which(group.oldPenalty>=1)] <- group.oldPenalty[which(group.oldPenalty>=1)]
-    penalty(x, type = "group") <- allGroups[1:n.oldPenalty]
-    newGroup <-  allGroups[-(1:n.oldPenalty)]
-  }else{
-    allGroups <- seq(0.1, 0.9, length.out = length(value)) 
-    penalty(x, type = "group") <- NULL
-    newGroup <- allGroups
-  }
-  
-  x$penalty$var.coef <- coefVar(x, value = TRUE)
-  
-  #### group penalty
-  if(missing(group) == FALSE){
-    
-    if(length(group) == length(penalty(x, type = "link"))){
-      penalty(x, type = "group") <- group
-    }else{
-      
-      if(length(group)!=1){
-        stop("penalize<-.plvm: can only create one group of penalized variable at a time \n",
-             "length(group): ",length(group),"\n")
-      }
-      
-      group.id <- if(all(penalty(x, type = "group")<1)){1}else{max(penalty(x, type = "group")+1)}
-      
-      if(group %in% lava::vars(x)){
-        newGroup[grep(group, penalty(x, type = "link"))] <- group.id
-      }else{
-        newGroup[] <- group.id
-      }
-      penalty(x, type = "group") <- c(penalty(x, type = "group"),newGroup)
-    }
-  }else{
-    penalty(x, type = "group") <- c(penalty(x, type = "group"),newGroup)
-  }
-  
-  #### V matrix
+  #### update the V matrices
   if(!missing(V)){
     if("Matrix" %in% is(V)){
       stop("V must herit from the class Matrix \n")
     }
     penalty(x, type = "V") <- V
-  }else{ # erase existing settings
-    ls.names <- lapply(value,initVar_link)
+  }else{
+    resInit <- initGroup.lvm(x, links = value, group = group)
     
-    V <- Matrix::Matrix(c(0,1), sparse = TRUE, doDiag = FALSE,  # force to be non symetric
-                        nrow = length(ls.names), ncol = length(ls.names),
-                        dimnames = list(unlist(lapply(ls.names, "[[", 1)),
-                                        unlist(lapply(ls.names, "[[", 2))
-                        ))
-    V[] <- 0
-    Matrix::diag(V) <- 1 
-    penalty(x, type = "V") <- V
+    test.groupPenalty <- !is.null(resInit$Mcat)
+    
+    if(test.groupPenalty){ #### Vgroup
+      Vgroup.old <- penalty(x, type = "Vgroup")
+      
+      if(add && !is.null(Vgroup.old)){
+        
+        newV <- initVcoef.lvm(x, link = colnames(resInit$Mcat), group = resInit$Mcat["group",])
+        newV@x <- newV@x + max(Vgroup.old@x)
+        penalty(x, type = "Vgroup") <- cbind(Vgroup.old,newV)
+        
+      }else{
+        penalty(x, type = "Vgroup") <- initVcoef.lvm(x, link = colnames(resInit$Mcat), group = resInit$Mcat["group",])
+      }
+    }
+    
+    if(NCOL(resInit$M)>0){ #### lasso
+      penalty(x, type = "Vlasso") <- initVcoef.lvm(x, link = colnames(resInit$M), group = rep(1,NCOL(resInit$M)))  
+    }
+    
+    if(NCOL(resInit$M)>0 || NCOL(resInit$Mcat)>0){ #### ridge
+      penalty(x, type = "Vridge") <- initVcoef.lvm(x, link = c(colnames(resInit$M),colnames(resInit$Mcat)), group = rep(1,NCOL(resInit$M)+NCOL(resInit$Mcat)))
+    }
+    
   }
   
   #### penalization parameters
@@ -355,66 +332,104 @@ lvm2plvm <- function(x){
   return(x)
 }
 
-#### internal (remove) ####
 
-#' @title Remove penalty from a penalized latent variable model
-#' @name cancelPenalty
-#' @description Remove one or several penalties from a penalized latent variable model
+#### init ####
+
+#' @title Reshape information for building the V matrices
+#' @description Return matrices containg the endogenous, exogenous and group index corresponding to each penlized link. Take care of categorical variables.
 #' 
-#' @param x \code{plvm}-object
-#' @param link the penalty that should be removed
-#' @param value the penalty that should be removed
-#' @param simplify if the object contain no more penalty should it be converted to a non penalized lvm
+#' @param x a \code{lvm}-object
+#' @param links the name of the penalized links
+#' @param group define the groups of the penalty
 #' 
 #' @examples 
-#' m <- lvm()
-#' m <- regression(m, x=paste0("x",1:10),y="y")
-#' pm <- penalize(m)
+#' ## no category
+#' m <- lvm(Y~X1+X2+X3)
+#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
 #' 
-#' cancelPenalty(pm, link = "y~x5")
-#' cancelPenalty(pm) <- "y~x1"
-#' cancelPenalty(pm) <- y~x1
-#' @export
-`cancelPenalty` <-
-  function(x,...) UseMethod("cancelPenalty")
-
-#' @export
-`cancelPenalty<-` <- function (x, ..., value) {
-  UseMethod("cancelPenalty<-", x)
-}
-
-`cancelPenalty.plvm` <- function(x, simplify = TRUE, link){
-  cancelPenalty(x, simplify) <- link
-  return(x)
-}
-
-`cancelPenalty<-.plvm` <- function(x, simplify = TRUE, value){
+#' ## categories
+#' categorical(m, labels = c("A","B","C")) <- "X1"
+#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' categorical(m, labels = c("A","B","C")) <- "X2"
+#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' 
+#' regression(m) <- Z~X1+X2+X3+eta
+#' latent(m) <- ~eta
+#' initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
+#' 
+#' 
+initGroup.lvm <- function(x, links, group){
+  Mlink <- getIvar.lvm(x, link = links)
   
-  penalty <- penalty(x, type = NULL)
-  cancelPenalty(penalty) <- value
-  x$penalty <- penalty
+  ## classify links according to whether or not they should be group penalized
+  if(!missing(group) && identical(group, FALSE)){
+    group <- NULL
+    link.ordinal <- NULL
+    # no group penalty
+  } else if(!missing(group)){
+    if(identical(group, TRUE)){
+      group <- rep(1, length(links))
+    }
+    link.ordinal <- links[is.na(group)]
+  } else { # take care of categorical variables
+    link.ordinal <- links[Mlink["exogenous", ] %in% names(x$attributes$ordinalparname)]  
+    group <- 1:length(link.ordinal)
+  }
+  link.Nordinal <- setdiff(links, link.ordinal)
   
-  if(simplify && length(penalty(x, type = "link")) == 0){
-    class(x) <- setdiff(class(x), "plvm")
+  Mlink <- rbind(Mlink, group=NA)
+  
+  
+  ## differentiate links and penalty according to the variable type
+  if(length(link.ordinal)>0){
+    Mlink["group",link.ordinal] <- group
+    
+    xCAT <- categorical2dummy(x, sim(x, 1))$x
+    MCATlink <- getIvar.lvm(xCAT, link = setdiff(coef(xCAT), coef(x)))
+    MCATlink <- rbind(MCATlink,
+                      exogenous.NCAT = sapply(MCATlink["exogenous",], renameFactor, ls.levels = x$attributes$labels),
+                      group = NA
+    )
+    
+    for(iterCAT in 1:length(link.ordinal)){
+      iIndex <- intersect(which(MCATlink["endogenous",] %in% Mlink["endogenous",link.ordinal[iterCAT]]),
+                          which(MCATlink["exogenous.NCAT",] %in% Mlink["exogenous",link.ordinal[iterCAT]])
+      )
+      MCATlink["group",iIndex] <- Mlink["group",link.ordinal[iterCAT]]
+    }
+    
+    # remove non penalized categorical variables
+    MCATlink <- MCATlink[,!is.na(MCATlink["group",]),drop = FALSE]
+    Mlink <- Mlink[, link.Nordinal, drop = FALSE]
+  
+  }else{
+    MCATlink <- NULL
   }
   
-  return(x)
-  
+  ## export
+  return(list(M = Mlink,
+              Mcat = MCATlink))
 }
 
-`cancelPenalty<-.penaltyL12` <- function(x, value){
+initVcoef.lvm <- function(x, link, group){
   
-  link <- x$link
-  index.rm <- which(link %in% value)
   
-  x$group <- x$group[-index.rm]
+  #### create matrix
+  x <- categorical2dummy(x, sim(x, 1))$x
+  allCoef <- coef(x)
+  n.allCoef <- length(allCoef)
   
-  x$link <- setdiff(link, value)
-  x$V[value,] <- 0
-  x$V[,value] <- 0
+  V <- Matrix::Matrix(rnorm(allCoef), sparse = TRUE, doDiag = FALSE,  # force to be non-symetric
+                      nrow = n.allCoef, ncol = length(link),
+                      dimnames = list(allCoef,NULL)
+                      )
   
-  return(x)
+  #### fill matrix
+  V[,] <- 0
+  for(iterLink in 1:length(link)){
+    V[link[iterLink],iterLink] <- as.numeric(group[iterLink])
+  }
+  
+  return(V)
 }
-
-# `cancelPenalty<-.penaltyNuclear` TODO!!!!
 

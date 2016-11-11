@@ -86,16 +86,31 @@ penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALS
 }
 
 #' @rdname penaltyExtract
-penalty.lvmfit <- function(x, ...){
-  return(penalty.lvm(x, ...))
+penalty.lvmfit <- function(x, type, ...){
+  
+  type.origin <- type
+  if("lambda1.abs" %in% type){
+  type[type == "lambda1.abs"] <- "lambda1"
+  }
+  if("lambda2.abs" %in% type){
+    type[type == "lambda2.abs"] <- "lambda2"
+  }
+  res <- penalty.lvm(x, ...)
+  
+  if("lambda1.abs" %in% type){
+    browser()
+  }
+  if("lambda2.abs" %in% type){
+    browser()
+  }
+  return(res)
 }
 
 #' @rdname penaltyExtract
 penalty.penaltyL12 <- function(x, type, group = NULL, keep.list = FALSE){
 
-  valideType <- c("link","lambda1","lambda1.abs","lambda2","lambda2.abs",
-                  "adaptive", "proxOperator", "objectivePenalty","V","group")#names(x$penalty)
-
+  valideType <- c("link","lambda1","lambda2",
+                  "adaptive","objectivePenalty","proxOperator","Vlasso","Vridge","Vgroup")
   
   ## extract penalty
   if(is.null(type)){
@@ -212,7 +227,7 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 #' @rdname penaltyUpdate
 `penalty<-.penaltyL12` <- function(x, type = "link", value){
   
-  validTypes <- c("link","lambda1","lambda2","adaptive","objectivePenalty","proxOperator","V","group")
+  validTypes <- c("link","lambda1","lambda2","adaptive","objectivePenalty","proxOperator","Vlasso","Vridge","Vgroup")
   
   if(is.null(type)){
     

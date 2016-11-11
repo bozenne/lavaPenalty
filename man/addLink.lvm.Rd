@@ -22,18 +22,22 @@
 Generic interface to add links to a lvm.
 }
 \examples{
+\dontrun{
+addLink <- lava.penalty:::addLink
+
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u
 regression(m) <- u~x1+x2
 latent(m) <- ~u
+m2 <- m
 
-lava.penalty:::addLink(m, x1 ~ y1)
-lava.penalty:::addLink(m, y1 ~ x1)
-coef(lava.penalty:::addLink(m, y1 ~ y2, covariance = TRUE))
+addLink(m, x1 ~ y1)
+addLink(m, y1 ~ x1)
+coef(addLink(m, y1 ~ y2, covariance = TRUE))
 
-lava.penalty:::addLink(m, "x1", "y1")
-lava.penalty:::addLink(m, "y1", "x1")
-coef(lava.penalty:::addLink(m, "y1", "y2", covariance = TRUE))
-
+addLink(m2, "x1", "y1")
+addLink(m2, "y1", "x1")
+coef(addLink(m, "y1", "y2", covariance = TRUE))
+}
 }
 

@@ -26,10 +26,6 @@ renameFactor <- function(var, ls.levels, data, sep = ""){
 }
 
 
-formula2character <- function(x){
-  
-  return(gsub("[[:blank:]]","",paste(deparse(x), collapse = "+")))
-}
 
 #' @title Common substring sequence
 #' @description get the common substring sequence among a vector of strings
@@ -51,58 +47,4 @@ LCSseq <- function(x){
   return(affixe)
 }
 
-#' @title Response variable of a formula
-#' @description Return the reponse variable contained in the formula
-#' 
-#' @param formula a formula
-#' 
-#' @examples
-#' \dontrun{
-#' select.response(Y1~X1+X2)
-#' }
-select.response <- function(formula){
-  return(
-  setdiff(all.vars(formula),
-          all.vars(delete.response(terms(formula))))
-  )
-}
 
-#' @title Combine formula
-#' @description Combine formula by outcome
-#' 
-#' @param ls.formula a list of formula
-#' @param as.formula should as.formula be applied to each element of the list
-#' 
-#' @examples
-#' \dontrun{#' 
-#' combine.formula(list(Y~X1,Y~X3+X5,Y1~X2))
-#' lava.options(symbol = c("~",","))
-#' combine.formula(list("Y~X1","Y~X3+X5","Y1~X2"))
-#' lava.options(symbol = c("<-","<->"))
-#' combine.formula(list("Y<-X1","Y<-X3+X5","Y1<-X2"))
-#' 
-#' combine.formula(list(Y~X1,Y~X3+X1,Y1~X2))
-#' combine.formula(list(Y~X1,Y~X3+X1,Y1~X2), as.unique = TRUE)
-#' }
-combine.formula <- function(ls.formula, as.formula = TRUE, as.unique = FALSE){
-  
-  if(length(ls.formula)==0){return(NULL)}
-  if(class(ls.formula)=="formula"){ls.formula <- list(ls.formula)}
-  
-  ls.Vars <- lapply(ls.formula, initVar_link)
-  
-  ls.endogeneous <- unlist(lapply(ls.Vars, "[[", 1))
-  ls.X <- lapply(ls.Vars, "[[", 2)
-  endogenous <- unique(ls.endogeneous)
-  n.endogeneous <- length(endogenous)
-  
-  ls.formula2 <- vector(n.endogeneous, mode = "list")
-  for(iterE in 1:n.endogeneous){
-    X <- unlist(ls.X[which(ls.endogeneous==endogenous[iterE])])
-    if(as.unique){X <- unique(X)}
-    txt <- paste(endogenous[iterE],"~",paste(X, collapse = " + "))
-    ls.formula2[[iterE]] <- as.formula(txt)
-  }
-  
-  return(ls.formula2)
-}

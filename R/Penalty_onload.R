@@ -7,6 +7,9 @@
                      EPSODE = list(resolution_lambda1 = c(1e-1,1e-3), nstep_max = min(length(beta)*50,1e4), ode.method = "euler", tol.0 = 1e-8, reversible = FALSE, exportAllPath = FALSE),
                      calcLambda = list(fit = "BIC", warmUp = FALSE), 
                      constrain = TRUE)
+  
+  matrices.lvm <- get("matrices.lvm", envir = asNamespace("lava"), inherits = FALSE)
+  
 }
 
 '.onAttach' <- function(lib, pkg="lava.penalty") {

@@ -2,8 +2,11 @@
 % Please edit documentation in R/Penalty_penalize.R
 \name{lvm2plvm}
 \alias{lvm2plvm}
-\title{Add penalty to a latent variable model}
+\title{Conversion to a penalized latent variable model}
 \usage{
 lvm2plvm(x)
+}
+\arguments{
+\item{x}{\code{lvm}-object}
 }
 

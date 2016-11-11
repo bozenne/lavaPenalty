@@ -25,7 +25,7 @@ EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
 
 \item{V}{matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)}
 
-\item{lambda2}{L2 penalization parameter}
+\item{lambda2}{ridge penalization parameter}
 
 \item{indexPenalty}{position of the penalised coefficients in beta}
 

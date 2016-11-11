@@ -4,7 +4,8 @@
 \alias{rmLink.lvm}
 \title{Remove a new link between two variables in a lvm model}
 \usage{
-\method{rmLink}{lvm}(x, var1, var2, warnings = FALSE, ...)
+\method{rmLink}{lvm}(x, var1, var2, warnings = FALSE, simplify = TRUE,
+  returnAll = FALSE)
 }
 \arguments{
 \item{x}{a lvm model}
@@ -15,28 +16,56 @@
 
 \item{warnings}{should a warning be displayed when the link is not found in the lvm.}
 
-\item{other}{parameters to be passed to cancelPenalty and cancelLP}
+\item{simplify}{should isolated variables be removed from the lvm object?}
+
+\item{returnAll}{[internal use]}
+
+\item{simplify.reduce}{should the class lvm.reduce be removed if the object no longer contains a linear predictor?}
+
+\item{expar}{should the external parameters related to the linear predictor be also removed?}
+
+\item{simplify.penalty}{should the class lvm.reduce be removed if the object no longer contains a penalty term?}
+
+\item{...}{other argument to be passed to rmLink}
 }
 \description{
 Generic interface to remove a link in a lvm.
 }
 \examples{
+\dontrun{
+rmLink <- lava.penalty:::rmLink
+
+#### lvm object ####
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u+x1
 regression(m) <- u~x1+x2
 latent(m) <- ~u
 covariance(m) <- y1 ~ y2+y3
 
-lava.penalty:::rmLink(m, y3 ~ u)
-lava.penalty:::rmLink(m, u ~ x1)
-lava.penalty:::rmLink(m, y1 ~ x1+u)
-lava.penalty:::rmLink(m, u ~ x1+x2)
+rmLink(m, y3 ~ u)
+rmLink(m, u ~ x1)
+rmLink(m, y1 ~ x1+u)
+rmLink(m, u ~ x1+x2)
 
-coef(lava.penalty:::rmLink(m, y1 ~ y2))
-coef(lava.penalty:::rmLink(m, y1 ~ y2+y3))
+setdiff(coef(m),coef(rmLink(m, y1 ~ y2)))
+setdiff(coef(m),coef(rmLink(m, y1 ~ y2+y3)))
 
-# external parameter
-parameter() <- y1 ~ y2
+## external parameter
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u
+regression(m) <- u~x1
+m2 <- m
+parameter(m2) <- "y1 ~ XX"
+
+setdiff(coef(m2),coef(m))
+setdiff(coef(rmLink(m2, "y1 ~ XX")), coef(m))
+
+#### reduce lvm ####
+m <- lvm()
+regression(m) <- c(y1,y2,y3)~u+x1+x2+x3
+pm <- reduce(m)
+rmLink(pm, y1 ~ x1+x2+x3)
+}
 
 
 }

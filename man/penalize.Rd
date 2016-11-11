@@ -3,35 +3,68 @@
 \name{penalize}
 \alias{penalize}
 \alias{penalize.lvm}
-\alias{penalize.plvm}
 \alias{penalize<-}
-\title{Penalty term for LVM}
+\alias{penalize<-.lvm}
+\alias{penalizeNuclear}
+\alias{penalizeNuclear.lvm}
+\alias{penalizeNuclear<-}
+\alias{penalizeNuclear<-.plvm}
+\title{Penalize a latent variable model}
 \usage{
 penalize(x, ...)
+
+penalize(x, ...) <- value
+
+\method{penalize}{lvm}(x, value = NULL, ...)
+
+\method{penalize}{lvm}(x, group, V, add = TRUE, reduce = FALSE, lambda1,
+  lambda2, adaptive, intercept = FALSE, regression = TRUE,
+  variance = FALSE, covariance = FALSE, latent = FALSE) <- value
+
+penalizeNuclear(x, ...)
+
+penalizeNuclear(x, ...) <- value
+
+\method{penalizeNuclear}{lvm}(x, value = NULL, ...)
+
+\method{penalizeNuclear}{plvm}(x, coords, lambdaN = NULL, ...) <- value
 }
 \arguments{
-\item{x}{a lvm model}
+\item{x}{\code{lvm}-object}
 
-\item{intercept}{should the intercept be penalized}
+\item{value}{the name of the link to be penalized}
 
-\item{regression}{should the mean parameters be penalized}
+\item{group}{the groups defining the group lasso penalty}
 
-\item{variance}{should the variance parameters be penalized (not possible now)}
+\item{V}{the matrix defining lasso penalties}
 
-\item{lambda1}{the lasso penalty}
+\item{add}{should value be added to the existing penalty term ? Otherwise it will overwrite it.}
 
-\item{lambda2}{the ridge penalty}
+\item{reduce}{should for each regression the penalised link be aggregated into a linear predictor.}
 
-\item{fn_penalty}{user defined penalty function. Arguments coef, lambda1, lambda2.}
+\item{lambda1}{lasso penalization parameter}
 
-\item{gn_penalty}{first derivative of the user defined penalty function. Arguments coef, lambda1, lambda2.}
+\item{lambda2}{ridge penalization parameter}
 
-\item{hn_penalty, }{second derivative of the user defined penalty user defined penalty function. Arguments coef, lambda1, lambda2.}
+\item{adaptive}{should an adaptive lasso be used?}
 
-\item{value}{}
+\item{intercept}{should all intercept be penalized. Disregarded if value is specified.}
+
+\item{regression}{should all regression parameters be penalized. Disregarded if value is specified.}
+
+\item{variance}{should all covariance links be penalized. Disregarded if value is specified.}
+
+\item{latent}{If FALSE, no link related to the latent variable will be penalized. Disregarded if value is specified.}
+
+\item{lambdaN}{nuclear norm penalization parameter}
 }
-\value{
-none
+\description{
+Add a penalty term to a latent variable model
+}
+\details{
+By default categorical variables are penalised using a group lasso penalty.
+penalize functions can be used to add lasso or/and ridge penalty terms to the model.
+penaltyNuclear functions can be used to add a nuclear penalty to the model.
 }
 \examples{
 set.seed(10)

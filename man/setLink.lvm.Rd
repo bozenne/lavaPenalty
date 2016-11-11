@@ -21,18 +21,21 @@
 Generic interface to set a value to a link in a lvm.
 }
 \examples{
+\dontrun{
+setLink <- lava.penalty:::setLink
+
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u
 regression(m) <- u~x1+x2
 latent(m) <- ~u
 covariance(m) <- y1 ~ y2
 
-m1 <- lava.penalty:::setLink(m, y3 ~ u, value = 1)
+m1 <- setLink(m, y3 ~ u, value = 1)
 estimate(m1, sim(m,1e2))
-# m1 <- lava.penalty:::setLink(m, u ~ y3, value = 1)
+# m1 <- setLink(m, u ~ y3, value = 1)
 
-m2 <- lava.penalty:::setLink(m, y1 ~ y2, value = 0.5)
+m2 <- setLink(m, y1 ~ y2, value = 0.5)
 estimate(m2, sim(m,1e2))
-
+}
 }
 
