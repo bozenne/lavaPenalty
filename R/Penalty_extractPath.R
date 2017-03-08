@@ -1,3 +1,4 @@
+# {{{ getPath
 #' @title Get the regularization path
 #' @name getPath
 #' @aliases getPath getPath.plvmfit
@@ -167,7 +168,9 @@
     return(res[rownames(res) %in% row,,drop = FALSE])
   }
 }
+# }}}
 
+# {{{ setPath
 `setPath<-` <- function (x, ..., value) {
   UseMethod("setPath<-", x)
 }
@@ -192,32 +195,40 @@
   
   return(x)
 }
+# }}}
 
+# {{{ isPath
 `isPath` <- function(x, ...) UseMethod("isPath")
 `isPath.plvmfit` <- function(x) {
   return( class(x$regularizationPath) == "regPath" )
 }
+# }}}
 
+# {{{ getLambda
 `getLambda` <- function(x, ...) UseMethod("getLambda")
 `getLambda.regPath` <- function(x) {
   return(x$lambda)
 }
+# }}}
 
+# {{{ getIncreasing
 `getIncreasing` <- function(x, ...) UseMethod("getIncreasing")
 `getIncreasing.regPath` <- function(x) {
   return(x$increasing)
 }
+# }}}
 
+# {{{ getPerformance
 `getPerformance` <- function(x, ...) UseMethod("getPerformance")
 `getPerformance.regPath` <- function(x) {
   return(x$performance)
 }
+# }}}
 
+# {{{ getOptimum
 `getOptimum` <- function(x, ...) UseMethod("getOptimum")
 `getOptimum.regPath` <- function(x) {
   return(x$optimum)
 }
+# }}}
 
-`coef.regPath` <- function(x) {
-  return(x$penCoef)
-}

@@ -1,9 +1,12 @@
-#' @export
-`coef0` <-
-  function(x,...) UseMethod("coef0")
+# {{{ coef.regPath
+`coef.regPath` <- function(x) {
+  return(x$penCoef)
+}
+# }}}
 
+# {{{ coef0
 #' @title Extract Model Coefficients
-#'
+#' @name coef0
 #' @description Extract the 0 or non 0 coefficients
 #'
 #' @param x a penalized lvm model
@@ -26,6 +29,11 @@
 #' coef0(pm.fit, operator = ">", penalized = TRUE)
 #' 
 #' @export
+`coef0` <-
+  function(x,...) UseMethod("coef0")
+
+#' @rdname coef0
+#' @export
 coef0.plvmfit <- function(x, tol = 0, operator = "<=", penalized = FALSE, value = TRUE){
   
   names.coef <- names(coef(x)) 
@@ -46,4 +54,5 @@ coef0.plvmfit <- function(x, tol = 0, operator = "<=", penalized = FALSE, value 
     return(coefTempo)
   }
 }
+# }}}
 

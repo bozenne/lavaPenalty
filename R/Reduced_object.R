@@ -1,3 +1,4 @@
+# {{{ reduce.plvm
 #' @title Reduce latent variable model
 #' @name reduce
 #' @description Aggregate exogeneous variables into a linear predictor
@@ -25,9 +26,9 @@ reduce.plvm <- function(object, link = NULL, rm.exo = TRUE, ...){
   
   return(object)
 }
+# }}}
 
-
-
+# {{{ cancelLP.lvm.reduced
 #' @title Remove variable from the linear predictor
 #' @description Remove one or several variable from the linear predictor
 #' @name cancelLP
@@ -66,4 +67,4 @@ cancelLP.lvm.reduced  <- function(x, link = NULL, lp = NULL, expar = TRUE, simpl
   
   return(x)
 }
-
+# }}}

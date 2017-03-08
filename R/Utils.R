@@ -1,3 +1,4 @@
+# {{{ renameFactor
 #' @title Link levels and coefficients
 #' @description Find the categorical variable matching the name of the coefficient in lava
 #'
@@ -24,9 +25,9 @@ renameFactor <- function(var, ls.levels, data, sep = ""){
   
   return(allvars[unlist(test)])
 }
+# }}}
 
-
-
+# {{{ LCSseq
 #' @title Common substring sequence
 #' @description get the common substring sequence among a vector of strings
 #' 
@@ -46,5 +47,5 @@ LCSseq <- function(x){
   
   return(affixe)
 }
-
+# }}}
 

@@ -1,6 +1,4 @@
-#### additional ####
-# here S -> \hat{Sigma}
-#      C -> \Omega
+# {{{ gaussian_dlv.lvm
 gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
   
   mp <- modelVar(x, p = p, data = data, ...)
@@ -47,7 +45,7 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     # range(partial_vec.C -numDeriv::jacobian(func = calcC, x = as.double(p)))
   }
   
-  
+    
   #### hessian
   if(2 %in% derivative){
     iCu <- iC %*% t(u)
@@ -104,11 +102,12 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     return(res)
   }
 }
-
+# }}}
 
 
 #### explicit formula ####
 
+# {{{ lvGaussian
 #' @export
 lvGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
@@ -123,7 +122,9 @@ lvGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-as.numeric(lv))
 }
+# }}}
 
+# {{{ scoreGaussian
 #' @export
 scoreGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
@@ -142,7 +143,9 @@ scoreGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-as.numeric(c(gradient_beta,gradient_sigma2)))
 }
+# }}}
 
+# {{{ hessianGaussian
 #' @export
 hessianGaussian <- function(coef, Y, X, constrain, var = NULL){
   
@@ -172,5 +175,4 @@ hessianGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-H)
 }
-
-
+# }}}

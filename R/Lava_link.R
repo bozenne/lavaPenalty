@@ -1,17 +1,6 @@
-`findNewLink` <-
-  function(x,...) UseMethod("findNewLink")
-
-`addLink` <-
-  function(x,...) UseMethod("addLink")
-
-`setLink` <-
-  function(x,...) UseMethod("setLink")
-
-`rmLink` <-
-  function(x,...) UseMethod("rmLink")
-
-
+# {{{ findNewLink
 #' @title Find the new possible links between variables (copied from lava::modelsearch)
+#' @name findNewLink
 #' 
 #' @param x a lvm model
 #' @param rm.latent ignore links between latent variables
@@ -34,11 +23,15 @@
 #' findNewLink(m, rm.endo = TRUE)
 #' findNewLink(m, rm.endo = TRUE, output = "index")
 #' }
+`findNewLink` <-
+  function(x,...) UseMethod("findNewLink")
+
+#' @rdname findNewLink
 findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "names"){
   
   match.arg(output, choices = c("names","index"))
   
-  AP <- with(index(x), A + t(A) + P)
+  AP <- with(lava::index(x), A + t(A) + P)
   
   restricted <- c()
   for (i in seq_len(ncol(AP) - 1)){
@@ -63,12 +56,16 @@ findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "nam
     
     return(names.restricted)
   }else{
-    return(restricted)
+      return(restricted)
   }
   
 }
+# }}}
 
+
+# {{{ addLink
 #' @title Add a new link between two variables in a lvm
+#' @rdname addLink
 #' @description Generic interface to add links to a lvm.
 #' 
 #' @param x a lvm model
@@ -95,6 +92,10 @@ findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "nam
 #' addLink(m2, "y1", "x1")
 #' coef(addLink(m, "y1", "y2", covariance = TRUE))
 #' }
+`addLink` <-
+    function(x,...) UseMethod("addLink")
+
+#' @rdname addLink
 addLink.lvm <- function(x, var1, var2, covariance, allVars = vars(x), warnings = FALSE){
   
   res <- initVar_link(var1, var2, format = "list")
@@ -168,11 +169,16 @@ addLink.lvm <- function(x, var1, var2, covariance, allVars = vars(x), warnings =
   return(x)
 }
 
+#' @rdname addLink
 addLink.lvm.reduced <- function(x, ...){
   return(addLink.lvm(x, allVars = vars(x, lp = FALSE, xlp = TRUE) , ...))
 }
+# }}}
 
-#' @title Affect a given value to a link between two variables in a lvm 
+
+# {{{ setLink
+#' @title Affect a given value to a link between two variables in a lvm
+#' @name setLink
 #' @description Generic interface to set a value to a link in a lvm.
 #' 
 #' @param x a lvm model
@@ -198,6 +204,10 @@ addLink.lvm.reduced <- function(x, ...){
 #' m2 <- setLink(m, y1 ~ y2, value = 0.5)
 #' estimate(m2, sim(m,1e2))
 #' }
+`setLink` <-
+  function(x,...) UseMethod("setLink")
+
+#' @rdname setLink
 setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
   
   res <- initVar_link(var1, var2)
@@ -223,8 +233,12 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
   
   return(x)
 }
+# }}}
 
+
+# {{{ rmLink
 #' @title Remove a new link between two variables in a lvm model
+#' @name rmLink
 #' @description Generic interface to remove a link in a lvm.
 #' 
 #' @param x a lvm model
@@ -274,7 +288,11 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
 #' rmLink(pm, y1 ~ x1+x2+x3)
 #' }
 #' 
-#' 
+#'
+`rmLink` <-
+  function(x,...) UseMethod("rmLink")
+
+#' @rdname rmLink
 rmLink.lvm <- function(x, var1, var2, 
                        warnings = FALSE, simplify = TRUE, returnAll = FALSE){
   
@@ -342,7 +360,7 @@ rmLink.lvm <- function(x, var1, var2,
   }
 }
 
-
+#' @rdname rmLink
 rmLink.lvm.reduced <- function(x, var1, var2, simplify.reduce = TRUE, expar = TRUE, ...){
   
   #### call the method for the other classes
@@ -366,6 +384,7 @@ rmLink.lvm.reduced <- function(x, var1, var2, simplify.reduce = TRUE, expar = TR
   return(x)
 }
 
+#' @rdname rmLink
 rmLink.plvm <- function(x, var1, var2, simplify.penalty = TRUE, ...){
   
   #### call the method for the other classes
@@ -387,5 +406,4 @@ rmLink.plvm <- function(x, var1, var2, simplify.penalty = TRUE, ...){
   
   return(x)
 }
-
-
+# }}}

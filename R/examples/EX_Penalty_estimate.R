@@ -1,5 +1,5 @@
-# library(ggplot2)
-# library(lava)
+# library(butils.base)
+# package.source("lava.penalty", RorderDescription = FALSE)
 library(lava.penalty)
 library(ggplot2)
 
@@ -16,6 +16,8 @@ df.data <- sim(mSim,n)
 
 lvm.model <- lvm(formula.lvm)
 plvm.model <- penalize(lvm.model)
+penalty(plvm.model)
+plvm.model$penalty
 
 #### lasso penalty
 

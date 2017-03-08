@@ -1,3 +1,7 @@
+
+# {{{ penalty
+
+# {{{ doc
 #' @title Extract the penalty from a lvm object
 #' @name penaltyExtract
 #' @description Extract the penalty from a lvm object
@@ -38,13 +42,15 @@
 #' @export
 `penalty` <-
   function(x,...) UseMethod("penalty")
+# }}}
 
+# {{{ penalty.lvm
 #' @rdname penaltyExtract
 penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALSE, add.names = TRUE, ...){
-  
-  if(is.null(x$penalty) && is.null(x$penaltyNuclear)){ ## no penalisation
-    pen <- NULL
-  }else if(nuclear){
+
+  if(nuclear){
+    if(is.null(x$penaltyNuclear)){return(NULL)}
+    
     pen <- penalty(x$penaltyNuclear, type = type, ...)
     
     if(lambdaPerCoef && "lambdaN" %in% type){
@@ -59,8 +65,10 @@ penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALS
     }
     
   }else{
+    if(is.null(x$penalty)){return(NULL)}
+
     pen <- penalty(x$penalty, type = type, ...)
-    
+
     if(lambdaPerCoef && any(c("lambda1","lambda2") %in% type) ){
       name.coef <- coef(x)
       n.coef <- length(name.coef)
@@ -84,7 +92,9 @@ penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALS
   
   return(pen)
 }
+# }}}
 
+# {{{ penalty.lvmfit
 #' @rdname penaltyExtract
 penalty.lvmfit <- function(x, type, ...){
   
@@ -105,61 +115,96 @@ penalty.lvmfit <- function(x, type, ...){
   }
   return(res)
 }
-
+# }}}
+# {{{ penalty.penaltyL12
 #' @rdname penaltyExtract
-penalty.penaltyL12 <- function(x, type, group = NULL, keep.list = FALSE){
+penalty.penaltyL12 <- function(x,
+                               type,                               
+                               group = NULL,
+                               no.elasticNet = FALSE,
+                               no.group = FALSE,
+                               keep.list = FALSE){ # 
 
-  valideType <- c("link","lambda1","lambda2",
-                  "adaptive","objectivePenalty","proxOperator","Vlasso","Vridge","Vgroup")
-  
-  ## extract penalty
-  if(is.null(type)){
-    res <- x
-    type <- names(x)
-  }else if(any(type %in% valideType == FALSE)){
-    stop("type ",paste(type[type %in% valideType == FALSE], collapse = " ")," is not valid \n",
-         "valid types: \"",paste(valideType, collapse = "\" \""),"\" \n")
-  }else{
-    if("link" %in% type){
-      if(is.null(x$V)){return(NULL)}
-      yNames <- x$V@Dimnames[[1]][unique(x$V@i)+1]
-      xNames <- unlist(mapply(rep, x  = x$V@Dimnames[[2]], times = diff(x$V@p)))
-      x$link <- paste(yNames, tapply(xNames, x$V@i, paste, collapse = "+"), sep = lava.options()$symbols[1]) 
+    ## check and initialize arguments    
+    penaltyType <- names(x)#c("lambda1","lambda2","adaptive","objectivePenalty","VelasticNet","Vgroup")  
+    valideType <- c("link", "group", penaltyType)
+    x$link <- NULL ; x$group <- NULL
+    
+    if(is.null(type)){
+        type <- names(x)
+    }else{
+        if(any(type %in% valideType == FALSE)){
+            stop("type ",paste(type[type %in% valideType == FALSE], collapse = " ")," is not valid \n",
+                 "valid types: \"",paste(valideType, collapse = "\" \""),"\" \n")
+        }
     }
+    n.groups <- if(!is.null(x$Vgroup)){ NCOL(x$Vgroup) } else { 0 }
+    if(is.numeric(group) && any(group %in% 1:n.groups == FALSE)){
+        stop("unknown groups ",paste(group[group %in% 1:n.groups == FALSE], collapse = " ")," \n",
+             "valid groups: ",paste(1:n.groups,collaspe = " "),"\n")
+    }
+    
+    ## extract penalty
+    if(no.elasticNet == FALSE){
+        if(is.null(x$VelasticNet)){return(NULL)}
+        if(any(duplicated(x$VelasticNet@i))){
+            warning("multiple coefficients penalized in a single penalty \n",
+                    "vector of penalised coefficients will be extracted regardless their potential interaction with other coefficients \n")
+        }
+        if("link" %in% type){
+            x$link <- x$VelasticNet@Dimnames[[1]][unique(x$VelasticNet@i)+1]
+        }
+        if("group" %in% type){
+            x$group <- rep(NA,length(x$link))
+        }
+    }else{
+        if("link" %in% type){ x$link <- NULL }
+        if("group" %in% type){ x$group <- NULL }
+    }
+
+    ## restrict to group of penalty    
+    if(is.null(group)){
+        if(n.groups == 0){ group <- FALSE } else { group <- 1:n.groups }
+    }
+
+    if(no.group == FALSE && n.groups > 0){
+
+        if(any(group %in% 1:NCOL(x$Vgroup))){
+            if("link" %in% type){
+                x$link <- c(x$link,
+                            x$Vgroup@Dimnames[[1]][x$Vgroup[,group,drop=FALSE]@i+1]
+                            )
+            }
+            if("group" %in% type){
+                x$group <- c(x$group,
+                             unlist(sapply(group, function(g){
+                                 rep(g, times = diff(x$Vgroup@p)[g])
+                             }))
+                             )
+            }
+            if("Vgroup" %in% type){
+                x$Vgroup <- x$Vgroup[,group,drop=FALSE]
+            }
+        }        
+    }
+
+    ## export
     res <- x[type]
-  }
-  
-  ## restrict to group of penalty
-  if(!is.null(group)){
-    
-    indexGroup <- which(floor(x[["group"]]) == group)
-    
-    if("link" %in% type){
-      res[["link"]] <- res[["link"]][indexGroup, drop = FALSE]
+    if(identical(type,penaltyType)){ # keep class
+        class(res) <- class(x)
+    }else if((keep.list == FALSE) && length(type)==1){ # convert to vector
+        res <- res[[1]]
     }
-    if("group" %in% type){
-      res[["group"]] <- res[["group"]][indexGroup, drop = FALSE]
-    }
-    if("V" %in% type){
-      nameGroup <- x[["link"]][indexGroup]
-      res[["V"]] <- res[["V"]][nameGroup, nameGroup, drop = FALSE]
-    }
-    
-  }
-  
-  ## export
-  if((keep.list == FALSE) && length(type)==1){
-    return(res[[1]])
-  }else{
-    return(res)
-  }
-  
-}
 
+    return(res)  
+}
+# }}}
+
+# {{{ penalty.penaltyNuclear
 #' @rdname penaltyExtract
 penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
-  valideType <- c("link","lambdaN","name.Y","name.X","nrow","ncol")
+  valideType <-  names(x)
   
   ## extract penalty
   if(is.null(type)){
@@ -179,7 +224,12 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
     return(res)
   }
 }
+# }}}
 
+# }}}
+
+# {{{ penatly<-
+# {{{ doc
 #' @title Update the penalty term
 #' @name penaltyUpdate
 #' @description Update the penalty term of a lvm.penalty object
@@ -203,7 +253,9 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 #' @export
 `penalty<-` <-
   function(x,...) UseMethod("penalty<-", x)
+# }}}
 
+# {{{ penalty<-.plvm
 #' @rdname penaltyUpdate
 `penalty<-.plvm` <- function(x, nuclear = FALSE, value, ...){
   
@@ -223,11 +275,12 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
   return(x)
 }
-
+# }}}
+# {{{ penalty<-.penaltyL12
 #' @rdname penaltyUpdate
 `penalty<-.penaltyL12` <- function(x, type = "link", value){
   
-  validTypes <- c("link","lambda1","lambda2","adaptive","objectivePenalty","proxOperator","Vlasso","Vridge","Vgroup")
+  validTypes <- names(x)
   
   if(is.null(type)){
     
@@ -254,11 +307,13 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
   return(x)
 }
+# }}}
 
+# {{{ penalty<-.penaltyNuclear
 #' @rdname penaltyUpdate
 `penalty<-.penaltyNuclear` <- function(x, type = "link", value){
   
-  validTypes <- c("link","lambdaN","name.Y","name.X","nrow","ncol")
+  validTypes <- names(x)
   
   if(is.null(type)){
     
@@ -284,4 +339,6 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
   return(x)
 }
+# }}}
 
+# }}}

@@ -1,8 +1,6 @@
-#' @export
-`extendModel` <-
-  function(x,...) UseMethod("extendModel")
-
+# {{{ extendModel
 #' @title Automatic extension of the lvm
+#' @name extendModel
 #' 
 #' @param x a lvm model
 #' @param type should all links be added to the latent variable model ("all") or only thoses relevant according to a score ("modelsearch") or a LR ("modelsearchLR") test. 
@@ -34,6 +32,11 @@
 #' 
 #' coef(extendModel(m, type = "modelsearch", data = df))
 #' coef(extendModel(m, type = "modelsearchLR", data = df))
+#' @export
+`extendModel` <-
+  function(x,...) UseMethod("extendModel")
+
+#' @rdname extendModel
 #' @export
 extendModel.lvm <- function(x, type, covariance = TRUE, 
                             data, alpha = 0.05, method = "holm",
@@ -115,8 +118,12 @@ extendModel.lvm <- function(x, type, covariance = TRUE,
   
 
 }
+# }}}
 
+
+# {{{ modelsearchLR
 #' @title Model searching using a likelihood ratio test
+#' @name modelsearchLR
 #' 
 #' @param x a lvm model
 #' @param na.omit do not export the results for links where the extended model has not converged
@@ -144,9 +151,9 @@ extendModel.lvm <- function(x, type, covariance = TRUE,
 #' modelsearchLR(fit, na.omit = TRUE)
 #' 
 #' @export
-
 `modelsearchLR` <- function(object, ...) UseMethod("modelsearchLR")
 
+#' @rdname modelsearchLR
 modelsearchLR.lvmfit <- function (object, na.omit = FALSE, display.warnings = FALSE, silent = FALSE, ...){
 
   #### newlinks 
@@ -217,3 +224,4 @@ modelsearchLR.lvmfit <- function (object, na.omit = FALSE, display.warnings = FA
   class(output) <- "modelsearch"
   return(output)
 }
+# }}}

@@ -1,3 +1,4 @@
+# {{{ cancelPenalty
 #' @title Remove penalty from a penalized latent variable model
 #' @name cancelPenalty
 #' @description Remove one or several penalties from a penalized latent variable model
@@ -19,16 +20,19 @@
 `cancelPenalty` <-
   function(x,...) UseMethod("cancelPenalty")
 
+#' @rdname cancelPenalty
 #' @export
 `cancelPenalty<-` <- function (x, ..., value) {
   UseMethod("cancelPenalty<-", x)
 }
 
+#' @rdname cancelPenalty
 `cancelPenalty.plvm` <- function(x, simplify = TRUE, link){
   cancelPenalty(x, simplify) <- link
   return(x)
 }
 
+#' @rdname cancelPenalty
 `cancelPenalty<-.plvm` <- function(x, simplify = TRUE, value){
   
   penalty <- penalty(x, type = NULL)
@@ -43,6 +47,7 @@
   
 }
 
+#' @rdname cancelPenalty
 `cancelPenalty<-.penaltyL12` <- function(x, value){
   
   link <- x$link
@@ -56,6 +61,7 @@
   
   return(x)
 }
+# }}}
 
 # `cancelPenalty<-.penaltyNuclear` TODO!!!!
 

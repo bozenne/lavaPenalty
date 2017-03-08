@@ -1,0 +1,132 @@
+%%%% NOTE
+% requires package: 
+%\usepackage{ifthen} % equality test
+%\usepackage{xifthen} % isempty function
+%\usepackage{xargs} % \newcommandx
+
+
+
+
+%  Functions for shortcuts
+\newcommand\defOperator[7]{%
+	\ifthenelse{\isempty{#2}}{
+		\ifthenelse{\isempty{#1}}{#7{#3}#4}{#7{#3}#4 \left#5 #1 \right#6}
+	}{
+	\ifthenelse{\isempty{#1}}{#7{#3}#4_{#2}}{#7{#3}#4_{#1}\left#5 #2 \right#6}
+}
+}
+
+\newcommand\defUOperator[5]{%
+	\ifthenelse{\isempty{#1}}{
+		#5\left#3 #2 \right#4
+	}{
+	\ifthenelse{\isempty{#2}}{\underset{#1}{\operatornamewithlimits{#5}}}{
+		\underset{#1}{\operatornamewithlimits{#5}}\left#3 #2 \right#4}
+}
+}
+
+\newcommand{\defBoldVar}[2]{	
+	\ifthenelse{\equal{#2}{T}}{\boldsymbol{#1}}{\mathbf{#1}}
+}
+
+
+%  Operators
+\newcommandx\dpartiel[4][1=,2=,3=,4=\partial]{
+	\ifthenelse{\isempty{#3}}{
+		\frac{#4 #1}{#4 #2}
+	}{
+	\left.\frac{#4 #1}{#4 #2}\right|_{#3}
+}
+}
+\newcommandx\dTpartiel[3][1=,2=,3=]{\dpartiel[#1][#2][#3][d]}
+
+\newcommandx\ddpartiel[3][1=,2=,3=]{
+	\ifthenelse{\isempty{#3}}{
+		\frac{\partial^{2} #1}{\left( \partial #2\right)^2}
+	}{
+	\frac{\partial^2 #1}{\partial #2\partial #3}
+}
+}
+\newcommandx\stack[1][1=]{
+	\ifthenelse{\isempty{#1}}{
+		vec \,
+	}{
+	vec\left\{ #1 \right\}
+}
+}
+
+
+\newcommandx\Cov[2][1=,2=]{\defOperator{#1}{#2}{C}{ov}{[}{]}{\mathbb}}
+\newcommandx\Esp[2][1=,2=]{\defOperator{#1}{#2}{E}{}{[}{]}{\mathbb}}
+\newcommandx\Prob[2][1=,2=]{\defOperator{#1}{#2}{P}{}{[}{]}{\mathbb}}
+\newcommandx\Qrob[2][1=,2=]{\defOperator{#1}{#2}{Q}{}{[}{]}{\mathbb}}
+\newcommandx\Var[2][1=,2=]{\defOperator{#1}{#2}{V}{ar}{[}{]}{\mathbb}}
+
+\newcommandx\Binom[2][1=,2=]{\defOperator{#1}{#2}{B}{}{(}{)}{\mathcal}}
+\newcommandx\Gaus[2][1=,2=]{\defOperator{#1}{#2}{N}{}{(}{)}{\mathcal}}
+\newcommandx\Wishart[2][1=,2=]{\defOperator{#1}{#2}{W}{ishart}{(}{)}{\mathcal}}
+\newcommandx\Information[2][1=,2=]{\defOperator{#1}{#2}{I}{}{(}{)}{\mathcal}}
+\newcommandx\Score[2][1=,2=]{\defOperator{#1}{#2}{S}{}{(}{)}{\mathcal}}
+
+\newcommandx\Vois[2][1=,2=]{\defOperator{#1}{#2}{V}{}{(}{)}{\mathcal}}
+\newcommandx\Ind[1][1=]{\defOperator{}{#1}{1}{}{(}{)}{\mathds}}
+
+\newcommandx\Max[2][1=,2=]{\defUOperator{#1}{#2}{(}{)}{max}}
+\newcommandx\Min[2][1=,2=]{\defUOperator{#1}{#2}{(}{)}{min}}
+\newcommandx\argMax[2][1=,2=]{\defUOperator{#1}{#2}{(}{)}{argmax}}
+\newcommandx\argMin[2][1=,2=]{\defUOperator{#1}{#2}{(}{)}{argmin}}
+\newcommandx\cvD[2][1=D,2=n \rightarrow \infty]{\xrightarrow[#2]{#1}}
+
+\newcommandx\dnorm[4][1=X,2=,3=\sigma^2,4=]{
+	\ifthenelse{\isempty{#2}}{
+		\ifthenelse{\isempty{#4}}{
+			\frac{1}{\sqrt{ 2 \pi #3 }} \e{-\frac{#1^{2}}{2#3}} 
+		}{
+		\frac{1}{\sqrt{ (2 \pi)^#4 |#3| }} \e{-\frac{\trans{#1}#1}{2#3}} 
+	}
+}{
+\ifthenelse{\isempty{#3}}{
+	\frac{1}{\sqrt{ 2 \pi #3 }} \e{-\frac{\left(#1-#2\right)^{2}}{2#3}}
+}{
+\frac{1}{\sqrt{ (2 \pi)^#4 |#3| }} \e{-\frac{\trans{\left(#1-#2\right)}\left(#1-#2\right)}{2#3}} 
+}
+}
+}
+
+\newcommand\ABold{\defBoldVar{A}{F}}
+\newcommand\BBold{\defBoldVar{B}{F}}
+\newcommand\GBold{\defBoldVar{G}{F}}
+\newcommand\KBold{\defBoldVar{K}{F}}
+\newcommand\PBold{\defBoldVar{P}{F}}
+\newcommand\TBold{\defBoldVar{T}{F}}
+\newcommand\UBold{\defBoldVar{U}{F}}
+\newcommand\sBold{\defBoldVar{s}{F}}
+\newcommand\vBold{\defBoldVar{v}{F}}
+\newcommand\XBold{\defBoldVar{X}{F}}
+\newcommand\yBold{\defBoldVar{y}{F}}
+\newcommand\YBold{\defBoldVar{Y}{F}}
+\newcommand\ZBold{\defBoldVar{Z}{F}}
+\newcommand\alphaBold{\defBoldVar{\alpha}{T}}
+\newcommand\etaBold{\defBoldVar{\eta}{T}}
+\newcommand\GammaBold{\defBoldVar{\Gamma}{T}}
+\newcommand\LambdaBold{\defBoldVar{\Lambda}{T}}
+\newcommand\muBold{\defBoldVar{\mu}{T}}
+\newcommand\nuBold{\defBoldVar{\nu}{T}}
+\newcommand\OmegaBold{\defBoldVar{\Omega}{T}}
+\newcommand\SigmaBold{\defBoldVar{\Sigma}{T}}
+\newcommand\thetaBold{\defBoldVar{\theta}{T}}
+\newcommand\varepsilonBold{\defBoldVar{\varepsilon}{T}}
+\newcommand\xiBold{\defBoldVar{\xi}{T}}
+\newcommand\zetaBold{\defBoldVar{\zeta}{T}}
+\newcommand\reditem[1]{\setbeamercolor{item}{fg=red}\item #1} 
+\newcommand\greenitem[1]{\setbeamercolor{item}{fg=green}\item #1} 
+\newcommand\grayitem[1]{\setbeamercolor{item}{fg=gray}\item #1} 
+
+\newcommand\Real{\mathbb{R}}
+\newcommand\Rational{\mathbb{Q}}
+\newcommand\Natural{\mathbb{N}}
+\newcommand\trans[1]{{#1}^\intercal}%\newcommand\trans[1]{{\vphantom{#1}}^\top{#1}}
+\newcommand\pmax[2]{\underset{#1}{\operatornamewithlimits{max}}\left( #2 \right)}
+\newcommand{\independant}{\mathrel{\text{\scalebox{1.5}{$\perp\mkern-10mu\perp$}}}}
+\newcommand\e[1]{e^{#1}}
+

@@ -1,3 +1,4 @@
+# {{{ calcLambda
 #' @title Estimate the regularization parameter
 #' 
 #' @description Find the optimal regularization parameter according to a fit criterion
@@ -201,3 +202,4 @@ calcLambda <- function(path, model,
   return(path)
   
 }
+# }}}

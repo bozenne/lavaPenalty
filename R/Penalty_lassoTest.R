@@ -1,5 +1,6 @@
+# {{{ lassoTest
 #' @title Significance test for the lasso
-#'
+#' @name lassoTest
 #' @description Significance test while performing variable selection with the lasso
 #' 
 #' @param x a penalized latent variable model contain
@@ -42,7 +43,7 @@
 `lassoTest` <-
   function(x,...) UseMethod("lassoTest")
 
-
+#' @rdname lassoTest
 lassoTest.plvmfit <- function(x, ...){
   
   ## check if is a linear regression
@@ -74,8 +75,10 @@ lassoTest.plvmfit <- function(x, ...){
   
   return(test)
 }
+# }}}
 
 
+# {{{ covTestLasso
 covTestLasso <- function(beta, lambda, Y, X){
   
   n.lambda <- length(lambda)
@@ -112,5 +115,6 @@ covTestLasso <- function(beta, lambda, Y, X){
   Tk$statistic <- ((Tk$covT - Tk$cov0)/sigma^2)
   Tk$p.value <- 1 - pf(Tk$statistic, 2, n - p)
   
-  return(Tk)
+    return(Tk)
 }
+# }}}

@@ -1,3 +1,4 @@
+
 #' @title Proximal operators
 #' @name proximalOperators
 #' @aliases prox proxL1 proxL2 proxE2 proxNuclear
@@ -7,190 +8,46 @@
 #' @param x value of the coefficients
 #' @param step value of the step size. Should be between 0 and the inverse of the Lipschitw constant of grad f
 #' @param lambda value of the penalization parameter
-#' @param test.penalty should the parameter be penalized
 #' @param nrow the number of rows of the matrix of coefficients
 #' @param ncol the number of columns of the matrix of coefficients
 #'
 #' @return the updated vector of coefficients
 
 #' @rdname proximalOperators
-proxL1 <- function(x, step, lambda, test.penalty){
-  if(test.penalty){
+
+# {{{ proxL1: lasso
+proxL1 <- function(x, step, lambda){
     max(0, (abs(x) - lambda * step)) * sign(x)
-  }else{
-    x
-  }
+    # valid result even when lambda is null
 }
+# }}}
 
+# {{{ proxL2: ridge
 #' @rdname proximalOperators
-proxL2 <- function(x, step, lambda, test.penalty){ # should be with a factor 2 (1/(1+2*lambda*step))
-  if(test.penalty){
-    1 / (1 + lambda * step) * x
-  }else{
-    x
-  }
+proxL2 <- function(x, step, lambda){
+    return( 1 / (1 + lambda * step) * x )
+    # valid result even when lambda is null
 }
+# }}}
 
+# {{{ proxE2: group lasso
 #' @rdname proximalOperators
-proxE2 <- function(x, step, lambda){ # adapted from Simon 2013
-  max(0, 1 - sqrt(length(x)) * lambda * step/norm(x, type = "2"))*x
+proxE2 <- function(x, step, lambda){
+    return( max(0, 1 - sqrt(length(x)) * lambda * step/norm(x, type = "2"))*x )
+    # valid result even when lambda is null
+    # compared to the documation there is a factor sqrt(length(x))
+    # to have a fair penalty for groups of variables with different size
 }
+# }}}
 
-
+# {{{  proxNuclear: nuclear norm
 #' @rdname proximalOperators
-proxNuclear <-  function(x, step, lambda, nrow, ncol){
-  
+proxNuclear <-  function(x, step, lambda, nrow, ncol){  
   eigen.Mx <- svd(matrix(x, nrow = nrow, ncol = ncol))
   n.eigen <- min(nrow, ncol)
   b <- mapply(proxL1, x = eigen.Mx$d, step = step, lambda = rep(lambda, n.eigen), test.penalty = rep(1, n.eigen))
-  as.vector(eigen.Mx$u %*% diag(b) %*% t(eigen.Mx$v))
+  return(  as.vector(eigen.Mx$u %*% diag(b) %*% t(eigen.Mx$v)) )
 }
-
-#' @title Initialise a proximal operator
-#' 
-#' @description Generate the proximal operator for the requested penalty
-#' 
-#' @param lambda1 penalization parameter for the (group) lasso penalty
-#' @param lambda2 ridge penalization parameter
-#' @param group.coef group of coefficients where a common lasso penalty should be applied
-#' @param lambdaN penalization parameter for the nuclear norm penalty
-#' @param nrow the number of rows of the matrix of coefficients
-#' @param ncol the number of columns of the matrix of coefficients
-#' @param regularizationPath Will the regularization path be computed? In such a case always include the lasso penalty.
-#' 
-#' @return a list containing the proximal operator and the penalty funtion
-#'
-#' @examples 
-#' lava.penalty:::init.proxOperator(lambda1 = 1, lambda2 = NULL, group.coef = 1:5, lambdaN = NULL, nrow = NA, ncol = NA, regularizationPath = FALSE)
-#' 
-init.proxOperator <- function(lambda1, lambda2, group.coef, 
-                              lambdaN, nrow, ncol, 
-                              regularizationPath){
-  
-  proxOperator <- list()
-  objective <- list()
-  
-  test.N <- !is.null(lambdaN) && lambdaN != 0
-  test.L1 <- (!is.null(lambda1) && any(lambda1 > 0)) || (regularizationPath >= 0)
-  if(test.N){test.L1 <- FALSE;test.L2 <- FALSE}
-  test.L2 <- !is.null(lambda2) && any(lambda2 > 0)
-  
-  #### No penalty
-  if(test.N == FALSE && test.L1 == FALSE &&  test.L2 == FALSE){ 
-    return(list(proxOperator = function(x, ...){x},
-                objectivePenalty = list(function(...){0})))
-  }
-  
-  #### Nuclear norm penalty
-  if(test.N){
-    proxOperator$N <-  function(x, step, test.penaltyN, nrow, ncol, ...){
-      x[test.penaltyN] <- proxNuclear(x = x[test.penaltyN], step = step, lambda = lambdaN, nrow = nrow, ncol = ncol)
-      return(x)
-    }
-    objective$N <- function(x, step, test.penaltyN, nrow, ncol, ...){
-      sum(svd(matrix(x[test.penaltyN], nrow = nrow, ncol = ncol))$d)
-    }
-  }else{
-    objective$N <- function(...){0}
-  }
-  
-  #### Lasso penalty
-  if(test.L1){
-    if(any(group.coef>=1)){ ## group lasso
-      
-      proxOperator$L1 <- function(x, step, lambda1, test.penalty1, expX, ...){
-        
-        levels.penalty <- setdiff(unique(test.penalty1),0)
-        for(iter_group in 1:length(levels.penalty)){
-          index_group <- which(test.penalty1==levels.penalty[iter_group])
-          x[index_group] <- proxE2(x = x[index_group], step = step, lambda = mean(lambda1[index_group])) # normally lambda1 has the same value for each member of the group
-        }
-        return(x)
-      }
-      
-      objective$L1 <- function(x, lambda1, lambda2, test.penalty1, test.penalty2, group.coef, expX){
-        if(!is.null(expX)){x[expX] <- exp(x[expX])}
-        
-        levels.penalty <- setdiff(unique(test.penalty1),0)
-        res <- 0
-        for(iter_group in 1:length(levels.penalty)){
-          index_group <- which(test.penalty1==levels.penalty[iter_group])
-          res <- res +  mean(lambda1[index_group]) * norm(x[index_group], type = "2") # normally lambda1 has the same value  for each member of the group
-        }
-        return(res)
-      }
-      
-    }else{ ## normal lasso
-      proxOperator$L1 <- function(x, step, lambda1, test.penalty1, expX, ...){
-        mapply(proxL1, x = x, step = step, lambda = lambda1, test.penalty = test.penalty1)
-      }
-    }
-    
-    objective$L1 <- function(x, lambda1, test.penalty1, group.coef, expX, ...){
-      if(!is.null(expX)){x[expX] <- exp(x[expX])}
-      sum(lambda1[test.penalty1>0] * abs(x[test.penalty1>0]))
-    }
-  }else{
-    objective$L1 <- function(...){0}
-  }
-  
-  #### Ridge penalization
-  if(test.L2){
-    proxOperator$L2 <- function(x, step, lambda2, test.penalty2, expX, ...){
-      mapply(proxL2, x = x, step = step, lambda = lambda2, test.penalty = test.penalty2)
-    }
-    
-    objective$L2 <- function(x, lambda1, test.penalty2, group.coef, expX, ...){
-      if(!is.null(expX)){x[expX] <- exp(x[expX])}
-      sum(lambda2[test.penalty2>0]/2 *(x[test.penalty2>0])^2)
-    }
-  }else{
-    objective$L2 <- function(...){0}
-  }
-  
-  ls.prox <- list(if(test.N){proxOperator$N},if(test.L1){proxOperator$L1},if(test.L2){proxOperator$L2})
-  ls.prox <- ls.prox[!sapply(ls.prox,is.null)]
-  
-  ls.obj <- list(if(test.N){objective$N},if(test.L1){objective$L1},if(test.L2){objective$L2})
-  ls.obj <- ls.obj[!sapply(ls.obj,is.null)]
-  
-  return(list(proxOperator = do.call(composeOperator, args = ls.prox),
-              objectivePenalty = ls.obj
-  ))
-}
+# }}}
 
 
-#' @title Composition of several proximal operators
-#' 
-#' @param ... proximal operators
-#' 
-#' @return a function
-#'
-#' @examples 
-#' lava.penalty:::composeOperator(proxL1, proxL2)
-#'
-composeOperator <- function (...){ 
-  ls.fct <- lapply(list(...), match.fun)
-  
-  newfct <- function(x, lambda1, lambda2, index.constrain = NULL, type.constrain, expX, ...) {
-    
-    if(length(index.constrain)>0){
-      if(type.constrain){norm <- sum(exp(x[index.constrain]))
-      }else{
-        norm <- sum(x[index.constrain])
-        if(norm < 0){stop("proxGrad: negative variance parameter - set constrain to TRUE in control \n")}
-      }
-      lambda1 <- lambda1/norm
-      lambda2 <- lambda2/norm
-    }
-    
-    for (f in ls.fct) {
-      if(!is.null(expX)){x[expX] <- exp(x[expX])}
-      x <- f(x, lambda1 = lambda1, lambda2 = lambda2, ...)
-      if(!is.null(expX)){x[expX] <- log(x[expX])}
-    }
-    return(x)
-  }
-  
-  return(newfct)
-}

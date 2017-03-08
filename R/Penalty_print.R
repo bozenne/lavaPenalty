@@ -1,3 +1,71 @@
+
+# {{{ print.penaltyL12
+`print.penaltyL12` <- function(x, ...){
+
+    lambda1 <- penalty(x, type = "lambda1")
+    lambda1.mean <- mean(lambda1[lambda1>0])
+    
+    lambda2 <- penalty(x, type = "lambda2")
+    lambda2.mean <- mean(lambda2[lambda2>0])
+    
+    lambdaG <- penalty(x, type = "lambdaG")
+    lambdaG.mean <- mean(lambdaG[lambdaG>0])
+    
+    ## elastic net penalty
+    penalty.elasticNet <- penalty(x, type = "link", no.group = TRUE)
+
+    if(length(penalty.elasticNet)>0){
+        if(!is.na(lambda1.mean) && !is.na(lambda2.mean)){
+            display.elasticNet <- paste0("elastic net (lambda1 = ",lambda1.mean," lambda2 = ",lambda2.mean,")")
+        }else if(!is.na(lambda1.mean)){
+            display.elasticNet <- paste0("lasso (lambda1 = ",lambda1.mean,")")
+        }else if(!is.na(lambda2.mean)){
+            display.elasticNet <- paste0("ridge (lambda2 = ",lambda2.mean,")")
+        }else{
+            display.elasticNet <- paste0("not specified")
+        }        
+        cat("Penalty : ", display.elasticNet,"\n",
+            "Links   : ", paste(penalty.elasticNet, collapse = " "),"\n\n",sep="")
+    }
+
+    ## group penalty
+    if(!is.null(penalty(x, type = "Vgroup"))){ 
+        cat("Penalty : group lasso ",if(!is.na(lambdaG.mean)){paste0("(lambdaG = ",lambdaG.mean,")")},"\n")
+        n.groups <- NCOL(penalty(x, type = "Vgroup"))
+        sapply(1:n.groups, function(g){
+            cat("group ",g,": ",paste(penalty(x, type = "link", no.elasticNet = TRUE, group = g), collapse = " "),"\n",sep="")
+        })
+        cat("\n")
+    }      
+}
+# }}}
+
+# {{{ print.penaltyNuclear
+`print.penaltyNuclear` <- function(x, ...){
+    test.nuclear <- !is.null(penalty(x, type = "link"))
+
+    
+    if(test.nuclear){
+        allNames <- penalty(x, type = "name.reduce")
+        allEndo <- penalty(x, type = "endogeneous")
+        lambdaN <- penalty(x, type = "lambdaN")
+        n.penaltyNuclear <- length(allNames)
+        
+        cat("Penalty: nuclear norm ",if(!is.null(lambdaN)){paste0("(lambdaN = ",mean(lambdaN),")")},"\n",
+            "on     : ", allNames[1]," (endogenous: ",allEndo[1],")\n",sep = "")
+        if(n.penaltyNuclear>1){
+            sapply(1:n.penaltyNuclear, function(p){
+                cat("     : ", allNames[p]," (endogeneous: ",allEndo[p],")\n",sep = "")
+            })
+        }
+    }
+    
+}
+# }}}
+
+# }}}
+
+# {{{ print.plvm
 #' @title Display the content of a plvm object
 #
 #' @param x a plvm object
@@ -5,54 +73,20 @@
 #' @export
 `print.plvm` <- function(x, ...) {
   
-  ## normal display
-  out <- capture.output(lava:::print.lvm(x))
-  # if(!is.null(x$penaltyNuclear$name.Y)){
-  #   browser()
-  #   charY <- paste0(x$penaltyNuclear$name.Y," ~ ")
-  #   indexEq <- grep(charY,out)
-  #   out[indexEq] <- gsub(charY, replacement = paste0(charY,LCSseq(x$penaltyNuclear$name.X),"(image)+"),x = out[indexEq])
-  # }
-  sapply(out, function(o){cat(o,"\n")})
-  
-  ## additional display - lasso
-  if(!is.null(penalty(x, type = "link"))){
-    if(penalty(x, type = "lambda1")>0 && penalty(x, type = "lambda2")>0){
-      penaltyType <- "Elastic net"
-    }else if(penalty(x, type = "lambda1")>0){
-      penaltyType <- "Lasso"
-    }else if(penalty(x, type = "lambda1")>0){
-      penaltyType <- "Ridge"
-    }else{
-      penaltyType <- "None"
-    }
-    
-    if(all(penalty(x, type = "group")<1)){
-      cat("Penalty: ", penaltyType,"\n",
-          "On     : ", paste(penalty(x, type = "link"), collapse = " "),"\n")
-    }else{
-      
-      test.lasso <- (penalty(x, type = "group")<1)
-      if(any(test.lasso==1)){
-        cat("Penalty: ", penaltyType,"\n",
-            "On     : ", paste(penalty(x, type = "link", group = 0), collapse = " "),"\n")
-      }
-      
-      ls.penalty <- tapply(penalty(x, type = "link")[test.lasso!=1], penalty(x, type = "group")[test.lasso!=1],list)
-      cat("Penalty: Grouped lasso \n")
-      lapply(ls.penalty, function(x){cat("On     :",paste(x, collapse = " "),"\n")})
-    }
-    cat("\n")
-  }
-  if(!is.null(x$penaltyNuclear$name.Y)){
-    penaltyType <- "Nuclear norm"
-    cat("Penalty: ", penaltyType,"\n",
-        "on     : ", LCSseq(x$penaltyNuclear$name.X)," (outcome: ",x$penaltyNuclear$name.Y,")\n",sep = "")
-  }
-  ## export
-  invisible(x)
-}
+    ## normal display
+    out <- capture.output(lava:::print.lvm(x))
+    sapply(out, function(o){cat(o,"\n")})
 
+    ## penalty
+    print(x$penalty)
+    print(x$penaltyNuclear)
+    
+    ## export
+    invisible(x)
+}
+# }}}
+
+# {{{ print.plvmfit
 #' @title Display the content of a plvmfit object
 #
 #' @param x a plvmfit object
@@ -66,20 +100,10 @@
     
     Mtempo <- CoefMat(x,labels=labels,level=level,...) 
     ncol.M <- ncol(Mtempo)
-  
-    if(penalty(x, type = "lambda1")>0 || penalty(x, type = "lambda2")>0){
-      Mtempo <- rbind(Mtempo, "Penalization:" = rep("", ncol.M))
-    }
-    if(penalty(x, type = "lambda1")>0){
-      Mtempo <- rbind(Mtempo, "   L1 lambda (abs)" = c(penalty(x, type = "lambda1.abs"), rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L1 lambda" = c(penalty(x, type = "lambda1"), rep("",ncol.M-1)))
-    }
-    if(penalty(x, type = "lambda2")>0){
-      Mtempo <- rbind(Mtempo, "   L2 lambda (abs)" = c(penalty(x, type = "lambda2.abs"), rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L2 lambda" = c(penalty(x, type = "lambda2"), rep("",ncol.M-1)))
-    }
-    
+
     print(Mtempo,quote=FALSE,right=TRUE)
+    print(x$penalty)
+
     minSV <- attr(vcov(x),"minSV")
     if (!is.null(minSV) && minSV<1e-12) {
       warning("Small singular value: ", format(minSV))
@@ -115,5 +139,4 @@
     if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
     
 }
-
-  
+# }}}
