@@ -8,7 +8,7 @@
 \alias{penalizeNuclear}
 \alias{penalizeNuclear.lvm}
 \alias{penalizeNuclear<-}
-\alias{penalizeNuclear<-.plvm}
+\alias{penalizeNuclear<-.lvm}
 \title{Penalize a latent variable model}
 \usage{
 penalize(x, ...)
@@ -18,7 +18,7 @@ penalize(x, ...) <- value
 \method{penalize}{lvm}(x, value = NULL, ...)
 
 \method{penalize}{lvm}(x, group, V, add = TRUE, reduce = FALSE, lambda1,
-  lambda2, adaptive, intercept = FALSE, regression = TRUE,
+  lambda2, lambdaG, lambdaN, adaptive, intercept = FALSE, regression = TRUE,
   variance = FALSE, covariance = FALSE, latent = FALSE) <- value
 
 penalizeNuclear(x, ...)
@@ -27,7 +27,8 @@ penalizeNuclear(x, ...) <- value
 
 \method{penalizeNuclear}{lvm}(x, value = NULL, ...)
 
-\method{penalizeNuclear}{plvm}(x, coords, lambdaN = NULL, ...) <- value
+\method{penalizeNuclear}{lvm}(x, coords = NULL, lambdaN = NULL, ...) <-
+  value
 }
 \arguments{
 \item{x}{\code{lvm}-object}
@@ -46,6 +47,10 @@ penalizeNuclear(x, ...) <- value
 
 \item{lambda2}{ridge penalization parameter}
 
+\item{lambdaG}{group lasso penalization parameter}
+
+\item{lambdaN}{nuclear norm penalization parameter}
+
 \item{adaptive}{should an adaptive lasso be used?}
 
 \item{intercept}{should all intercept be penalized. Disregarded if value is specified.}
@@ -55,8 +60,6 @@ penalizeNuclear(x, ...) <- value
 \item{variance}{should all covariance links be penalized. Disregarded if value is specified.}
 
 \item{latent}{If FALSE, no link related to the latent variable will be penalized. Disregarded if value is specified.}
-
-\item{lambdaN}{nuclear norm penalization parameter}
 }
 \description{
 Add a penalty term to a latent variable model
@@ -67,6 +70,8 @@ penalize functions can be used to add lasso or/and ridge penalty terms to the mo
 penaltyNuclear functions can be used to add a nuclear penalty to the model.
 }
 \examples{
+
+#### lasso penalty ####
 set.seed(10)
 n <- 500
 formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:5), collapse = "+")))
@@ -78,22 +83,23 @@ df.data <- sim(lvm.modelSim,n)
 lvm.model <- lvm(formula.lvm)
 plvm.model <- penalize(lvm.model)
 
-#### regularization
-elvm.L2 <- estimate(plvm.model,  data = df.data, lambda2 = 50)
-elvm.L1 <- estimate(plvm.model,  data = df.data, lambda1 = 65)
-elvm.L12 <- estimate(plvm.model,  data = df.data, lambda1 = 50, lambda2 = 50)
+#### group penalty ####
+m <- lvm(Y1 ~ X1+X2+X3+X4)
+categorical(m, labels = c("A","B","C")) <- "X1"
+categorical(m, labels = c("A","B","C")) <- "X2"
 
-#### path regularization
-elvm.FixedPath <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, fix.sigma = TRUE,
-                           control = list(data = df.data))
-                           
-elvm.L1Fixedpath <- estimate(plvm.model,  data = df.data, lambda1 = elvm.FixedPath$opt$message[3,"lambda"],
-                        fix.sigma = TRUE)                           
-coef(L1Fixedpath) - elvm.FixedPath$opt$message[3,-1]
+pm <- penalize(m, value = c("Y1~X1","Y1~X3","Y1~X4"))
+pm$penalty
+pm1 <- penalize(m, value = c("Y1~X1"))
+pm1 <- penalize(pm1, value = c("Y1~X2","Y1~X3"))
 
-elvm.FreePath <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE, control = list(data = df.data))                                                        
-elvm.L1FreePath <- estimate(plvm.model,  data = df.data, lambda1 = elvm.FreePath$opt$message[3,"lambda"])                           
-coef(elvm.L1FreePath) - elvm.FreePath$opt$message[3,-1]
+
+
+m <- lvm(list(Y1 ~ X1+X2+X3+X4+eta, Y2 ~ X1+X2+X3+eta, Y3 ~ eta))
+categorical(m, labels = c("A","B","C")) <- "X1"
+latent(m) <- ~eta
+
+penalize(m)
 
 }
 

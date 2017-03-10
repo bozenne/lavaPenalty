@@ -134,8 +134,9 @@ calcLambda <- function(path, model,
       
       ls.formula <- lapply(combine.formula(coef0_lambda), formula2character)
       for(iter_link in ls.formula){
-        model2 <- rmLink(model2, iter_link, simplify = TRUE)  
+        model2 <- cancel(model2, iter_link, clean = FALSE)  
       }
+      clean(model2)
     }
     
     #### fit the reduced model

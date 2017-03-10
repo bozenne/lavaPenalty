@@ -1,16 +1,26 @@
 
 # {{{ print.penaltyL12
 `print.penaltyL12` <- function(x, ...){
-
     lambda1 <- penalty(x, type = "lambda1")
-    lambda1.mean <- mean(lambda1[lambda1>0])
-    
+    if(!is.null(lambda1)){
+        lambda1.mean <- mean(lambda1[lambda1>0])
+    }else{
+        lambda1.mean <- NA
+    }
+
     lambda2 <- penalty(x, type = "lambda2")
-    lambda2.mean <- mean(lambda2[lambda2>0])
+    if(!is.null(lambda2)){
+        lambda2.mean <- mean(lambda2[lambda2>0])
+    }else{
+        lambda2.mean <- NA
+    }
     
     lambdaG <- penalty(x, type = "lambdaG")
-    lambdaG.mean <- mean(lambdaG[lambdaG>0])
-    
+    if(!is.null(lambdaG)){
+        lambdaG.mean <- mean(lambdaG[lambdaG>0])
+    }else{
+        lambdaG.mean <- NA
+    }
     ## elastic net penalty
     penalty.elasticNet <- penalty(x, type = "link", no.group = TRUE)
 
@@ -61,8 +71,6 @@
     }
     
 }
-# }}}
-
 # }}}
 
 # {{{ print.plvm

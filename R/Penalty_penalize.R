@@ -161,14 +161,14 @@ lvm2plvm <- function(x){
     x <- lvm2plvm(x)
   }
   
-  #### find coefficients from value
+    #### find coefficients from value
   if(!is.null(value)){
     
     if("formula" %in% class(value)){
-      value <- formula2character(value)
+        value <- unlist(lapply(lava.reduce::initVar_link(value, format = "formula"), formula2character))
     }else if(is.list(value)){
       value <- unlist(lapply(value, function(v){
-        if("formula" %in% class(v)){formula2character(v)}else{v}
+        if("formula" %in% class(v)){unlist(lapply(lava.reduce::initVar_link(v, format = "formula"), formula2character))}else{v}
       }))
     }
     

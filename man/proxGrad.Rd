@@ -4,24 +4,13 @@
 \alias{proxGrad}
 \title{step of a proximal gradient algorithm}
 \usage{
-proxGrad(start, proxOperator, method, hessian, gradient, objective, iter.max,
-  trace, abs.tol = lava.options()$proxGrad$abs.tol,
-  rel.tol = lava.options()$proxGrad$rel.tol,
-  step = lava.options()$proxGrad$step, BT.n = lava.options()$proxGrad$BT.n,
-  BT.eta = lava.options()$proxGrad$BT.eta,
-  force.descent = lava.options()$proxGrad$force.descent,
-  export.iter = lava.options()$proxGrad$export.iter)
+proxGrad(start, proxOperator, hessian, gradient, objective,
+  control = lava.options()$proxGrad)
 }
 \arguments{
 \item{start}{initial values for the parameters}
 
 \item{proxOperator}{proximal operator corresponding to the penalization applied to the log likelihood}
-
-\item{method}{type of iteration
-ISTA correspond to the ISTA step as described in Bech 2009
-FISTA_Beck correspond to the FISTA step as described in Bech 2009
-FISTA_Vand correspond to ??
-mFISTA_Vand correspond to ??}
 
 \item{hessian}{second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL}
 
@@ -29,25 +18,7 @@ mFISTA_Vand correspond to ??}
 
 \item{objective}{likelihood given by lava. Used to adjust the step parameter when using backtracking}
 
-\item{iter.max}{maximum number of iterations}
-
-\item{trace}{should the convergence diagnostics be displayed at each step}
-
-\item{abs.tol}{convergence is the difference in likelihood between two consecutive steps is below this threshold}
-
-\item{rel.tol}{convergence is the relative difference  in likelihood between two consecutive steps is below this threshold}
-
-\item{step}{maximun step for the proximal gradient algorithm. 
-If NULL the step is estimated using the inverse of the maximal eigenvalue of the hessian (in absolute value) and re-estimated at each step
-Otherwise backtracking is used.}
-
-\item{BT.n}{number of backtracking steps}
-
-\item{BT.eta}{multiplicative factor for the step}
-
-\item{force.descent}{}
-
-\item{export.iter}{should all iterations be exported (details.cv)}
+\item{control}{settings for the proximal gradient algorithm. See lava.options.}
 }
 \references{
 Bech and Teboulle - 2009 A Fast Iterative Shrinkage-Thresholding Algorithm

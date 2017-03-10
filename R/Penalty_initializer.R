@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  6 2017 (11:51) 
 ## Version: 
-## last-updated: mar  7 2017 (15:38) 
+## last-updated: mar 10 2017 (15:23) 
 ##           By: Brice Ozenne
-##     Update #: 44
+##     Update #: 49
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -33,10 +33,10 @@
 #' #### elastic net
 #' e <- estimate(m, sim(m, 1e2))
 #' pm <- penalize(m, lambda1 = 2, lambda2 = 1.5)#' 
-#' pen12 <- initializer(pm$penalty, name.coef = names(coef(e)))
+#' pen12 <- initializer.penaltyL12(pm$penalty, name.coef = names(coef(e)))
 #' pen12
 #'
-#' i <- initializer(pm, data = sim(m, 1e2),
+#' i <- initializer.plvm(pm, data = sim(m, 1e2),
 #'                  regularizationPath = FALSE, constrain.variance = FALSE)
 #' 
 #' #### group lasso
@@ -45,11 +45,11 @@
 #'
 #' e <- estimate(m, sim(m, 1e2))
 #' pm <- penalize(m, lambdaG = 5)
-#' pen12 <- initializer(pm$penalty, name.coef = names(coef(e)))
+#' pen12 <- initializer.penaltyL12(pm$penalty, name.coef = names(coef(e)))
 #' pen12
 #' estimate(pm, data = sim(pm, 1e2))
 #'
-#' i <- initializer(pm, data = sim(m, 1e2),
+#' i <- initializer.plvm(pm, data = sim(m, 1e2),
 #'                  regularizationPath = FALSE, constrain.variance = FALSE)
 #' 
 #' # nuclear norm
@@ -58,16 +58,12 @@
 #' m <- regression(m, y = "y1", x = paste0("z",1:100))
 #'
 #' mNuclear <- lvm(y1 ~ x1 + x2)
-#' penalizeNuclear(mNuclear, coords = coords, lambdaN = 10) <- coefReg(m, value = TRUE)
+#' penalizeNuclear.penaltyL12(mNuclear, coords = coords, lambdaN = 10) <- coefReg(m, value = TRUE)
 #' mNuclear
 #'
-#' penN <- initializer(mNuclear$penaltyNuclear, name.coef = coef(mNuclear))
+#' penN <- initializer.plvm(mNuclear$penaltyNuclear, name.coef = coef(mNuclear))
 #' penN
 #' 
-`initializer` <-
-  function(x,...) UseMethod("initializer")
-
-# }}}
 
 # {{{ initializer.plvm
 
@@ -119,7 +115,7 @@ initializer.plvm <- function(x, data, regularizationPath,
     if(!is.null(reg.penalty)){
         ls.formula <- lava.reduce::combine.formula(reg.penalty)
         for(iter_link in ls.formula){
-            x0 <- rmLink(x0, iter_link, simplify = TRUE)
+            x0 <- cancel(x0, iter_link, clean = FALSE)
         }
     }
     # group lasso
@@ -131,7 +127,7 @@ initializer.plvm <- function(x, data, regularizationPath,
         add.reg <- Mcorrespondance[rownames(Mcorrespondance) %in% reg.penalty,][["originalLink"]]
         ls.formula <- lava.reduce::combine.formula(c(reg.penalty, unique(add.reg)))
         for(iter_link in ls.formula){
-            x0 <- rmLink(x0, iter_link, simplify = TRUE)
+            x0 <- cancel(x0, iter_link, clean = FALSE)
         }
     }
     
@@ -141,11 +137,13 @@ initializer.plvm <- function(x, data, regularizationPath,
     if(!is.null(reg.penalty)){
         ls.formula <- lava.reduce::combine.formula(reg.penalty)
         for(iter_link in ls.formula){
-            x0 <- rmLink(x0, iter_link, simplify = TRUE)
+            x0 <- cancel(x0, iter_link, clean = FALSE)
         }
     }
     
     # remove penalised LV [TODO]
+
+    x0 <- clean(x0)
     
     ## estimate the model
     suppressWarnings(

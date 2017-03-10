@@ -9,9 +9,9 @@
 \alias{proximalOperators}
 \title{Proximal operators}
 \usage{
-proxL1(x, step, lambda, test.penalty)
+proxL1(x, step, lambda)
 
-proxL2(x, step, lambda, test.penalty)
+proxL2(x, step, lambda)
 
 proxE2(x, step, lambda)
 
@@ -23,8 +23,6 @@ proxNuclear(x, step, lambda, nrow, ncol)
 \item{step}{value of the step size. Should be between 0 and the inverse of the Lipschitw constant of grad f}
 
 \item{lambda}{value of the penalization parameter}
-
-\item{test.penalty}{should the parameter be penalized}
 
 \item{nrow}{the number of rows of the matrix of coefficients}
 

@@ -6,9 +6,13 @@
 \alias{loadings.lvmfit}
 \title{Extract the summary table for the loadings}
 \usage{
-\method{loadings}{lvmfit}(x, col = NULL)
+loadings(object, ...)
 
-\method{loadings}{lvm.missing}(x, col = NULL)
+\method{loadings}{lvmfit}(x, level = 9, col = c("Estimate", "Std. Error",
+  "Z-value", "P-value"))
+
+\method{loadings}{lvm.missing}(x, level = 9, col = c("Estimate",
+  "Std. Error", "Z-value", "P-value"))
 }
 \arguments{
 \item{x}{a lvm model}

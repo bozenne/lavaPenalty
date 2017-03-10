@@ -14,9 +14,10 @@ penalty(x, ...)
 \method{penalty}{lvm}(x, type = "link", nuclear = FALSE,
   lambdaPerCoef = FALSE, add.names = TRUE, ...)
 
-\method{penalty}{lvmfit}(x, ...)
+\method{penalty}{lvmfit}(x, type, ...)
 
-\method{penalty}{penaltyL12}(x, type, group = NULL, keep.list = FALSE)
+\method{penalty}{penaltyL12}(x, type, group = NULL, no.elasticNet = FALSE,
+  no.group = FALSE, keep.list = FALSE)
 
 \method{penalty}{penaltyNuclear}(x, type, group = NULL, keep.list = FALSE)
 }

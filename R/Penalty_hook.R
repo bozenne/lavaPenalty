@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar  7 2017 (16:28) 
+## last-updated: mar 10 2017 (15:21) 
 ##           By: Brice Ozenne
-##     Update #: 168
+##     Update #: 169
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -63,10 +63,10 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
         #### initialization
         if(is.null(start) || test.regularizationPath){
             if(trace>0){cat("Initialization: ")}
-            res.init <- initializer(x, data = data, regularizationPath = test.regularizationPath,
-                                    constrain.variance = dots$optim$proxGrad$constrain.variance,
-                                    name.variance = dots$optim$proxGrad$name.variance,
-                                    ...)
+            res.init <- initializer.plvm(x, data = data, regularizationPath = test.regularizationPath,
+                                         constrain.variance = dots$optim$proxGrad$constrain.variance,
+                                         name.variance = dots$optim$proxGrad$name.variance,
+                                         ...)
             if(test.regularizationPath){
                 dots$optim$regPath$start.lambda0 <- res.init$lambda0
                 dots$optim$regPath$start.lambdaMax <- res.init$lambdaMax

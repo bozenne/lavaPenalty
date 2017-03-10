@@ -236,174 +236,44 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
 # }}}
 
 
-# {{{ rmLink
-#' @title Remove a new link between two variables in a lvm model
-#' @name rmLink
-#' @description Generic interface to remove a link in a lvm.
+# {{{ cancel.plvm
+#' @title Remove a new link between two variables in a plvm model
+#' @name cancel
+#' @description Generic interface to remove a link in a plvm.
 #' 
 #' @param x a lvm model
-#' @param var1 the first variable (character) or a formula describing the link
-#' @param var2 the second variable (character). Only used if var1 is a character.
-#' @param warnings should a warning be displayed when the link is not found in the lvm.
-#' @param simplify should isolated variables be removed from the lvm object?
-#' @param simplify.reduce should the class lvm.reduce be removed if the object no longer contains a linear predictor?
-#' @param expar should the external parameters related to the linear predictor be also removed?
-#' @param simplify.penalty should the class lvm.reduce be removed if the object no longer contains a penalty term?
-#' @param returnAll [internal use]
-#' @param ... other argument to be passed to rmLink
+#' @param value the names of the links that should be removed
+#' @param clean should the lvm object be simplified using the \code{clean} function
+#' @param ... other argument to be passed to \code{clean}.
 #' 
 #' @examples 
-#' \dontrun{
-#' rmLink <- lava.penalty:::rmLink
 #' 
-#' #### lvm object ####
-#' m <- lvm()
-#' regression(m) <- c(y1,y2,y3)~u+x1
-#' regression(m) <- u~x1+x2
-#' latent(m) <- ~u
-#' covariance(m) <- y1 ~ y2+y3
-#' 
-#' rmLink(m, y3 ~ u)
-#' rmLink(m, u ~ x1)
-#' rmLink(m, y1 ~ x1+u)
-#' rmLink(m, u ~ x1+x2)
-#' 
-#' setdiff(coef(m),coef(rmLink(m, y1 ~ y2)))
-#' setdiff(coef(m),coef(rmLink(m, y1 ~ y2+y3)))
-#' 
-#' ## external parameter
-#' m <- lvm()
-#' regression(m) <- c(y1,y2,y3)~u
-#' regression(m) <- u~x1
-#' m2 <- m
-#' parameter(m2) <- "y1 ~ XX"
-#' 
-#' setdiff(coef(m2),coef(m))
-#' setdiff(coef(rmLink(m2, "y1 ~ XX")), coef(m))
-#' 
-#' #### reduce lvm ####
-#' m <- lvm()
-#' regression(m) <- c(y1,y2,y3)~u+x1+x2+x3
-#' pm <- reduce(m)
-#' rmLink(pm, y1 ~ x1+x2+x3)
-#' }
-#' 
+#' #### penalized lvm ###
+#' m <- lvm(Y ~ X1 + X2 + X3)
+#' pm <- penalize(m)
+#' cancel(pm, Y~X1+X2)
+#' cancel(pm, Y~X1+X2+X3)
 #'
-`rmLink` <-
-  function(x,...) UseMethod("rmLink")
+cancel.plvm <- function(x, value, clean = TRUE, ...){
 
-#' @rdname rmLink
-rmLink.lvm <- function(x, var1, var2, 
-                       warnings = FALSE, simplify = TRUE, returnAll = FALSE){
-  
-  res <- initVar_link(var1, var2)
-  var1 <- res$var1
-  var2 <- res$var2
-  
-  #### remove the link
-  if(length(var2)==0){
-    cancel(x) <- as.formula(paste0("~",var1))
-  }else{
-    
-    x.var <- coefVar(x, value = TRUE)
-    x.cov <- coefCov(x, value = TRUE, keep.var = FALSE)
-    x.coef <- setdiff(coef(x), c(parameter(x),x.var,x.cov))
-    x.ext <- parameter(x)
-    
-    index.coef <- which(gsub(" ","",x.coef) %in% paste(var1, var2, sep = lava.options()$symbol[1]))
-    index.ext <- which(gsub(" ","",x.ext) %in% paste(var1, var2, sep = lava.options()$symbol[1]))
-    index.cov1 <- which(gsub(" ","",x.cov) %in% paste(var1, var2, sep = lava.options()$symbol[2]))
-    index.cov2 <- which(gsub(" ","",x.cov) %in% paste(var2, var1, sep = lava.options()$symbol[2]))
-    
-    if(length(index.coef)>0){
-      f <- gsub(lava.options()$symbol[1],"~",x.coef[index.coef])
-      cancel(x) <- combine.formula(lapply(f, as.formula))[[1]]
-    }
-    if(length(index.ext)>0){
-      parameter(x, remove = TRUE) <- x.ext[index.ext]
-    }
-    if(length(index.cov1)>0||length(index.cov2)>0){
-      f <- gsub(lava.options()$symbol[2],"~",x.cov[c(index.cov1,index.cov2)])
-      cancel(x) <- combine.formula(lapply(f, as.formula))[[1]]
+    ## normalize input
+    value <- initVar_link(value, format = "txt.formula")
+
+    ## remove penalties associated to the link
+    if(any(value %in% penalty(x, type = "link"))){
+        cancelPenalty(x, clean = FALSE) <- value[value %in% penalty(x, type = "link")]
     }
 
-    if(length(c(index.coef,index.ext, index.cov1, index.cov2))!= length(var2) && warnings){
-      index.coef <- which(paste(var1, var2, sep = lava.options()$symbol[1]) %in% gsub(" ","",x.coef))
-      index.ext <- which(paste(var1, var2, sep = lava.options()$symbol[1]) %in% gsub(" ","",x.ext))
-      index.cov1 <- which(paste(var1, var2, sep = lava.options()$symbol[2]) %in% gsub(" ","",x.cov))
-      index.cov2 <- which(paste(var2, var1, sep = lava.options()$symbol[2]) %in% gsub(" ","",x.cov))
-      warning("addLink.lvm: missing links was not found between \"",var1,"\" and \"",paste(var2[c(index.coef, index.ext, index.cov1, index.cov2)], collapse = "\" \""),"\" \n")
+    ## call the method for the other classes
+    x <- callS3methodParent(x, FUN = "cancel", class = "plvm", value = value, clean = FALSE, ...)
+
+     ## clean object
+    if(clean){
+        x <- clean(x, ...)
     }
+
     
-  }
-  
-  #### if unused variable remove it from the model
-  if(simplify && length(var2)>0){
-    var2inModel <- intersect(var2, vars(x)) # exclude X2 corresponding to external parameter
-    
-    useless.var2 <- sapply(var2inModel, function(var){all(c(x$M[var,],x$M[,var])==0)})
-    if(any(useless.var2)){
-      kill(x) <- as.formula(paste0(paste(var2inModel[useless.var2==TRUE],collapse = "+"),"~1"))
-    }
-  }
-  
-  if(returnAll){
-   return(list(x = x,
-               var1 = var1,
-               var2 = var2,
-               index.coef = x.coef[index.coef],
-               index.ext = x.ext[index.ext],
-               index.cov = x.cov[c(index.cov1, index.cov2)]
-               ))
-  }else{
     return(x)
-  }
-}
-
-#' @rdname rmLink
-rmLink.lvm.reduced <- function(x, var1, var2, simplify.reduce = TRUE, expar = TRUE, ...){
-  
-  #### call the method for the other classes
-  x0 <- x
-  class(x0) <- setdiff(class(x0),"lvm.reduced")
-  res <- rmLink(x0, var1 = var1, var2 = var2, ...)
-  browser()
-  class(res$x0) <- class(x)
-  x <- res$x0
-  
-  #### remove the variables from the lp
-  browser()
-  
-  f <- c(paste(var1,var2[index.coef], sep = "~"),
-         paste(var1,var2[index.ext], sep = "~")
-  )
-  if(any(f %in% lp(x, type = "link"))){
-    cancelLP(x, simplify = simplify.reduce, expar = expar) <- f[f %in% lp(x, type = "link")]
-  }
-  
-  return(x)
-}
-
-#' @rdname rmLink
-rmLink.plvm <- function(x, var1, var2, simplify.penalty = TRUE, ...){
-  
-  #### call the method for the other classes
-  x0 <- x
-  class(x0) <- setdiff(class(x0),"plvm")
-  x0 <- rmLink(x0, var1 = var1, var2 = var2, ...)
-  class(x0) <- class(x)
-  x <- x0
-  
-  #### if penalised remove the penalty from the model
-  f <- c(paste(var1,var2[index.coef], sep = "~"),
-         paste(var1,var2[index.ext], sep = "~"),
-         paste(var1,var2[index.cov1], sep = ","),
-         paste(var1,var2[index.cov2], sep = ",")
-  )
-  if(any(f %in% penalty(x, type = "link"))){
-    cancelPenalty(x, simplify = simplify.penalty) <- f[f %in% penalty(x, type = "link")]
-  }
-  
-  return(x)
 }
 # }}}
+

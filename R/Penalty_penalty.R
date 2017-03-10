@@ -46,6 +46,7 @@
 
 # {{{ penalty.lvm
 #' @rdname penaltyExtract
+#' @export
 penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALSE, add.names = TRUE, ...){
 
   if(nuclear){
@@ -96,6 +97,7 @@ penalty.lvm <- function(x,  type = "link", nuclear = FALSE, lambdaPerCoef = FALS
 
 # {{{ penalty.lvmfit
 #' @rdname penaltyExtract
+#' @export
 penalty.lvmfit <- function(x, type, ...){
   
   type.origin <- type
@@ -118,6 +120,7 @@ penalty.lvmfit <- function(x, type, ...){
 # }}}
 # {{{ penalty.penaltyL12
 #' @rdname penaltyExtract
+#' @export
 penalty.penaltyL12 <- function(x,
                                type,                               
                                group = NULL,
@@ -202,6 +205,7 @@ penalty.penaltyL12 <- function(x,
 
 # {{{ penalty.penaltyNuclear
 #' @rdname penaltyExtract
+#' @export
 penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
   valideType <-  names(x)
@@ -257,6 +261,7 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 
 # {{{ penalty<-.plvm
 #' @rdname penaltyUpdate
+#' @export
 `penalty<-.plvm` <- function(x, nuclear = FALSE, value, ...){
   
   if(nuclear){
@@ -276,8 +281,10 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   return(x)
 }
 # }}}
+
 # {{{ penalty<-.penaltyL12
 #' @rdname penaltyUpdate
+#' @export
 `penalty<-.penaltyL12` <- function(x, type = "link", value){
   
   validTypes <- names(x)
@@ -311,6 +318,7 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 
 # {{{ penalty<-.penaltyNuclear
 #' @rdname penaltyUpdate
+#' @export
 `penalty<-.penaltyNuclear` <- function(x, type = "link", value){
   
   validTypes <- names(x)

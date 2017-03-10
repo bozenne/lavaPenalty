@@ -9,8 +9,7 @@
 #' 
 #' @examples 
 #' \dontrun{
-#' renameFactor <- lava.penalty:::renameFactor
-#' renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
+#' lava.penalty:::renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
 #' }
 renameFactor <- function(var, ls.levels, data, sep = ""){
   

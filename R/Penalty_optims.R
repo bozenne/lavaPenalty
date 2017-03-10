@@ -22,8 +22,8 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
     ## update according to the coefficients present in start
     name.coef <- names(start)
     n.coef <- length(name.coef)
-    newPenalty <- initializer(penalty, name.coef = name.coef)
-    newPenaltyNuclear <- initializer(penaltyNuclear, name.coef = name.coef)        
+    newPenalty <- initializer.penaltyL12(penalty, name.coef = name.coef)
+    newPenaltyNuclear <- initializer.penaltyNuclear(penaltyNuclear, name.coef = name.coef)        
     if(!identical(newPenaltyNuclear$lambdaN,0)){
         hessian <- NULL
     }
@@ -232,7 +232,9 @@ optim.Nuisance.plvm <- function(x, data,
     warning("optim.Nuisance: all coefficients are penalized - may lead to incorrect estimation of the nuisance parameter \n")
   }
   
-  for(iter_p in setdiff(1:n.coef,index.keep)){
+    for(iter_p in setdiff(1:n.coef,index.keep)){
+        cat("[TODO] optim.Nuisance.plvm to update \n")
+        browser()
     if(names(fit.coef)[iter_p] %in% coefPenalty && fit.coef[iter_p]==0){
       xConstrain <- rmLink(xConstrain, var1 = names.coef[iter_p], simplify = TRUE)
     }else{

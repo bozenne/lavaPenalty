@@ -2,9 +2,12 @@
 % Please edit documentation in R/Penalty_lassoTest.R
 \name{lassoTest}
 \alias{lassoTest}
+\alias{lassoTest.plvmfit}
 \title{Significance test for the lasso}
 \usage{
 lassoTest(x, ...)
+
+\method{lassoTest}{plvmfit}(x, ...)
 }
 \arguments{
 \item{x}{a penalized latent variable model contain}

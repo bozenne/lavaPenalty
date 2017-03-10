@@ -2,20 +2,24 @@
 % Please edit documentation in R/Lava_modelsearch.R
 \name{modelsearchLR}
 \alias{modelsearchLR}
+\alias{modelsearchLR.lvmfit}
 \title{Model searching using a likelihood ratio test}
 \usage{
 modelsearchLR(object, ...)
+
+\method{modelsearchLR}{lvmfit}(object, na.omit = FALSE,
+  display.warnings = FALSE, silent = FALSE, ...)
 }
 \arguments{
 \item{...}{additional arguments to be passed to the \code{estimate} method.}
-
-\item{x}{a lvm model}
 
 \item{na.omit}{do not export the results for links where the extended model has not converged}
 
 \item{display.warnings}{should the warnings encountered after the fit of an extended model be displayed?}
 
 \item{silent}{should the execution of the modelsearch be traced?}
+
+\item{x}{a lvm model}
 }
 \value{
 an object of class lvmfit

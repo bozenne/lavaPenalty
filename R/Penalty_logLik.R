@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  7 2017 (14:47) 
 ## Version: 
-## last-updated: mar  7 2017 (15:12) 
+## last-updated: mar  9 2017 (09:57) 
 ##           By: Brice Ozenne
-##     Update #: 3
+##     Update #: 6
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -15,10 +15,11 @@
 ## 
 ### Code:
 
-`logLik.plvmfit` <- function(object, ...){    
+`logLik.plvmfit` <- function(object, addPenalty = TRUE, ...){    
     resLogLik <- lava.reduce::callS3methodParent(object,"logLik")
+    if(addPenalty){
     resLogLik[1] <-  resLogLik + object$opt$objectivePenalty(coef(object))
-    
+    }
     attr(resLogLik, "df") <- NA    
     # [TODO] df can be easily computed for the lasso but otherwise ...
     

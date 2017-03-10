@@ -1,3 +1,4 @@
+# {{{ EPSODE
 #' @title Perform the generic Path Algorithm for a LVM
 #' 
 #' 
@@ -246,9 +247,9 @@ EPSODE <- function(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V
                path = df))
 }
 
+# }}}
 
-
-
+# {{{ EPSODE_odeBeta
 EPSODE_odeBeta <- function(t, y, ls.args){
   
   
@@ -413,8 +414,9 @@ EPSODE_odeBeta <- function(t, y, ls.args){
          envir = ls.args$envir)
   return(list(-Puz*normTempo))
 }
+# }}}
 
-
+# {{{ initLambda_EPSODE
 initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty, 
                               constrain, indexNuisance){
 
@@ -437,8 +439,9 @@ initLambda_EPSODE <- function(increasing, gradient, beta, indexPenalty,
   return(list(seq_lambda = seq_lambda,
               stepLambda = stepLambda))
 }
+# }}}
 
-
+# {{{ initSigmaConstrain
 initSigmaConstrain <- function(start, constrain, indexNuisance){
   
   if(constrain){
@@ -455,3 +458,4 @@ initSigmaConstrain <- function(start, constrain, indexNuisance){
               indexAllCoef = indexAllCoef)
   )
 }
+# }}}

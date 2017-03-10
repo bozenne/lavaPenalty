@@ -1,12 +1,76 @@
-path <- file.path(butils::dir.gitHub(),"lava.penalty","tests")
-path.res <- file.path(path, "Results/ElasticNet")
+### test-groupLassoRegression_proxGrad.R --- 
+#----------------------------------------------------------------------
+## author: Brice Ozenne
+## created: mar  7 2017 (15:44) 
+## Version: 
+## last-updated: mar  9 2017 (14:21) 
+##           By: Brice Ozenne
+##     Update #: 31
+#----------------------------------------------------------------------
+## 
+### Commentary: 
+##
+## BEFORE RUNNING THE FILE:
+## library(butils.base) ; package.source("lava.penalty") ;
+## path <- file.path(butils.base::path_gitHub(),"lava.penalty","tests")
+## source(file.path(path,"FCT.R"))
+##
+## CONTENT
+### Change Log:
+#----------------------------------------------------------------------
+## 
+### Code:
 
 library(penalized)
 library(lava.penalty)
 library(testthat)
-source(file.path(path,"FCT.R"))
 
-context("#### Reg-GroupLasso #### \n")
+context("#### Estimate group lasso regression with proximal gradient #### \n")
+
+# {{{ simulation and LVM
+# parametrisation
+set.seed(10)
+n <- 500
+formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:5), collapse = "+")))
+lvm.modelSim <- lvm()
+regression(lvm.modelSim, formula.lvm) <-   as.list( c(rep(0,2),1:3) ) # as.list( c(rep(0,2),0.25,0.5,0.75) ) # 
+distribution(lvm.modelSim, ~Y) <- normal.lvm(sd = 2)
+categorical(lvm.modelSim, K = 2, labels = letters[1:2]) <- ~X1
+categorical(lvm.modelSim, K = 4, labels = letters[1:4]) <- ~X5
+
+# simulation
+df.data <- sim(lvm.modelSim,n)
+df.data[,c("Y","X2","X3","X4")] <- as.data.frame(scale(df.data[,c("Y","X2","X3","X4")]))
+
+# estimation
+lvm.model <- lvm(formula.lvm)
+elvm.model <- estimate(lvm.model, df.data)
+# }}}
+
+# {{{ no penalty
+test_that("NR vs proxGrad with lasso - lambda=0", {
+    plvm.model <- penalize(lvm.model)
+    
+    # likelihood
+    eplvm.0 <- estimate(plvm.model, df.data, lambda1 = 0)
+    expect_equal(object=coef(elvm.model),
+                 expected=coef(eplvm.0),
+                 tolerance=test.tolerance, scale=test.scale)    
+
+    # Least square
+    eplvm.0 <- estimate(plvm.model,
+                        df.data,
+                        lambda1 = 0,
+                        constrain.lambda = TRUE)
+               
+    expect_equal(object=coef(elvm.model),
+                 expected=coef(eplvm.0),
+                 tolerance=test.tolerance,
+                 scale=test.scale)    
+})
+# }}}
+
+
 
 #### data ####
 library(gglasso)
@@ -134,10 +198,5 @@ fit <- grpreg(X,y,group,penalty="grLasso")
 plot(fit)
 }
 
-
-
-
-
-
-
-
+#----------------------------------------------------------------------
+### test-groupLassoRegression_proxGrad.R ends here

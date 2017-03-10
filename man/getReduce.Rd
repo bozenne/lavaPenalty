@@ -5,14 +5,16 @@
 \alias{reduce.plvm}
 \title{Reduce latent variable model}
 \usage{
-\method{reduce}{plvm}(object, link = NULL, rm.exo = TRUE, ...)
+\method{reduce}{plvm}(object, link = NULL, ...)
 }
 \arguments{
-\item{rm.exo}{should the exogeneous variables be remove from the object}
+\item{...}{other arguments to be passed to \code{lava.reduce::reduce.lvm}}
 
 \item{x}{\code{lvm}-object}
 
 \item{endo}{the endogeneous variables for which the related exogeneous variables should be aggregated}
+
+\item{rm.exo}{should the exogeneous variables be remove from the object}
 }
 \description{
 Aggregate exogeneous variables into a linear predictor
