@@ -47,4 +47,39 @@ LCSseq <- function(x){
   return(affixe)
 }
 # }}}
+# {{{ p2j.dgCMatrix
+#' @title Extract the column index from a sparse matrix
+#' @description Extract the column index from a sparse matrix
+#' @name p2j
+#' 
+#' @param x sparse matrix
+#'
+#' @examples 
+#' p2j <- lava.penalty:::p2j
+#' initVcoef.lvm <- lava.penalty:::initVcoef.lvm
+#' 
+#' m <- lvm(Y~X1+X2+X3)
+#' V <- initVcoef.lvm(m, link = coefReg(m), group = 1:length(coefReg(m)))
+#' p2j(V)
+#' p2j(cbind(V,0,V))
+#' p2j(cbind(0,V,0,V))
+#'
+#' V2 <- rbind(1,V)
+#' p2j(V2)
+#' p2j(cbind(0,V2,0,V2))
+#' 
+`p2j` <-
+  function(x,...) UseMethod("p2j")
+
+#' @rdname p2j
+p2j.dgCMatrix <- function(x){
+
+    n.col <- length(x@p)-1
+    nObsPerCol <-  diff(x@p)
+    j <- lapply(1:n.col, function(col){rep(col, nObsPerCol[col])})
+    return(unlist(j))
+    
+}
+
+# }}}
 

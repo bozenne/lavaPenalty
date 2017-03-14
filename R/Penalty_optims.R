@@ -13,21 +13,29 @@
 #' 
 #' @export 
 optim.regLL <- function(start, objective, gradient, hessian, control, ...){
-
+    
     ## only keep the relevant elements in control
     control.proxGrad <- control$proxGrad
     penalty <- control$penalty
     penaltyNuclear <- control$penaltyNuclear
     
-    ## update according to the coefficients present in start
+    # {{{ update penalty according to the coefficients present in start
     name.coef <- names(start)
     n.coef <- length(name.coef)
-    newPenalty <- initializer.penaltyL12(penalty, name.coef = name.coef)
+    newPenalty <- updatePenaltyVariable.penaltyL12(penalty, name.coef = name.coef)
+
+    index.tempo <- setNames(penalty(x, type = "group"), name.groupLasso)
+        index.penaltyG <- tapply(index.tempo,index.tempo, function(x){
+            list(setNames(match(names(x), name.coef), names(x)))
+        })
+    
     newPenaltyNuclear <- initializer.penaltyNuclear(penaltyNuclear, name.coef = name.coef)        
     if(!identical(newPenaltyNuclear$lambdaN,0)){
         hessian <- NULL
     }
-
+    browser()
+    # }}}
+    
     # {{{ Proximal gradient 
     ## generate proximal operator
     resInit <- initializeOperator(lambda1 = newPenalty$lambda1,

@@ -1,49 +1,60 @@
 
 # {{{ print.penaltyL12
 `print.penaltyL12` <- function(x, ...){
-    lambda1 <- penalty(x, type = "lambda1")
-    if(!is.null(lambda1)){
-        lambda1.mean <- mean(lambda1[lambda1>0])
-    }else{
-        lambda1.mean <- NA
-    }
 
-    lambda2 <- penalty(x, type = "lambda2")
-    if(!is.null(lambda2)){
-        lambda2.mean <- mean(lambda2[lambda2>0])
-    }else{
-        lambda2.mean <- NA
-    }
-    
-    lambdaG <- penalty(x, type = "lambdaG")
-    if(!is.null(lambdaG)){
-        lambdaG.mean <- mean(lambdaG[lambdaG>0])
-    }else{
-        lambdaG.mean <- NA
-    }
-    ## elastic net penalty
-    penalty.elasticNet <- penalty(x, type = "link", no.group = TRUE)
-
-    if(length(penalty.elasticNet)>0){
-        if(!is.na(lambda1.mean) && !is.na(lambda2.mean)){
-            display.elasticNet <- paste0("elastic net (lambda1 = ",lambda1.mean," lambda2 = ",lambda2.mean,")")
-        }else if(!is.na(lambda1.mean)){
-            display.elasticNet <- paste0("lasso (lambda1 = ",lambda1.mean,")")
-        }else if(!is.na(lambda2.mean)){
-            display.elasticNet <- paste0("ridge (lambda2 = ",lambda2.mean,")")
+    fctExtract <- function(x, char){
+        lambda <- penalty(x, type = char)[[char]]
+        if(length(lambda)>0){
+            if(length(unique(lambda))==1){
+                lambda <- lambda[1]
+            }else{
+                lambda <- "multiple values"
+            }
         }else{
-            display.elasticNet <- paste0("not specified")
-        }        
-        cat("Penalty : ", display.elasticNet,"\n",
-            "Links   : ", paste(penalty.elasticNet, collapse = " "),"\n\n",sep="")
+            lambda <- "undefined"
+        }
+        return(lambda)
+    }
+
+    lambda1 <- fctExtract(x, "lambda1")
+    lambda2 <- fctExtract(x, "lambda2")
+    lambdaG <- fctExtract(x, "lambdaG")
+
+    ## elastic net penalty
+    x.penalty <- penalty(x)
+
+    if(x.penalty[penalty %in% c("lasso","ridge"),.N]>0){
+        index.lasso <- x.penalty[penalty %in% "lasso",link]
+        index.ridge <- x.penalty[penalty %in% "ridge",link]
+
+        index.elasticNet <- intersect(index.lasso,index.ridge)
+        index.lasso <- setdiff(index.lasso,index.elasticNet)
+        index.ridge <- setdiff(index.ridge,index.elasticNet)
+        
+        if(length(index.elasticNet)>0){
+            cat("Penalty: elastic net (lambda1 = ",lambda1," lambda2 = ",lambda2,") \n",
+                "Links  : ", paste(index.elasticNet, collapse = " "),"\n\n",sep="")
+        }
+        if(length(index.lasso)>0){
+            cat("Penalty: lasso (lambda1 = ",lambda1,") \n",
+                "Links  : ", paste(index.lasso, collapse = " "),"\n\n",sep="")
+        }
+        if(length(index.ridge)>0){
+            cat("Penalty: ridge (lambda2 = ",lambda2,") \n",
+                "Links  : ", paste(index.ridge, collapse = " "),"\n\n",sep="")
+        }                    
     }
 
     ## group penalty
-    if(!is.null(penalty(x, type = "Vgroup"))){ 
-        cat("Penalty : group lasso ",if(!is.na(lambdaG.mean)){paste0("(lambdaG = ",lambdaG.mean,")")},"\n")
-        n.groups <- NCOL(penalty(x, type = "Vgroup"))
-        sapply(1:n.groups, function(g){
-            cat("group ",g,": ",paste(penalty(x, type = "link", no.elasticNet = TRUE, group = g), collapse = " "),"\n",sep="")
+    if(x.penalty[penalty %in% c("group lasso"),.N]>0){
+        index.groupLasso <- x.penalty[penalty %in% "group lasso",link]
+        group.groupLasso <- 
+        all.groups <- x.penalty[penalty %in% "group lasso",unique(group)]
+        
+        cat("Penalty: group lasso (lambdaG = ",lambdaG,")\n",sep="")        
+        sapply(all.groups, function(g){
+            glink <- x.penalty[penalty=="group lasso" & group == g,link]
+            cat("group ",g,": ",paste(glink, collapse = " "),"\n",sep="")
         })
         cat("\n")
     }      
@@ -52,8 +63,7 @@
 
 # {{{ print.penaltyNuclear
 `print.penaltyNuclear` <- function(x, ...){
-    test.nuclear <- !is.null(penalty(x, type = "link"))
-
+    test.nuclear <- !is.null(penalty(x, type = "link")$link)
     
     if(test.nuclear){
         allNames <- penalty(x, type = "name.reduce")

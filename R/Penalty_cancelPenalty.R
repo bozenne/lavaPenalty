@@ -48,17 +48,17 @@
 # }}}
 # {{{ cancelPenalty.plvm
 #' @rdname cancelPenalty
-`cancelPenalty.plvm` <- function(x, simplify = TRUE, link){
-  cancelPenalty(x, simplify) <- link
+`cancelPenalty.plvm` <- function(x, clean = TRUE, value){
+  cancelPenalty(x, clean = clean, ...) <- value
   return(x)
 }
 # }}}
 # {{{ cancelPenalty<-.plvm
 #' @rdname cancelPenalty
 `cancelPenalty<-.plvm` <- function(x, clean = TRUE, ..., value){
-  
-    penalty <- penalty(x, type = NULL)
-    cancelPenalty(penalty, extraParameter = coefExtra(pm, value = TRUE)) <- value
+
+    penalty <- penalty(x, type = "object")
+    cancelPenalty(penalty, extraParameter = coefExtra(x, value = TRUE)) <- value
     x$penalty <- penalty
     if(clean){
         x <- clean(x, ...)
@@ -70,7 +70,9 @@
 # }}}
 # {{{ cancelPenalty<-.penaltyL12
 #' @rdname cancelPenalty
-`cancelPenalty<-.penaltyL12` <- function(x, extraParameter, value){
+`cancelPenalty<-.penaltyL12` <- function(x, extraParameter,
+                                         rm.lasso = TRUE, rm.ridge = TRUE, rm.groupLasso = TRUE,
+                                         value){
 
     ## normalize argument value
     # initVar_links cannot deal with external parameters like x1:0|1 since it is not a formula
@@ -79,42 +81,59 @@
     value.EP <- intersect(value, extraParameter)
     value <- c(value.P, value.EP)
 
-    ##
-    link.elasticNet <- penalty(x, type = "link", no.group = TRUE)
-    if(!is.null(link.elasticNet)){        
-        value.elasticNet <- value[value %in% link.elasticNet]
-    }else{
-        value.elasticNet <- NULL
-    }
-    
-    link.groupLasso <- penalty(x, type = "link", no.elasticNet = TRUE)
-    if(!is.null(link.groupLasso)){
-        value.groupLasso <- value[value %in% link.groupLasso]
-    }else{
-        value.groupLasso <- NULL
-    }
-
-    
-    if(length(value) != length(value.elasticNet)+length(value.groupLasso)){
-        wrongValue <- value[value %in% c(value.elasticNet,value.groupLasso) == FALSE]
+    ## identify all penalties
+    table.penalty <- penalty(x)    
+    if(any(value %in% table.penalty$link == FALSE)){
         stop("Cannot remove an non existing link in object \n",
-             "link: ",paste(wrongValue, collapse = " "),"\n")
+             "link: ",paste(value[value %in% table.penalty$link == FALSE], collapse = " "),"\n")
     }
 
-    if(length(value.elasticNet)>0){        
-        Vtempo <- penalty(x, type = "VelasticNet")
-        Vtempo[rownames(Vtempo) %in% value.elasticNet,] <- 0
-        penalty(x, type = "VelasticNet") <- Vtempo[,Matrix::colSums(abs(Vtempo))!=0, drop = FALSE]
+    if(rm.lasso && table.penalty[link %in% value & penalty == "lasso",.N]>0){
+        link.lasso <- table.penalty[link %in% value & penalty == "lasso",link]
+
+        Vtempo <- penalty(x, type = "Vlasso")$Vlasso
+        Vtempo[rownames(Vtempo) %in% link.lasso,] <- 0
+        indexN0 <- which(Matrix::colSums(abs(Vtempo))!=0)        
+        
+        lambda1 <- penalty(x, type = "lambda1")$lambda1
+
+        penalty(x, type = "Vlasso", add = FALSE) <- Vtempo[,indexN0, drop = FALSE]
+        if(length(lambda1)>0){
+            penalty(x, type = "lambda1", add = FALSE) <- lambda1[indexN0]
+        }
     }
-    
-    if(length(value.groupLasso)>0){
-        Vtempo <- penalty(x, type = "Vgroup")
-        Vtempo[rownames(Vtempo) %in% value.groupLasso,] <- 0
-        penalty(x, type = "Vgroup") <- Vtempo[,Matrix::colSums(abs(Vtempo))!=0, drop = FALSE]
+    if(rm.ridge && table.penalty[link %in% value & penalty == "ridge",.N]>0){
+        link.ridge <- table.penalty[link %in% value & penalty == "ridge",link]
+        
+        Vtempo <- penalty(x, type = "Vridge")$Vridge
+        Vtempo[rownames(Vtempo) %in% link.ridge,] <- 0
+        indexN0 <- which(Matrix::colSums(abs(Vtempo))!=0)
+
+        lambda2 <- penalty(x, type = "lambda2")$lambda2
+        
+        penalty(x, type = "Vridge", add = FALSE) <- Vtempo[,indexN0, drop = FALSE]
+         if(length(lambda2)>0){
+            penalty(x, type = "lambda2", add = FALSE) <- lambda2[indexN0]
+        }
+    }
+    if(rm.groupLasso && table.penalty[link %in% value & penalty == "group lasso",.N]>0){
+        link.group <- table.penalty[link %in% value & penalty == "group lasso",link]
+        
+        Vtempo <- penalty(x, type = "Vgroup")$Vgroup
+        Vtempo[rownames(Vtempo) %in% link.group,] <- 0
+        indexN0 <- which(Matrix::colSums(abs(Vtempo))!=0)
+        
+        lambdaG <- penalty(x, type = "lambdaG")$lambdaG
+
+        penalty(x, type = "Vgroup", add = FALSE) <- Vtempo[,indexN0, drop = FALSE]
+        if(length(lambdaG)>0){
+            penalty(x, type = "lambdaG", add = FALSE) <- lambdaG[indexN0]
+        }
     }
     
   return(x)
 }
+
 # }}}
 
 # {{{ cancelPenalty<-.penaltyNuclear [TODO]

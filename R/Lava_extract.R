@@ -252,31 +252,25 @@ coefVar.lvmfit <- coefVar.lvm
 #' 
 #' @param x a lvm model
 #' @param link the links to be analysed. If NULL, all the coefficients from the lvm model are used instead.
-#'
-#' @param format the type of object to output. Can be \code{"data.frame"} or \code{"matrix"}.
+#' @param format the type of object to output. Can be \code{"data.frame"}, \code{"data.table"}, or \code{"matrix"}.
+#' @param rm.factice should links corresponding to factor variables be removed since they will be transformed in external parameters?
 #' 
-#' @examples 
-#' 
+#' @examples  
 #' m <- lvm(Y~X1+X2)
 #' categorical(m, K =3) <- "X1"
 #' getIvar.lvm(m)
+#' getIvar.lvm(m, "Y~X1")
 #' getIvar.lvm(m, "X1:0|1")
 #' getIvar.lvm(m, c("X1:0|1", "X1:1|2"))
-#' getIvar.lvm(m, "Y~X1")
 #' getIvar.lvm(m, c("Y~X1","Y~X2"))
 #' getIvar.lvm(m, c("Y~X2","Y~X1"))
-#'
-#' d <- sim(m, 1e2)
-#' d$X1 <- factor(d$X1)
-#' m2 <- lava_categorical2dummy(m, data = d)
-#' getIvar.lvm(m2$x)
 #' 
-getIvar.lvm <- function(x, link = NULL, format = "data.frame"){
+getIvar.lvm <- function(x, link = NULL,
+                        data = NULL, format = "data.table", rm.factice = TRUE){
 
-    if(format %in% c("data.frame","matrix") == FALSE){
+    if(format %in% c("data.frame","data.table","matrix") == FALSE){
         stop(paste0(format," is an invalid format. Can only be \"data.frame\" or \"matrix\" \n"))
     }
-
     #### valid links
     if(!is.null(link)){
         if(any(link %in% coef(x) == FALSE)){
@@ -290,60 +284,98 @@ getIvar.lvm <- function(x, link = NULL, format = "data.frame"){
 
     index.cat <- which(link %in% unlist(x$attributes$ordinalparname))
     index.Ncat <- setdiff(1:length(link), index.cat)
-
-  #### deal with continuous variables
+    
+    #### deal with continuous variables
   if(length(index.Ncat)>0){
     link.Ncat <- link[index.Ncat]
-    
+
     name.link <- names(coef(x))[match(link.Ncat,coef(x))]
     A <- APmatrix(x)$A
     colnames.A <- colnames(A)
     rownames.A <- rownames(A)
 
     M.Ncat <- sapply(name.link, function(l){
-      position <- which(A == l, arr.ind = TRUE)
-      return(c(colnames.A[position[2]],rownames.A[position[1]]))
+        position <- which(A == l, arr.ind = TRUE)
+        return(c(colnames.A[position[2]],rownames.A[position[1]]))
     })
-    M.Ncat <- cbind(t(M.Ncat), "continous")
-    
-    rownames(M.Ncat) <- link.Ncat
-    colnames(M.Ncat) <- c("endogenous","exogenous","type")
+    dt.Ncat <- data.table::data.table(link.Ncat,t(M.Ncat), "continuous","",NA, NA)
+    setnames(dt.Ncat, old = names(dt.Ncat),
+             new = c("link", "endogenous","exogenous","type", "level", "originalLink", "externalLink")
+             )
   }else{
-    M.Ncat <- NULL
+      dt.Ncat <- NULL
   }
-  
-  #### deal with categorical variables
-  M.cat <- NULL
-  if(length(index.cat)>0){
-    
-    link.cat <- link[index.cat]
-    exo.link <- sapply(link.cat, function(l){
-      test <- unlist(lapply(x$attributes$ordinalparname, function(vec.coef){l %in% vec.coef}))
-      return(names(x$attributes$ordinalparname)[test])
-    })
-    
-    # remove parameters corresponding to non existing variables (i.e. X1 when only X1B and X1C exists)
-    exo.link <- exo.link[exo.link %in% rownames(x$M)]
-    
-    if(length(exo.link)>0){
-      
-      if(any(rowSums(x$M[exo.link,,drop = FALSE])>1)){
-        stop("Current implementation cannot deal with a categorical variable used for several outcomes \n")
-      }
-      
-      endo.link <- apply(x$M[exo.link,,drop = FALSE], 1, function(row){ names(which(row==1)) })
-      M.cat <- cbind(endo.link, exo.link, "categorical")
-      rownames(M.cat) <- link[index.cat]
-      colnames(M.cat) <- c("endogenous","exogenous","type")
+
+    #### remove links in continuous that corresponds to categorical variables (i.e. X1 when only X1B and X1C exists)
+    # and add the external parameters in the categorical links
+    index.factice <- which(dt.Ncat[["exogenous"]] %in% names(x$attributes$ordinalparname))
+    if(rm.factice && length(index.factice)>0){
+        extraLink.factor <- unlist(x$attributes$ordinalparname[dt.Ncat[index.factice,exogenous]])
+        link <- union(setdiff(link, dt.Ncat[index.factice,link]),
+                      extraLink.factor)
+        return(getIvar.lvm(x, link = link, data =data, format = format, rm.factice = FALSE))
     }
-    
-  }
-  
+
+    #### deal with categorical variables
+    dt.cat <- NULL
+    if(length(index.cat)>0){
+        link.cat <- link[index.cat]
+        if(is.null(data)){data <- sim(x, 1)}
+        xCAT <- lava_categorical2dummy(x, data)$x
+
+        # find exogenous variable
+        exo.link <- sapply(link.cat, function(l){
+            test <- unlist(lapply(x$attributes$ordinalparname, function(vec.coef){l %in% vec.coef}))
+            return(names(x$attributes$ordinalparname)[test])
+        })
+        # find the level of the exogenous variable
+        exo.level <- unlist(tapply(exo.link, exo.link, function(l){
+            labels <- xCAT$attributes$labels[[l[1]]]
+            if(length(labels)>1){
+                return(labels[-1])
+            }else{
+                stop("Categorical variables must have labels. Specify argument \'labels\' when calling categorical. \n")
+            }
+        }))
+
+        # find endogenous variable
+        M.link <- xCAT$M[paste0(exo.link,exo.level),,drop = FALSE]
+        indexLink <- which(M.link==1, arr.ind = TRUE)
+        endo.link <- colnames(M.link)[indexLink[,"col"]]
+        exo.level <- exo.level[indexLink[,"row"]]
+        index.cat <- index.cat[indexLink[,"row"]]
+        original.link <- paste0(endo.link, lava.options()$symbol[1], exo.link)
+        external.link <- link[index.cat]
+        
+        # treat numeric as factor
+        ## if(!is.list(xCAT$attributes$labels)){xCAT$attributes$labels <- list()}
+        ## if(any(unique(exo.link) %in% names(xCAT$attributes$labels) == FALSE)){
+        ##     var2num <- unique(exo.link)[unique(exo.link) %in% names(xCAT$attributes$labels) == FALSE]
+        ##     for(v in var2num){
+        ##          xCAT$attributes$labels[[v]] <- 1:xCAT$attributes$nordinal[[v]]
+        ##     }
+        ## }
+        ## exo.level2 <- unlist(tapply(exo.link, exo.link, function(l){
+        ##     return(xCAT$attributes$labels[[l[1]]][-1])
+        ## }))
+        ## link[index.cat] <- paste0(endo.link, lava.options()$symbol[1], exo.link, exo.level2)
+        link[index.cat] <- paste0(endo.link, lava.options()$symbol[1], exo.link, exo.level)
+
+        # find matching parameter-external parameter        
+        dt.cat <- data.table::data.table(link[index.cat], endo.link, exo.link, "categorical",
+                                         level = exo.level, originalLink = original.link, externalLink = external.link)        
+        setnames(dt.cat, old = names(dt.cat),
+                 new = c("link","endogenous","exogenous","type","level","originalLink", "externalLink")
+                 )
+    }
+
     ## export
-    res <- rbind(M.Ncat, M.cat)
-    if(format=="data.frame"){
+    res <- rbind(dt.Ncat, dt.cat)
+    if(format == "data.frame"){
         res <- as.data.frame(res, stringsAsFactors = FALSE)
-    }    
+    }else if(format == "matrix"){
+        res <- as.matrix(res)
+    }
     return(res)
 }
 # }}}

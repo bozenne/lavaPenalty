@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar 10 2017 (15:21) 
+## last-updated: mar 14 2017 (16:59) 
 ##           By: Brice Ozenne
-##     Update #: 169
+##     Update #: 171
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -55,7 +55,7 @@
 lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
 
     dots <- list(...)
-    if("plvm" %in% class(x) && ("proxGrad" %in% names(dots$optim) || "regPath" %in% names(dots$optim)) ){ # 
+    if("plvm" %in% class(x) && ("proxGrad" %in% names(dots$optim) || "regPath" %in% names(dots$optim)) ){ #
         test.regularizationPath <- !is.null(dots$optim$regPath)
         start <- dots$optim$start
         trace <- dots$optim$trace

@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  6 2017 (11:51) 
 ## Version: 
-## last-updated: mar 10 2017 (15:23) 
+## last-updated: mar 14 2017 (17:39) 
 ##           By: Brice Ozenne
-##     Update #: 49
+##     Update #: 57
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -32,7 +32,7 @@
 #'
 #' #### elastic net
 #' e <- estimate(m, sim(m, 1e2))
-#' pm <- penalize(m, lambda1 = 2, lambda2 = 1.5)#' 
+#' pm <- penalize(m, lambda1 = 2, lambda2 = 1.5)
 #' pen12 <- initializer.penaltyL12(pm$penalty, name.coef = names(coef(e)))
 #' pen12
 #'
@@ -72,8 +72,6 @@ initializer.plvm <- function(x, data, regularizationPath,
                              constrain.variance, name.variance,
                              ...){
 
-    link.penalty <- c(penalty(x, type = "link"),
-                      penalty(x, type = "link", nuclear = TRUE))
     test.regularizationPath <- !is.null(regularizationPath)
     class(x) <- setdiff(class(x),"plvm")
     data <- data[,manifest(x, lp = FALSE, xlp = TRUE), drop = FALSE]
@@ -108,24 +106,12 @@ initializer.plvm <- function(x, data, regularizationPath,
     ## simplify the LVM
     x0 <- x
     
-    ## remove penalized regression links
-    # lasso/ridge
-    reg.penalty <- intersect(coefReg(x, value = TRUE),
-                             penalty(x, type = "link", no.group = TRUE))
-    if(!is.null(reg.penalty)){
-        ls.formula <- lava.reduce::combine.formula(reg.penalty)
-        for(iter_link in ls.formula){
-            x0 <- cancel(x0, iter_link, clean = FALSE)
-        }
-    }
-    # group lasso
-    reg.penalty <- penalty(x, type = "link", no.elasticNet = TRUE)
-    Mcorrespondance <- initGroup.lvm(x, link = coefReg(x, value = TRUE), data = data)$Mcat
-    
-    if(!is.null(reg.penalty)){
-        # in addition to the penalties remove the categorical regression link that factorize the penalties
-        add.reg <- Mcorrespondance[rownames(Mcorrespondance) %in% reg.penalty,][["originalLink"]]
-        ls.formula <- lava.reduce::combine.formula(c(reg.penalty, unique(add.reg)))
+    # remove penalized regression links
+    link.penalty <- unique(penalty(x, nuclear = FALSE)$link)
+    linkReg.penalty <- intersect(coefReg(x, value = TRUE),
+                                 link.penalty)
+    if(!is.null(linkReg.penalty)){
+        ls.formula <- lava.reduce::combine.formula(linkReg.penalty)
         for(iter_link in ls.formula){
             x0 <- cancel(x0, iter_link, clean = FALSE)
         }
@@ -142,8 +128,7 @@ initializer.plvm <- function(x, data, regularizationPath,
     }
     
     # remove penalised LV [TODO]
-
-    x0 <- clean(x0)
+    x0 <- clean(x0, rm.endo = FALSE)
     
     ## estimate the model
     suppressWarnings(
@@ -160,90 +145,6 @@ initializer.plvm <- function(x, data, regularizationPath,
 }
 
 # }}}
-
-# {{{ initializer.penaltyL12
-#' @rdname initializer
-initializer.penaltyL12 <- function(x, name.coef){
-
-    n.coef <- length(name.coef)
-
-    ## check
-    name.allPenalty <- penalty(x, type = "link", no.group = FALSE, no.elasticNet = FALSE)
-    if(any(name.allPenalty %in% name.coef == FALSE)){
-        stop("initPenalty: some penalty will not be applied because the corresponding parameter is used as a reference \n",
-             "non-applied penalty: ",paste(setdiff(name.allPenalty, name.coef), collapse = " "),"\n")
-    }
-
-
-    #### elastic net penalty
-    lambda1 <- setNames(rep(0, n.coef), name.coef)
-    lambda2 <- setNames(rep(0, n.coef), name.coef)
-
-    name.elasticNet <- penalty(x, type = "link", no.group = TRUE, no.elasticNet = FALSE)
-    if(length(name.elasticNet)>0){
-            
-        lambda1[name.elasticNet] <- penalty(x, type = "lambda1")        
-        lambda2[name.elasticNet] <- penalty(x, type = "lambda2")
-
-    }
-
-    #### group lasso penalty
-    lambdaG <- setNames(rep(0, n.coef), name.coef)
-    index.penaltyG <- list()
-
-    name.groupLasso <- penalty(x, type = "link", no.group = FALSE, no.elasticNet = TRUE)
-    if(length(name.groupLasso)>0){
-        lambdaG[name.groupLasso] <- penalty(x, type = "lambdaG")
-
-        index.tempo <- setNames(penalty(x, type = "group"), name.groupLasso)
-        index.penaltyG <- tapply(index.tempo,index.tempo, function(x){
-            list(setNames(match(names(x), name.coef), names(x)))
-        })
-
-    }
-
-    return(list(lambda1 = lambda1,
-                lambda2 = lambda2,
-                lambdaG = lambdaG,
-                index.penaltyG = index.penaltyG))
-}
-# }}}
-
-# {{{ initializer.penaltyNuclear
-#' @rdname initializer
-initializer.penaltyNuclear <- function(x, name.coef){
-    n.coef <- length(name.coef)
-    name.allPenalty <- penalty(x, type = "link")
-    lambdaN <- penalty(x, type = "lambdaN")
-    if(length(name.allPenalty)==0){
-        return(list(lambdaN = 0, ncol = NULL, nrow = NULL, index.penaltyN = NULL))
-    }
-
-    n.nuclear <- length(name.allPenalty)
-    vec.lambdaN <- setNames(rep(0, n.coef), name.coef)
-    vec.ncol <- penalty(x, type = "ncol")
-    vec.nrow <- penalty(x, type = "nrow")
-    index.penaltyN <- vector(mode = "list", length= n.nuclear)
-    
-    for(iNuclear in 1:n.nuclear){
-
-        if(any(name.allPenalty[[iNuclear]] %in% name.coef == FALSE)){
-            stop("initPenalty: some penalty will not be applied because the corresponding parameter is used as a reference \n",
-                 "non-applied penalty: ",paste(setdiff(name.allPenalty[[iNuclear]], name.coef), collapse = " "),"\n")
-        }
-        vec.lambdaN[name.allPenalty[[iNuclear]]] <- lambdaN[iNuclear]
-        index.penaltyN[[iNuclear]] <- setNames(match(name.allPenalty[[iNuclear]],
-                                                     name.coef), name.allPenalty[[iNuclear]])
-
-    
-    }
-        
-    return(list(lambdaN = vec.lambdaN, ncol = vec.ncol, nrow = vec.nrow,
-                index.penaltyN = index.penaltyN))
-}
-# }}}
-
-
 
 # {{{ initializeOperator
 #' @title Initialise a proximal operator

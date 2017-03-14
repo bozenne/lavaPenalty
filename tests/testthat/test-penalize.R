@@ -3,12 +3,16 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (14:23) 
 ## Version: 
-## last-updated: mar 10 2017 (16:05) 
+## last-updated: mar 14 2017 (17:34) 
 ##           By: Brice Ozenne
-##     Update #: 17
+##     Update #: 26
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
+## BEFORE RUNNING THE FILE:
+## library(butils.base) ; package.source("lava.penalty") ;
+##
+## CONTENT
 ## Test the methods:
 ## penalize: attribute a penalty term in a latent variable model
 ## penalty: extract the penalty term from a latent variable model
@@ -42,7 +46,6 @@ test_that("user interface for penalize", {
 # }}}
 
 # {{{ Extract penalty - linear regression - continous variable
-
 test_that("no penalty", {
     expect_equal(penalty(lvm.model),
                  NULL)
@@ -51,48 +54,47 @@ test_that("no penalty", {
 })
 
 test_that("penalization using different symbols - continuous variables",{
-    lava.options(symbols = c("~","~~"))
     plvm.model <- penalize(lvm.model)
-    expect_equal(unname(penalty(plvm.model, type = "link")),
+    expect_equal(unname(penalty(plvm.model,no.ridge=TRUE)[["link"]]),
                  paste0("Y~X",1:12)
                  )
 
     plvm.model <- penalize(lvm.model, c("Y~X3","Y~X5"))
-    expect_equal(unname(penalty(plvm.model, type = "link")),
+    expect_equal(unname(penalty(plvm.model,no.ridge=TRUE)[["link"]]),
                  paste0("Y~X",c(3,5))
                  )
     
     lava.options(symbols = c("Ø","*"))
     plvm.model <- penalize(lvm.model)
-    expect_equal(unname(penalty(plvm.model, type = "link")),
+    expect_equal(unname(penalty(plvm.model,no.ridge=TRUE)[["link"]]),
                  paste0("YØX",1:12)
                  )
 
-    expect_equal(penalty(plvm.model, type = "group"),
-                 logical(0))
-    plvm.model    
+    expect_equal(penalty(plvm.model,no.ridge=TRUE,no.lasso=TRUE),
+                 NULL)
+    plvm.model
+    lava.options(symbols = c("~","~~"))
+    
     })
 # }}}
 
 # {{{ Penalize - linear regression - categorical variable
 
 lvmCAT.model <- lvm(formula.lvm)
-categorical(lvmCAT.model, K = 3) <- "X1"
-categorical(lvmCAT.model, K = 2) <- "X2"
+categorical(lvmCAT.model, K = 3, labels = letters[1:3]) <- "X1"
+categorical(lvmCAT.model, K = 2, labels = letters[1:2]) <- "X2"
 
 test_that("penalization using categorical variables",{
     plvmCAT.model <- penalize(lvmCAT.model)
-    
-    expect_equal(unname(penalty(plvmCAT.model)),
-                 c(paste0("Y",lava.options()$symbols[1],"X",3:12),
-                   coefExtra(lvmCAT.model,value = TRUE))
-                 )
-    expect_equal(unname(penalty(plvmCAT.model, no.group = TRUE)),
-                 paste0("Y",lava.options()$symbols[1],"X",3:12))
-    expect_equal(unname(penalty(plvmCAT.model, no.elasticNet = TRUE)),
-                 coefExtra(lvmCAT.model, value = TRUE))
-    penalty(plvmCAT.model, type = c("link","group"), group = 1)
-    plvmCAT.model
+    suppressWarnings(
+        e <- estimate(lvmCAT.model, sim(lvmCAT.model,1e2))
+    )
+   
+   expect_equal(unname(penalty(plvmCAT.model,no.lasso=TRUE,no.ridge=TRUE)[["link"]]),
+                setdiff(names(coef(e)),coef(lvmCAT.model))
+                )
+
+   plvmCAT.model
 })
 # }}}
 
@@ -112,7 +114,7 @@ test_that("penalization using different symbols - continuous variables",{
     regression(lvm.model) <- Y2 ~ X2
     covariance(lvm.model) <- Y1 ~ Y2
     plvm.model <- penalize(lvm.model, covariance = TRUE, variance = TRUE, latent = TRUE)
-    expect_equal(unname(penalty(plvm.model)),
+    expect_equal(unname(unique(penalty(plvm.model)$link)),
                  c(coefReg.model, coefCov.model)
                  )
     plvm.model
@@ -122,11 +124,12 @@ test_that("penalization using different symbols - continuous variables",{
     regression(lvm.model) <- Y2 ~ X2
     covariance(lvm.model) <- Y1 ~ Y2
     plvm.model <- penalize(lvm.model, covariance = TRUE, variance = TRUE, latent = TRUE)
-    expect_equal(unname(penalty(plvm.model)),
+    expect_equal(unname(unique(penalty(plvm.model)$link)),
                  c(gsub("~","Ø",coefReg.model), gsub("~~","*",coefCov.model))
                  )
     plvm.model
-    })
+    lava.options(symbols = c("~","~~"))
+})
 # }}}
 
 # }}}
