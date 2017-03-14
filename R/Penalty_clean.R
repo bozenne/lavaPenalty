@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar 10 2017 (13:23) 
 ## Version: 
-## last-updated: mar 10 2017 (18:48) 
+## last-updated: mar 14 2017 (17:39) 
 ##           By: Brice Ozenne
-##     Update #: 16
+##     Update #: 19
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -34,6 +34,8 @@
 #' pm <- penalize(m)
 #' pm
 #'
+#' penalty(pm)
+#'
 #' cancelPenalty(pm) <- Y~X1
 #' cancelPenalty(pm) <- Y~X2
 #' pm
@@ -45,7 +47,7 @@ clean.plvm <- function(x, simplify.penalty = TRUE, simplify, ...){
         simplify.penalty <- simplify
     }
 
-    test.penaltyL12 <- length(penalty(x, type = "link"))>0
+    test.penaltyL12 <- NROW(penalty(x, type = "Vlasso")$Vlasso)+ NROW(penalty(x, type = "Vridge")$Vridge)>0
     test.penaltyNuclear <- length(penalty(x, type = "link", nuclear = TRUE))>0
     
     if(simplify.penalty && test.penaltyL12 == FALSE && test.penaltyNuclear == FALSE){

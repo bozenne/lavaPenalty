@@ -13,11 +13,11 @@
 #' @rdname initPenalty
 initPenaltyL12 <- function(){
   
-    penalty <- list(lambda1 = 0, 
-                    lambda2 = 0,
-                    lambdaG = 0,
-                    adaptive = FALSE,
-                    VelasticNet = NULL,
+    penalty <- list(lambda1 = numeric(0),
+                    lambda2 = numeric(0),
+                    lambdaG = numeric(0),
+                    Vlasso = NULL,
+                    Vridge = NULL,
                     Vgroup = NULL)
   
   class(penalty) <- "penaltyL12"
@@ -70,6 +70,7 @@ lvm2plvm <- function(x){
 # {{{ penalize
 
 # {{{ doc
+
 #' @title Penalize a latent variable model
 #' @description Add a penalty term to a latent variable model
 #' @name penalize
@@ -131,14 +132,15 @@ lvm2plvm <- function(x){
 #' @export
 `penalize` <-
   function(x,...) UseMethod("penalize")
-# }}}
-
 
 #' @rdname penalize
 #' @export
 "penalize<-" <- function (x, ..., value) {
   UseMethod("penalize<-", x)
 }
+# }}}
+
+# {{{ penalize.lvm
 
 #' @rdname penalize
 #' @export
@@ -149,124 +151,116 @@ lvm2plvm <- function(x){
   return(x)
 }
 
+# }}}
+# {{{ penalize<-.lvm
 #' @rdname penalize
 #' @export
-`penalize<-.lvm` <- function(x, group, V, add = TRUE, reduce = FALSE,
-                             lambda1, lambda2, lambdaG, lambdaN, adaptive,
+`penalize<-.lvm` <- function(x, group, add = TRUE, reduce = FALSE,
+                             Vlasso, Vridge, Vgroup, 
                              intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
                              value){
-  
-  ## convert to plvm
-  if("plvm" %in% class(x) == FALSE){
-    x <- lvm2plvm(x)
-  }
-  
-    #### find coefficients from value
-  if(!is.null(value)){
-    
-    if("formula" %in% class(value)){
-        value <- unlist(lapply(lava.reduce::initVar_link(value, format = "formula"), formula2character))
-    }else if(is.list(value)){
-      value <- unlist(lapply(value, function(v){
-        if("formula" %in% class(v)){unlist(lapply(lava.reduce::initVar_link(v, format = "formula"), formula2character))}else{v}
-      }))
+
+    ## convert to plvm
+    if("plvm" %in% class(x) == FALSE){
+        x <- lvm2plvm(x)
     }
-    
-    if(any(value %in% coef(x) == FALSE)){
-      stop("penalty<-.lvm: coefficients to be penalized do not match those of the model\n",
-           "unknown coefficients: ",paste(value[value %in% coef(x) == FALSE], collapse = " "),"\n",
-           "available coefficients: ",paste(coef(x)[coef(x) %in% value == FALSE], collapse = " "),"\n")
+
+    test.V <- !missing(Vlasso)  || !missing(Vridge) || !missing(Vgroup)
+    if(!is.null(value) && test.V){
+        stop("argument \'value\' must be NULL when arguments \'Vlasso\', \'Vridge\', or \'Vgroup\' are specified \n")
     }
-    
-  } else if(is.null(penalty(x, type = "link"))){
-    
-    index.penaltyCoef <- NULL
-    if(intercept == TRUE){
-      index.penaltyCoef <- c(index.penaltyCoef, coefIntercept(x))  
-    }
-    if(regression == TRUE){
-      index.penaltyCoef <- c(index.penaltyCoef, coefReg(x)) 
-    }
-    if(variance == TRUE){
-      index.penaltyCoef <- c(index.penaltyCoef, coefVar(x))
-    }    
-    if(covariance == TRUE){
-      index.penaltyCoef <- c(index.penaltyCoef, coefCov(x))
-    }
-    
-    ## no penalization on parameters related to the latent variables
-    if(length(x$latent) && latent == FALSE){
-      test.latent <- sapply(coef(x)[index.penaltyCoef], function(pen){initVar_link(pen)$var1 %in% latent(x)})
-      index.penaltyCoef <- setdiff(index.penaltyCoef, index.penaltyCoef[which(test.latent)])
-    }
-    value <- coef(x)[index.penaltyCoef]
-  } else {
-     stop("value must contains the names of the penalized associations \n")
-  }
-  
-    #### update the V matrices
-    if(!missing(V)){ ## predefined V
-        if("Matrix" %in% is(V)){
-            stop("V must herit from the class Matrix \n")
+
+    #### update of the matrix
+    if(test.V){
+        if(!missing(Vlasso)){ ## predefined V
+            if("Matrix" %in% is(Vlasso)){
+                stop("Vlasso must herit from the class Matrix \n")
+            }
+            penalty(x, type = "Vlasso") <- Vlasso
         }
-        penalty(x, type = "V") <- V
-    }else{ ## group penalty
-        resInit <- initGroup.lvm(x, links = value, group = group)
+        if(!missing(Vridge)){ ## predefined V
+            if("Matrix" %in% is(Vridge)){
+                stop("Vridge must herit from the class Matrix \n")
+            }
+            penalty(x, type = "Vridge") <- Vridge
+        }
+        if(!missing(Vgroup)){ ## predefined V
+            if("Matrix" %in% is(Vgroup)){
+                stop("Vgroup must herit from the class Matrix \n")
+            }
+            penalty(x, type = "Vgroup") <- Vgroup
+        }
+    } else {
+        #### otherwise find coefficients from value
+        if(!is.null(value)){
 
-        if(!is.null(resInit$Mcat)){
-            Vgroup.old <- penalty(x, type = "Vgroup")
-            if(add && !is.null(Vgroup.old)){
-                newV <- initVcoef.lvm(x,
-                                      link = rownames(resInit$Mcat),
-                                      group = resInit$Mcat[,"group"])
-                newV@x <- newV@x + max(Vgroup.old@x)
-                penalty(x, type = "Vgroup") <- cbind(Vgroup.old,newV)
-        
-      }else{
-        penalty(x, type = "Vgroup") <- initVcoef.lvm(x,
-                                                     link = rownames(resInit$Mcat),
-                                                     group = resInit$Mcat[,"group"])
-      }
-    }
+            value <- lava.reduce::initVar_links(value, format = "txt.formula")    
+    
+            if(any(value %in% coef(x) == FALSE)){
+                stop("penalty<-.lvm: coefficients to be penalized do not match those of the model\n",
+                     "unknown coefficients: ",paste(value[value %in% coef(x) == FALSE], collapse = " "),"\n",
+                     "available coefficients: ",paste(coef(x)[coef(x) %in% value == FALSE], collapse = " "),"\n")
+            }
+    
+        } else {
+    
+            index.penaltyCoef <- NULL
+            if(intercept == TRUE){
+                index.penaltyCoef <- c(index.penaltyCoef, coefIntercept(x))  
+            }
+            if(regression == TRUE){
+                index.penaltyCoef <- c(index.penaltyCoef, coefReg(x)) 
+            }
+            if(variance == TRUE){
+                index.penaltyCoef <- c(index.penaltyCoef, coefVar(x))
+            }    
+            if(covariance == TRUE){
+                index.penaltyCoef <- c(index.penaltyCoef, coefCov(x))
+            }
+    
+            ## no penalization on parameters related to the latent variables
+            if(length(x$latent) && latent == FALSE){
+                test.latent <- sapply(coef(x)[index.penaltyCoef], function(pen){initVar_link(pen)$var1 %in% latent(x)})
+                index.penaltyCoef <- setdiff(index.penaltyCoef, index.penaltyCoef[which(test.latent)])
+            }
+            value <- coef(x)[index.penaltyCoef]
+        }
 
-        if(NCOL(resInit$M)>0){  ## elastic net
-            penalty(x, type = "VelasticNet") <- initVcoef.lvm(x,
-                                                              link = rownames(resInit$M),
-                                                              group = 1:NROW(resInit$M))
+        ## group penalty
+        resInit <- initGroup.lvm(x, link = value, group = group)
+        if(resInit[type == "categorical",.N]>0){
+            newV <- initVcoef.lvm(x,
+                                  link = resInit[type == "categorical"][["link"]],
+                                  group = resInit[type == "categorical"][["group"]])
+            penalty(x, type = "Vgroup", add = add) <- newV        
+        }
+
+        if(resInit[type == "continuous",.N]>0){  ## elastic net
+            # lasso
+            Vlasso <- initVcoef.lvm(x,
+                                    link = resInit[type == "continuous"][["link"]],
+                                    group = 1:resInit[type == "continuous",.N])           
+            penalty(x, type = "Vlasso", add = add) <- Vlasso
+            
+            # ridge
+            Vridge <- initVcoef.lvm(x,
+                                    link = resInit[["link"]],
+                                    group = 1:resInit[,.N])            
+            penalty(x, type = "Vridge", add = add) <- Vridge
         }
     
-  }
-  
-    #### penalization parameters
-    if(!missing(lambda1)){
-        penalty(x, type = "lambda1") <- as.numeric(lambda1)
+    }
+    
+    #### reduce 
+    if(reduce){
+        x <- reduce(x)
     }
   
-    if(!missing(lambda2)){
-        penalty(x, type = "lambda2") <- as.numeric(lambda2)
-    }
-
-    if(!missing(lambdaG)){
-        penalty(x, type = "lambdaG") <- as.numeric(lambdaG)
-    }
-
-    if(!missing(lambdaN)){
-        penalty(x, type = "lambdaN") <- as.numeric(lambdaN)
-    }
-
-  if(!missing(adaptive)){
-    penalty(x, type = "adaptive") <- as.numeric(adaptive)
-  }
   
-  #### reduce 
-  if(reduce){
-    x <- reduce(x)
-  }
-  
-  
-  #### export
-  return(x)
+    #### export
+    return(x)
 }
+# }}}
 
 # }}}
 
@@ -403,101 +397,65 @@ lvm2plvm <- function(x){
 #' @examples 
 #' ## no category
 #' m <- lvm(Y~X1+X2+X3)
-#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' dt
 #' 
 #' ## categories
 #' categorical(m, labels = c("A","B","C")) <- "X1"
-#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
-#' categorical(m, labels = c("A","B","C")) <- "X2"
-#' initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' dt
+#' categorical(m, K=2) <- "X2"
+#' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+#' dt
 #' 
-#' regression(m) <- Z~X1+X2+X3+eta
+#' regression(m) <- Z~X1+X3+X5+eta
 #' latent(m) <- ~eta
-#' initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
-#' 
-#' 
+#' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
+#' dt
 initGroup.lvm <- function(x, links, data = sim(x, 1), group){
-    Mlink <- getIvar.lvm(x, link = links, format = "data.frame")
+
+    dt.link <- getIvar.lvm(x, link = links, format = "data.table")
+    dt.link[, group := as.numeric(NA)]
+
+    ## update link according to categorical variables
+    newlink <- dt.link[["link"]]
+
     ## classify links according to whether or not they should be group penalized
     if(missing(group)){
-        link.ordinal <- links[Mlink[,"exogenous"] %in% names(x$attributes$ordinalparname)]
-        group <- 1:length(link.ordinal)
+        dt.link[type == "categorical", group := as.numeric(.GRP), by = c("endogenous","exogenous")]
     }else if(identical(group, FALSE) ){
-        group <- NULL
-        link.ordinal <- NULL
         # no group penalty
-    } else if(!missing(group)){
-        if(identical(group, TRUE)){
-            group <- rep(1, length(links))
-        }
-        link.ordinal <- links[is.na(group)]
-    }
-    link.Nordinal <- setdiff(links, link.ordinal)
-  
-    Mlink <- cbind(Mlink, group=NA)
+    }else if(identical(group, TRUE)){
+        dt.link[type == "categorical", group := as.numeric(1)]
+    }else {
+        if(length(group)==1){group <- rep(group, length(links))}
+        groupClean <- group[!is.na(group)] # necessary because otherwise ambiguity dt var
+        linksClean <- links[!is.na(group)]
+        dt.link[match(linksClean,link), group := groupClean]        
+    }    
 
-    
-    
-  ## differentiate links and penalty according to the variable type
-  if(length(link.ordinal)>0){
-     Mlink[link.ordinal,"group"] <- group
-     xCAT <- lava_categorical2dummy(x, data)$x
-     MCATlink <- getIvar.lvm(xCAT, format = "data.frame")
-     MCATlink[setdiff(coef(xCAT),coef(x)),"type"] <- "categorical"
-     MCATlink <- MCATlink[MCATlink[,"type"] == "categorical",]
-     MCATlink <- cbind(MCATlink,
-                       group = as.numeric(NA),
-                       originalLink = as.character(NA),
-                       stringsAsFactors = FALSE)
-     
-    for(iterCAT in 1:length(link.ordinal)){
-      
-        endoCAT <- Mlink[link.ordinal[iterCAT],"endogenous"]
-        exoCAT <- Mlink[link.ordinal[iterCAT],"exogenous"]
-        if(exoCAT %in% names(x$attributes$labels)){
-            exoCAT <- paste0(exoCAT, x$attributes$labels[[exoCAT]])
-        }
-      
-        iIndex <- intersect(which(MCATlink[,"endogenous"] %in% endoCAT),
-                            which(MCATlink[,"exogenous"] %in% exoCAT)
-                            )
-        MCATlink[iIndex,"group"] <- Mlink[link.ordinal[iterCAT],"group"]
-        MCATlink[iIndex,"originalLink"] <- link.ordinal[iterCAT]
-        
-    }
-     
-    # remove non penalized categorical variables
-    MCATlink <- MCATlink[!is.na(MCATlink[,"group"]),,drop = FALSE]
-    Mlink <- Mlink[link.Nordinal,, drop = FALSE]
-  
-  }else{
-    MCATlink <- NULL
-  }
-
-  ## export
-  return(list(M = Mlink,
-              Mcat = MCATlink))
+    ## export
+    return(dt.link)
 }
 
 # }}}
 
 # {{{ initVcoef.lvm
 initVcoef.lvm <- function(x, link, group){
-  
-  
+    
     #### create matrix
     x <- lava_categorical2dummy(x, sim(x, 1))$x
     allCoef <- coef(x)
     n.allCoef <- length(allCoef)
     n.groups <- length(unique(group))
 
-    V <- Matrix::Matrix(rnorm(allCoef), sparse = TRUE, doDiag = FALSE,  # force to be non-symetric
+    V <- Matrix::Matrix(rnorm(n.allCoef), sparse = TRUE, doDiag = FALSE,  # force to be non-symetric
                         nrow = n.allCoef, ncol = n.groups,
                         dimnames = list(allCoef,NULL)
                         )
 
     #### fill matrix
-    V[,] <- 0
+    V[] <- 0
     for(iterLink in 1:length(link)){ # iterLink <- 1
         V[link[iterLink],group[iterLink]] <- 1#as.numeric(group[iterLink])
     }

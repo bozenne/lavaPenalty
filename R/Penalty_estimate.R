@@ -43,15 +43,14 @@
 # {{{ estimate.plvm
 #' @rdname estimate
 #' @export
-estimate.plvm <- function(x, data, 
-                          lambda1 = NULL, lambda2 = NULL, lambdaG = NULL, lambdaN = NULL, adaptive = FALSE, 
+estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive = FALSE, 
                           regularizationPath = FALSE, fit = lava.options()$calcLambda$fit,
                           control = list(), control.proxGrad = list(), control.EPSODE = list(), 
                           constrain.lambda = FALSE, ...) {
 
     # {{{ prepare control
     controlUser <- control
-    
+
     controlUser.proxGrad <- control.proxGrad
     nameUser <- names(controlUser.proxGrad)
     nameLava <- names(lava::lava.options()$proxGrad)
@@ -110,37 +109,44 @@ estimate.plvm <- function(x, data,
     }
     # }}}
 
-    # {{{ prepare data (scaling, convert character to dummy variables)
+
+    # {{{ prepare penalty
+    ### update penalty (for factor variables)
+    x <- updatePenaltyFactor.plvm(x, data = data,
+                                  trace = control$trace)
+    table.penalty <- penalty(x, nuclear = FALSE)
+
+    ### update the penalty with potential user input
+    if("lasso" %in% table.penalty$penalty){
+        penalty(x, type = "lambda1", add = FALSE) <- lambda1
+    }
+    if("ridge" %in% table.penalty$penalty){
+        penalty(x, type = "lambda2", add = FALSE) <- lambda2
+    }
+    if("group lasso" %in% table.penalty$penalty){
+        penalty(x, type = "lambdaG", add = FALSE) <- lambdaG
+    }
+    if(!is.null(penalty(x, nuclear = TRUE, type = "link"))){    
+        penalty(x, type = "lambdaN", nuclear = TRUE) <- lambdaN
+    }
+    # }}}
+
+    
+    # {{{ prepare data
+    ## update data substituing binary indicators to factors (+ scaling)
     if(control$trace>0){cat("Scale and center dataset \n")}
     resData <- prepareData.plvm(x, data = data)
     x <- resData$lvm
     data <- resData$data
-    # }}}  
-    # {{{ prepare penalty
-    ### update penalty (for new variables)
-    x <- updatePenalty.plvm(x, data = data)
-
-    ### update the penalty with potential user input
-    if(!is.null(lambda1)){
-        penalty(x, type = "lambda1") <- lambda1
-    }
-    if(!is.null(lambda2)){    
-        penalty(x, type = "lambda2") <- lambda2
-    }
-    if(!is.null(lambdaG)){    
-        penalty(x, type = "lambdaG") <- lambdaG
-    }
-    if(!is.null(lambdaN)){    
-        penalty(x, type = "lambdaN", nuclear = TRUE) <- lambdaN
-    }
-    if(!is.null(adaptive)){    
-        penalty(x, type = "adaptive") <- adaptive
-    }
     
+    
+    if(any(table.penalty$link %in% coef(x) == FALSE)){
+        stop("unknown penalized links \n",
+             "links: \"",paste(table.penalty$link[table.penalty$link %in% coef(x) == FALSE], collapse = "\" \""),"\"\n")
+    }    
     # }}}
     
-    
-    
+   
     
     # {{{ optimisation
     res <- lava_estimate.lvm(x = x, data = data,
@@ -155,89 +161,126 @@ estimate.plvm <- function(x, data,
 
 # }}}
 
-# {{{ updatePenalty.penaltyL12
-#' @title Prepare the data for the estimate function
+# {{{ updatePenalty.plvm
+#' @title Update the lasso penalty to group lasso penalty in presence of categorical variables
 #'  
-#' @description Scale the data, update the penalty term according to the presence of factors. 
+#' @description Update the lasso penalty to group lasso penalty in presence of categorical variables
 #' 
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
-#' @param method.center function used to center the data
-#' @param method.scale function used to scale the data
+#' @param trace should the user be told that some penalties have been updated ?
+#'
+#' @examples
+#'
+#' m <- lvm(Y~X1+X2+X3+X4)
+#' pm <- penalize(m)
+#' updatePenaltyFactor.plvm(pm, data = sim(m, 1), trace = TRUE)
 #' 
-updatePenalty.plvm <- function(x, data){
+#' mCAT <- m
+#' categorical(mCAT, K = 3, labels = letters[1:3]) <- "X1"
+#' categorical(mCAT, K = 2, labels = letters[1:2]) <- "X2"
+#'
+#' pm <- penalize(m)
+#' updatePenaltyFactor.plvm(pm, data = sim(mCAT, 1), trace = TRUE)
+#'
+#' pmCAT <- penalize(mCAT)
+#' updatePenaltyFactor.plvm(pmCAT, data = sim(mCAT, 1), trace = TRUE)
+#' 
+updatePenaltyFactor.plvm <- function(x, data, trace){
 
-    #### elastic net
-    link.penalty <- penalty(x, type = "link")
-    if(any(link.penalty %in% coef(x) == FALSE)){
-        missing.links <- link.penalty[link.penalty %in% coef(x) == FALSE]
+    table.penalty <- penalty(x, nuclear = FALSE) 
+    var.penalty <- unique(table.penalty$exogenous)        
+    test.factor <- sapply(var.penalty, function(v){is.factor(data[[v]])})
+    
+    ## search for links that should be moved from lasso to group lasso
+    if(any(test.factor)){
+       
+        var.factor <- unique(var.penalty[test.factor])
+        table.penalty.factor <- table.penalty[table.penalty$exogenous %in% var.factor & penalty == "lasso"]
 
-        for(iLink in missing.links){ # iLink <- missing.links[1]
-            resInit  <- lava.reduce::initVar_link(iLink)
-            if(class(data[[resInit$var2]]) == "factor"){
-                cancelPenalty(x) <- iLink
-            }
+        ## remove lasso link
+        cancelPenalty(x, lasso = TRUE, ridge = FALSE, group = FALSE) <- table.penalty.factor[["link"]]
 
+        ## update the lvm with the categorical variables
+        for(f in var.factor){ # f <- "X1"
+            if(trace>0){cat("convert the lasso penalty on the categorical variable ",f," to a group penalty \n")}
+            categorical(x, labels = levels(as.factor(data[[f]]))) <- as.formula(paste0("~",f))
         }
+            
+        ## update the penalty according to the categorical variables
+        resInit <- initGroup.lvm(x, links = table.penalty.factor$link)
+        # same as `penalize<-.lvm`
+        newV <- initVcoef.lvm(x,
+                              link = resInit[type == "categorical"][["link"]],
+                              group = resInit[type == "categorical"][["group"]])
+        penalty(x, type = "Vgroup", add = TRUE) <- newV
     }
-    group.penalty <- penalty(x, type = "group")
-    
-    
-    #### convert categorical variables to dummy variables
-    resC2D <- lava:::categorical2dummy(x, data)
-  
-    index.numeric <- intersect(manifest(x, lp = FALSE), manifest(resC2D$x, lp = FALSE))
-    indexOld.factor <- setdiff(manifest(x, lp = FALSE),  manifest(resC2D$x, lp = FALSE))
-    indexNew.factor <- setdiff(manifest(resC2D$x, lp = FALSE), manifest(x, lp = FALSE))
-  
-    test.factor <- length(indexNew.factor)>0
-  
-    #### update the penalty according to the dummy variables
-    name.Newlinks <- coef(x)
-    browser()
-    # find the old coefficients corresponding to the factor variables
-    OldLinksPenalty.factors <- setdiff(link.penalty, name.Newlinks)
-    
-    if(test.factor && length(OldLinksPenalty.factors)>0){
-        
-        #     find the new coefficient to penalize
-        NewExogePenalty.factor <- lapply(1:length(OldLinksPenalty.factors), function(x){
-            formulaTempo <- as.formula(OldLinksPenalty.factors[x])
-            newVar <- names(conversion.factor)[conversion.factor %in% all.vars(formulaTempo)[2]]
-            return(paste0(all.vars(formulaTempo)[1],"~",newVar))
-        })  
-        names(NewExogePenalty.factor) <- OldLinksPenalty.factors
-    
-        ## redefine the group of penalty
-        name.commonPenalty <- intersect(link.penalty, name.Newlinks)
-        name.NewlinksPenalty <- c(name.commonPenalty,
-                                  unname(unlist(NewExogePenalty.factor)))
-        group.NewlinksPenalty <- setNames(rep(NA, length(name.NewlinksPenalty)),
-                                          name.NewlinksPenalty)
-        group.NewlinksPenalty[name.commonPenalty] <- group.penalty[na.omit(match(link.penalty,name.commonPenalty))]
-    
-        for(iterG in OldLinksPenalty.factors){
-            groupG <- group.penalty[match(iterG,link.penalty)]
-            if(groupG>1){ # if already a group, keep it
-                group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- groupG
-            }else{ # else create a new group
-                group.NewlinksPenalty[NewExogePenalty.factor[[iterG]]] <- floor(max(c(na.omit(group.NewlinksPenalty), group.penalty))) + 1
-            }
-        }
-    
-        ## redefine V matrix
-        penalty(x, type = "V") <- NULL
-        res <- penalize(x, value = name.NewlinksPenalty, group = group.NewlinksPenalty, add = FALSE)    
-        penalty(x, type = NULL) <- penalty(res, type = NULL)
-    }
-  
-  #### export
-  return(list(data = data,
-              scale = value.scale,
-              center = value.center,
-              lvm = x))
+
+    #### export
+    return(x)
 }
 # }}}
+
+# {{{ updatePenaltyVariable.penaltyL12
+#' @title Remove penalties corresponding to reference links
+#'  
+#' @description Remove penalties corresponding to reference links
+#' 
+#' @param x a penalized lvm model
+#' @param name.coef the names of the coefficients used in the optimisation routine
+updatePenaltyVariable.penaltyL12 <- function(x, name.coef){
+    n.coef <- length(name.coef)
+    table.penalty <- penalty(x)
+
+    ## check 
+    if(any(table.penalty$link %in% name.coef == FALSE)){
+        rm.penalty <- setdiff(table.penalty$link, name.coef)
+        warning("initPenalty: some penalty will not be applied because the corresponding parameter is used as a reference \n",
+                "non-applied penalty: ",paste(rm.penalty, collapse = " "),"\n")
+        cancelPenalty(x, rm.lasso = TRUE, rm.ridge = TRUE, rm.group = TRUE, extraParameter = NULL) <- rm.penalty
+     }
+
+    return(x)
+}
+
+# }}}
+
+
+
+# {{{ initializer.penaltyNuclear
+#' @rdname initializer
+initializer.penaltyNuclear <- function(x, name.coef){
+    n.coef <- length(name.coef)
+    name.allPenalty <- penalty(x, type = "link")
+    lambdaN <- penalty(x, type = "lambdaN")
+    if(length(name.allPenalty)==0){
+        return(list(lambdaN = 0, ncol = NULL, nrow = NULL, index.penaltyN = NULL))
+    }
+
+    n.nuclear <- length(name.allPenalty)
+    vec.lambdaN <- setNames(rep(0, n.coef), name.coef)
+    vec.ncol <- penalty(x, type = "ncol")
+    vec.nrow <- penalty(x, type = "nrow")
+    index.penaltyN <- vector(mode = "list", length= n.nuclear)
+    
+    for(iNuclear in 1:n.nuclear){
+
+        if(any(name.allPenalty[[iNuclear]] %in% name.coef == FALSE)){
+            stop("initPenalty: some penalty will not be applied because the corresponding parameter is used as a reference \n",
+                 "non-applied penalty: ",paste(setdiff(name.allPenalty[[iNuclear]], name.coef), collapse = " "),"\n")
+        }
+        vec.lambdaN[name.allPenalty[[iNuclear]]] <- lambdaN[iNuclear]
+        index.penaltyN[[iNuclear]] <- setNames(match(name.allPenalty[[iNuclear]],
+                                                     name.coef), name.allPenalty[[iNuclear]])
+
+    
+    }
+        
+    return(list(lambdaN = vec.lambdaN, ncol = vec.ncol, nrow = vec.nrow,
+                index.penaltyN = index.penaltyN))
+}
+# }}}
+
 
 # {{{ prepareData.plvm
 #' @title Scale the dataset corresponding to a LVM object.
@@ -250,7 +293,7 @@ updatePenalty.plvm <- function(x, data){
 #' @param method.scale function used to scale the data
 #' 
 prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd"){
-  
+
     if(any(manifest(x, lp = FALSE) %in% names(data) == FALSE)){
         stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
              "variables: ",paste(manifest(x)[manifest(x) %in% names(data) == FALSE], collapse = " ")," not found in \'data\' \n")
@@ -262,7 +305,6 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
     index.numeric <- intersect(manifest(x, lp = FALSE), manifest(resC2D$x, lp = FALSE))
     indexOld.factor <- setdiff(manifest(x, lp = FALSE),  manifest(resC2D$x, lp = FALSE))
     indexNew.factor <- setdiff(manifest(resC2D$x, lp = FALSE), manifest(x, lp = FALSE))
-  
     test.factor <- length(indexNew.factor)>0
   
     if(test.factor){
@@ -288,10 +330,11 @@ prepareData.plvm <- function(x, data, method.center = "mean", method.scale = "sd
         data[, index.numeric] <- scale(data[, index.numeric, drop = FALSE], center = value.center, scale = value.scale)
     }
   
-  #### export
-  return(list(data = data,
-              scale = value.scale,
-              center = value.center,
-              lvm = x))
+    #### export
+    return(list(data = data,
+                conversion.factor = conversion.factor,
+                scale = value.scale,
+                center = value.center,
+                lvm = x))
 }
 # }}}
