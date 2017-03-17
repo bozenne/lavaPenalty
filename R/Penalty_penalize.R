@@ -79,14 +79,11 @@ lvm2plvm <- function(x){
 #' @param value the name of the link to be penalized 
 #' @param group the groups defining the group lasso penalty
 #' @parma coords the (spatial) position of the links to penalize
-#' @param V the matrix defining lasso penalties
+#' @param Vlasso the matrix defining lasso penalties. Otherwise must be logical to indicate whether to add lasso penalties.
+#' @param Vridge the matrix defining ridge penalties. Otherwise must be logical to indicate whether to add ridge penalties.
+#' @param Vgroup the matrix defining group lasso penalties. Otherwise must be logical to indicate whether to add group lasso penalties.
 #' @param add should value be added to the existing penalty term ? Otherwise it will overwrite it.
 #' @param reduce should for each regression the penalised link be aggregated into a linear predictor.
-#' @param lambda1 lasso penalization parameter
-#' @param lambda2 ridge penalization parameter
-#' @param lambdaG group lasso penalization parameter
-#' @param lambdaN nuclear norm penalization parameter
-#' @param adaptive should an adaptive lasso be used?
 #' @param intercept should all intercept be penalized. Disregarded if value is specified.
 #' @param regression should all regression parameters be penalized. Disregarded if value is specified.
 #' @param variance should all covariance links be penalized. Disregarded if value is specified.
@@ -156,7 +153,7 @@ lvm2plvm <- function(x){
 #' @rdname penalize
 #' @export
 `penalize<-.lvm` <- function(x, group, add = TRUE, reduce = FALSE,
-                             Vlasso, Vridge, Vgroup, 
+                             Vlasso = TRUE, Vridge = TRUE, Vgroup = TRUE, 
                              intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
                              value){
 
@@ -165,9 +162,9 @@ lvm2plvm <- function(x){
         x <- lvm2plvm(x)
     }
 
-    test.V <- !missing(Vlasso)  || !missing(Vridge) || !missing(Vgroup)
+    test.V <- !is.logical(Vlasso)  || !is.logical(Vridge) || !is.logical(Vgroup)
     if(!is.null(value) && test.V){
-        stop("argument \'value\' must be NULL when arguments \'Vlasso\', \'Vridge\', or \'Vgroup\' are specified \n")
+        stop("argument \'value\' must be NULL when arguments \'Vlasso\', \'Vridge\', or \'Vgroup\' are matrices \n")
     }
 
     #### update of the matrix
@@ -228,7 +225,7 @@ lvm2plvm <- function(x){
 
         ## group penalty
         resInit <- initGroup.lvm(x, link = value, group = group)
-        if(resInit[type == "categorical",.N]>0){
+        if(Vgroup && resInit[type == "categorical",.N]>0){
             newV <- initVcoef.lvm(x,
                                   link = resInit[type == "categorical"][["link"]],
                                   group = resInit[type == "categorical"][["group"]])
@@ -237,16 +234,20 @@ lvm2plvm <- function(x){
 
         if(resInit[type == "continuous",.N]>0){  ## elastic net
             # lasso
+            if(Vlasso){
             Vlasso <- initVcoef.lvm(x,
                                     link = resInit[type == "continuous"][["link"]],
                                     group = 1:resInit[type == "continuous",.N])           
             penalty(x, type = "Vlasso", add = add) <- Vlasso
+            }
             
             # ridge
+            if(Vridge){
             Vridge <- initVcoef.lvm(x,
                                     link = resInit[["link"]],
                                     group = 1:resInit[,.N])            
             penalty(x, type = "Vridge", add = add) <- Vridge
+            }
         }
     
     }

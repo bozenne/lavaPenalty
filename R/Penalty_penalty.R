@@ -77,23 +77,13 @@ penalty.lvm <- function(x,  type = NULL, nuclear = FALSE, lambdaPerCoef = FALSE,
 #' @rdname penaltyExtract
 #' @export
 penalty.lvmfit <- function(x, type, ...){
-  
-  type.origin <- type
-  if("lambda1.abs" %in% type){
-  type[type == "lambda1.abs"] <- "lambda1"
-  }
-  if("lambda2.abs" %in% type){
-    type[type == "lambda2.abs"] <- "lambda2"
-  }
-  res <- penalty.lvm(x, ...)
-  
-  if("lambda1.abs" %in% type){
-    browser()
-  }
-  if("lambda2.abs" %in% type){
-    browser()
-  }
-  return(res)
+    res <- penalty.lvm(x, type = type, ...)
+
+    if(is.null(type)){
+#        if(x$control$proxGrad$constrain.lambda){
+     res[,lambda.abs := lambda*sum(coef(x)[coefVar(x, value = TRUE)])]            
+    }
+    return(res)
 }
 # }}}
 # {{{ penalty.penaltyL12
@@ -129,7 +119,9 @@ penalty.penaltyL12 <- function(x,
             dt.lasso <- data.table::data.table(link = x$Vlasso@Dimnames[[1]][x$Vlasso@i+1],
                                                group = p2j(x$Vlasso),
                                                coef = x$Vlasso@x,
-                                               penalty = "lasso")
+                                               penalty = "lasso",
+                                               lambda = if(length(x$lambda1)==0){as.numeric(NA)}else{x$lambda1}
+                                               )
             dt.res <- rbind(dt.res, dt.lasso)
         }
         ## ridge penalty
@@ -137,7 +129,9 @@ penalty.penaltyL12 <- function(x,
             dt.ridge <- data.table::data.table(link = x$Vridge@Dimnames[[1]][x$Vridge@i+1],
                                                group = p2j(x$Vridge),
                                                coef = x$Vridge@x,
-                                               penalty = "ridge")
+                                               penalty = "ridge",
+                                               lambda = if(length(x$lambda2)==0){as.numeric(NA)}else{x$lambda2}
+                                               )
             dt.res <- rbind(dt.res, dt.ridge)
         }
         ## group penalty
@@ -146,7 +140,9 @@ penalty.penaltyL12 <- function(x,
             dt.group <- data.table::data.table(link = x$Vgroup@Dimnames[[1]][x$Vgroup@i+1],
                                                group = p2j(x$Vgroup),
                                                coef = x$Vgroup@x,
-                                               penalty = "group lasso")
+                                               penalty = "group lasso",
+                                               lambda = if(length(x$lambdaG)==0){as.numeric(NA)}else{x$lambdaG}
+                                               )
             if(!is.null(index.group)){
                 if(any(group %in% 1:n.groups == FALSE) && any(group %in% dt.group[["group"]] == FALSE)){
                     stop("unknown groups ",paste(group[group %in% 1:n.groups == FALSE], collapse = " ")," \n")

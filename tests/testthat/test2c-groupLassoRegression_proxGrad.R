@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  7 2017 (15:44) 
 ## Version: 
-## last-updated: mar 13 2017 (09:19) 
+## last-updated: mar 15 2017 (12:33) 
 ##           By: Brice Ozenne
-##     Update #: 32
+##     Update #: 33
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -52,7 +52,7 @@ test_that("NR vs proxGrad with lasso - lambda=0", {
     plvm.model <- penalize(lvm.model)
     
     # likelihood
-    eplvm.0 <- estimate(plvm.model, df.data, lambda1 = 0)
+    eplvm.0 <- estimate(plvm.model, df.data, lambda1 = 0, lambda2 = 0, lambdaG = 0)
     expect_equal(object=coef(elvm.model),
                  expected=coef(eplvm.0),
                  tolerance=test.tolerance, scale=test.scale)    

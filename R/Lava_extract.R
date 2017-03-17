@@ -70,21 +70,21 @@
 #' @export
 coefType.lvm <- function(x, ...){ 
   
-  ####
-  names.coef <- coef(x, ...)
-  index.coef <- lava::index(x)
+    ####
+    names.coef <- coef(x, ...)
+    index.coef <- lava::index(x)
   
-  type <- setNames(character(length = length(names.coef)), names.coef)
-  type[index.coef$parBelongsTo$mean] <- "intercept"
-  type[index.coef$parBelongsTo$reg] <- "regression"
-  type[index.coef$parBelongsTo$cov] <- "covariance"
-  type[index.coef$parBelongsTo$epar] <- "extra"
+    type <- setNames(character(length = length(names.coef)), names.coef)
+    type[index.coef$parBelongsTo$mean] <- "intercept"
+    type[index.coef$parBelongsTo$reg] <- "regression"
+    type[index.coef$parBelongsTo$cov] <- "covariance"
+    type[index.coef$parBelongsTo$epar] <- "extra"
   
-  #### variance
-  type[names(names.coef) %in% diag(APmatrix(x)$P)] <- "variance"
+    #### variance
+    type[names(names.coef) %in% diag(APmatrix(x)$P)] <- "variance"
   
-  #### export
-  return(type)
+    #### export
+    return(type)
 }
 
 #' @rdname extractCoef

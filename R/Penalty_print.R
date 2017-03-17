@@ -103,7 +103,6 @@
     invisible(x)
 }
 # }}}
-
 # {{{ print.plvmfit
 #' @title Display the content of a plvmfit object
 #
@@ -111,50 +110,63 @@
 #'
 #' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
-                            coef = "penalized", lambda = "abs", only.breakpoints = TRUE, 
+                            coef, lambda = NULL, only.breakpoints = TRUE, 
                             ...) {
-  
-  if(is.null(x$regularizationPath)){
-    
-    Mtempo <- CoefMat(x,labels=labels,level=level,...) 
-    ncol.M <- ncol(Mtempo)
 
-    print(Mtempo,quote=FALSE,right=TRUE)
-    print(x$penalty)
+    if(is.null(x$regularizationPath)){
+        
+        # {{{ no regularization path
+        Mtempo <- CoefMat(x,labels=labels,level=level,...) 
+        ncol.M <- ncol(Mtempo)
+        Mtempo[,c("Std. Error","Z-value","P-value")] <- ""
+      
+        print(Mtempo,quote=FALSE,right=TRUE)
+        print(x$penalty)
 
-    minSV <- attr(vcov(x),"minSV")
-    if (!is.null(minSV) && minSV<1e-12) {
-      warning("Small singular value: ", format(minSV))
-    }
-    pseudo <- attr(vcov(x),"pseudo")
-    if (!is.null(pseudo) && pseudo) warning("Singular covariance matrix. Pseudo-inverse used.")
-    
-  }else if(is.null(x$regularizationPath$optimum)){
-    cat("Regularization path: \n")
-    print(x$regularizationPath, coef = coef, lambda = lambda, only.breakpoints = only.breakpoints)
-    cat("estimated using EPSODE algorithm \n")
-    
+        minSV <- attr(vcov(x),"minSV")
+        if (!is.null(minSV) && minSV<1e-12) {
+            warning("Small singular value: ", format(minSV))
+        }
+        pseudo <- attr(vcov(x),"pseudo")
+        if (!is.null(pseudo) && pseudo) warning("Singular covariance matrix. Pseudo-inverse used.")
+        # }}}
+      
+    }else if(is.null(x$regularizationPath$criterion)){
+        
+      # {{{ regularization path
+      cat("Regularization path: \n")
+      if(missing(lambda)){
+          test.ridge <- !is.null(penalty(x, type = "Vridge")$Vridge)
+          if(test.ridge){
+              lambda <- c("lambda1.abs","lambda2.abs")
+          }else{
+              lambda <- "lambda1.abs"
+          }
+      }
+      printPath <- getPath(x,
+                           only.breakpoints = only.breakpoints,
+                           lambda = lambda, keep.index = FALSE,
+                           coef = coef, ...)
+      print(printPath)
+
+      diffRow <- nrow(getPath(x)) - nrow(printPath)
+      if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
+
+      cat("estimated using EPSODE algorithm \n")
+      # }}}
+      
   }else{
-    lava:::print.lvmfit(x)
-    cat("\n Model selected using ",x$regularizationPath$optimum$criterion," \n")
-    if(lambda == "abs"){
-      cat("   range of lambda1.abs: ",paste(range(x$regularizationPath$performance$lambda1.abs), collapse = " "),"\n")
-      cat("   best lambda1.abs    : ",x$regularizationPath$optimum$lambda1.abs,"\n")
-    }else if(lambda == "nabs"){
-      cat("   range of lambda1: ",paste(range(x$regularizationPath$performance$lambda1), collapse = " "),"\n")
-      cat("   best lambda1    : ",x$regularizationPath$optimum$lambda1,"\n")
-    }
+
+      # {{{ best model after regularization path
+      x0 <- x
+      x0$regularizationPath <- NULL
+
+      cat("** Model selected using ",x$regularizationPath$criterion," **\n",sep="")
+      print(x0)
+      
+      # }}}
   }
   
   invisible(x)
-}
-
-`print.regPath` <- function(x, coef = "penalized", lambda = "abs", only.breakpoints = TRUE) {
-  
-    printPath <- getPath(x, only.breakpoints = only.breakpoints, coefficient = coef, lambda = lambda)
-    print(printPath)
-    diffRow <- nrow(getPath(x)) - nrow(printPath)
-    if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
-    
 }
 # }}}

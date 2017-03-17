@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar 14 2017 (16:59) 
+## last-updated: mar 17 2017 (13:59) 
 ##           By: Brice Ozenne
-##     Update #: 171
+##     Update #: 209
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -52,28 +52,23 @@
 #' lassoRLVM$opt$iterations
 #' 
 #' @export
-lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
-
+lava.penalty.estimate.hook <- function(x,data,...) {
     dots <- list(...)
     if("plvm" %in% class(x) && ("proxGrad" %in% names(dots$optim) || "regPath" %in% names(dots$optim)) ){ #
         test.regularizationPath <- !is.null(dots$optim$regPath)
+        increasing <- dots$optim$regPath$increasing
         start <- dots$optim$start
         trace <- dots$optim$trace
 
         #### initialization
         if(is.null(start) || test.regularizationPath){
             if(trace>0){cat("Initialization: ")}
-            res.init <- initializer.plvm(x, data = data, regularizationPath = test.regularizationPath,
-                                         constrain.variance = dots$optim$proxGrad$constrain.variance,
-                                         name.variance = dots$optim$proxGrad$name.variance,
-                                         ...)
-            if(test.regularizationPath){
-                dots$optim$regPath$start.lambda0 <- res.init$lambda0
-                dots$optim$regPath$start.lambdaMax <- res.init$lambdaMax
-            }else {
-                if(trace>0){cat(" LVM where all penalized coefficient are shrinked to 0 \n")}
-                dots$optim$start <- res.init$lambdaMax
-            }
+            dots$optim$start <- initialize.start(x, data = data,
+                                                 regularizationPath = test.regularizationPath, increasing = increasing,
+                                                 constrain.variance = dots$optim$proxGrad$constrain.variance,
+                                                 name.variance = dots$optim$proxGrad$name.variance,
+                                                 ...)
+            if(trace>0){cat("done \n")}
         }
     
         #### add penalty in control
@@ -81,11 +76,7 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
         dots$optim$penaltyNuclear <- x$penaltyNuclear
     }
 
-    return(c(list(x=x,
-                  data=data,
-                  weight=weight,
-                  weight2=weight2,
-                  estimator=estimator),dots))   
+    return(c(list(x=x, data=data),dots))   
 }
 # }}}
 
@@ -93,56 +84,51 @@ lava.penalty.estimate.hook <- function(x,data,weight,weight2,estimator,...) {
 
 #' @export
 lava.penalty.post.hook <- function(x){
-    
-    if(any(c("proximal gradient","EPSODE") %in% x$opt)){
 
-        penalty <- x$control$penalty
-        penaltyNuclear <- x$control$penaltyNuclear
+    if(any(c("EPSODE","proximal gradient") %in% x$opt$algorithm )){
 
+        #### update x
+        x$regularizationPath <- x$opt$regPath
+        x$penalty <- x$control$penalty
+        x$penaltyNuclear <- x$control$penaltyNuclear
+        class(x) <- append("plvmfit", class(x))   
+
+        x$opt$regPath <- NULL
+        x$control$penalty <- NULL
+        x$control$penaltyNuclear <- NULL
+
+        #### add elements to object
         trace <- x$control$trace
         constrain.lambda <- x$control$proxGrad$constrain.lambda
         name.variance <- x$control$proxGrad$name.variance
-        test.regularizationPath <- !is.null(x$control$regPath)
         fit <- x$control$regPath$fit
-        regPath <- x$opt$regPath
 
-    
-    #### add elements to object
-    
-    if(test.regularizationPath){
-            
-      if(!is.null(fit)){ #### estimate the best model according to the fit parameter
+        if(is.path(x)){
+
+            ## estimate the best model according to the fit parameter
+            if(!is.null(fit)){
+                if(trace>=0){cat("Best penalized model according to the",fit,"criteria",if(x$control$trace>=1){"\n"})}
+                resLambda <- calcLambda(x, fit = fit, trace = trace+1)
+                res <- resLambda$optimum$lvm
+                resLambda$optimum$lvm <- NULL
+                regPath <- resLambda
+                if(trace>=0){cat(" - done \n")}
         
-        if(trace>=0){cat("Best penalized model according to the",fit,"criteria",if(x$control$trace>=1){"\n"})}
-        resLambda <- calcLambda(path = regPath,
-                                fit = fit,
-                                model = x$model,
-                                data.fit = x$data$model.frame,
-                                trace = trace+1)
-        res <- resLambda$optimum$lvm
-        resLambda$optimum$lvm <- NULL
-        regPath <- resLambda
-        if(trace>=0){cat(" - done \n")}
-        
-      }
+            }
       
-    }else{
-      if(constrain.lambda){
-        penalty$lambda1.abs <- penalty$lambda1
-        penalty$lambda2.abs <- penalty$lambda2
-        penalty$lambda1 <- penalty$lambda1/sum(coef(x)[name.variance])
-        penalty$lambda2 <- penalty$lambda2/sum(coef(x)[name.variance])
-      }else{
-        penalty$lambda1.abs <- penalty$lambda1*sum(coef(x)[name.variance])
-        penalty$lambda2.abs <- penalty$lambda2*sum(coef(x)[name.variance])
-      }
-    }
+        }else{
+            if(constrain.lambda){
+                penalty$lambda1.abs <- penalty$lambda1
+                penalty$lambda2.abs <- penalty$lambda2
+                penalty$lambda1 <- penalty$lambda1/sum(coef(x)[name.variance])
+                penalty$lambda2 <- penalty$lambda2/sum(coef(x)[name.variance])
+            }else{
+                penalty$lambda1.abs <- penalty$lambda1*sum(coef(x)[name.variance])
+                penalty$lambda2.abs <- penalty$lambda2*sum(coef(x)[name.variance])
+            }
+        }
     
         #### export
-        x$regularizationPath <- regPath
-        x$penalty <- penalty
-        x$penaltyNuclear <- penaltyNuclear
-        class(x) <- append("plvmfit", class(x))   
     }
   
     return(x)
