@@ -38,9 +38,10 @@
                        EPSODE = list(resolution_lambda1 = c(1e-1,1e-3), nstep_max = min(length(beta)*50,1e4), ode.method = "euler", tol.0 = 1e-8,
                                      reversible = FALSE, increasing = FALSE, stopLambda = NULL, stopParam = NULL,
                                      exportAllPath = FALSE, trace = 1),
-                     calcLambda = list(fit = "BIC", warmUp = FALSE),
-                     Nuclear = list(symbols = c("Image[","]")),
-                     constrain = TRUE)  
+                       proxGradPath = list(warmUp = FALSE),
+                       calcLambda = list(fit = "BIC"),
+                       Nuclear = list(symbols = c("Image[","]")),
+                       constrain = TRUE)  
 }
 
 .onAttach <- function(lib, pkg="lava.penalty") {

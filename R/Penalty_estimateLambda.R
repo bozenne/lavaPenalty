@@ -45,40 +45,23 @@ calcLambda.plvmfit <- function(x,
                                warmUp = lava.options()$calcLambda$warmUp, 
                                fit = lava.options()$calcLambda$fit, trace = TRUE, ...){
 
-    test.path <- is.path(x)
     # {{{ test
+    if(test.path==FALSE){
+        stop("missing regularization path in object \n")
+    }
     if(fit %in% c("AIC","BIC","P_error") == FALSE){
         stop("fit must be in AIC BIC P_error \n",
              "proposed value: ",fit,"\n")
     }
+    
     # }}}
 
     # {{{ extract path
     constrain <- penalty(x, type = "Vlasso")$Vlasso
         
-    if(test.path){ ## extract the regularization path
-        regPath <- getPath(x, path.constrain = TRUE, only.breakpoints=TRUE)
-        seq_lambda1.abs <- regPath$lambda1.abs
-        seq_lambda1 <- regPath$lambda1
-    }else{
-    
-        if("plvm" %in% class(model) == FALSE){
-            stop("calcLambda: argument \'model\' must be an object of class \"plvm\" when argument \'path\' is missing \n")
-        }
-        if(missing(seq_lambda1)){
-            stop("calcLambda: argument \'seq_lambda1\' must not be missing when argument \'path\' is missing \n")
-        }
-    
-        path <- list(path = NULL,
-                     increasing = all(diff(seq_lambda1)>0),
-                     penCoef = model$penalty$name.coef,
-                     performance = NULL,
-                     optimum = NULL
-                     )
-        class(path) <- "regPath"
-        seq_lambda1.abs <- rep(NA,length(seq_lambda1))
-        seq_row <- as.character(1:length(seq_lambda1))
-    }
+    regPath <- getPath(x, path.constrain = TRUE, only.breakpoints=TRUE)
+    seq_lambda1.abs <- regPath$lambda1.abs
+    seq_lambda1 <- regPath$lambda1
     # }}}
    
   
@@ -130,28 +113,8 @@ calcLambda.plvmfit <- function(x,
     
     for(iKnot in 1:n.knot){ # 
     
-    # {{{ define the constrains
-    if(test.path){
+        ## define the constrains
         ils.constrain <- regPath$constrain0[[iKnot]]        
-    }else{
-        control1 <- control
-        if(warmUp && !is.null(fitSave)){control1$start <- coef(fitSave)}
-        suppressWarnings(
-            fitSave <- estimate(model, data = data.fit, lambda1 = seq_lambda1[iKnot], control = control1)
-        )
-      
-            path$path <- rbind(path$path, c(lambda1.abs = fitSave$penalty$lambda1.abs,
-                                            lambda1 = fitSave$penalty$lambda1,
-                                            lambda2.abs = fitSave$penalty$lambda2.abs, 
-                                            lambda2 = fitSave$penalty$lambda2, 
-                                            indexChange = NA, 
-                                            coef(fitSave)))
-            seq_lambda1.abs[iKnot] <- fitSave$penalty$lambda1.abs
-            seq_lambda1[iKnot] <- fitSave$penalty$lambda1
-      
-            coef0_lambda <- coef0(fitSave, tol = 1e-6, penalized = TRUE, value = FALSE)
-        }
-        # }}}
         
         # {{{ form the reduced model
         Imodel0 <- model0
@@ -171,7 +134,7 @@ calcLambda.plvmfit <- function(x,
                 }
             }
         }
-         # }}}
+        # }}}
         
         # {{{ fit the reduced model and extract gof        
         fitTempo2 <- estimate(Imodel0, data = data.fit, 

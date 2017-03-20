@@ -111,7 +111,8 @@ EPSODE <- function(start,
         ### Solve ODE 
         lambda.ode <- seq_len(1000)
         cv.ode <- NULL
-        bridge.ode <- rbind(c(iter = 0, step = 0, lambda = iterLambda1, iterBeta))
+        bridge.ode <- rbind(c(iter = 0, lambda = iterLambda1,  step = 0, iterBeta))
+
         res.error <- try(deSolve::ode(y = iterBeta,
                                       times = lambda.ode,
                                       func = EPSODE_odeBeta, method = control$ode.method,
@@ -122,8 +123,15 @@ EPSODE <- function(start,
                                                   resolution = resolution_lambda1, reversible = control$reversible, envir = envir)
                                       ), silent = TRUE)
 
+        #        if(length(setPE)>0) browser()
+
+        ## remove initialization row and duplicated rows
+        index.duplicated <- which(!duplicated(bridge.ode[-1,c(-1,-3)]))+1
+        bridge.ode <- bridge.ode[index.duplicated,]
+         
         ## second chance in case of multiple events
         if(!is.null(cv.ode) && cv.ode$cv["cv.sign"]>1){
+            stop("update seconde chance \n")
             bridge.odeS <- bridge.ode
             iterBeta2 <- bridge.ode[max(1,nrow(bridge.odeS)-10),-(1:3)]
             lambda.ode2 <- unname(bridge.ode[max(1,nrow(bridge.odeS)-10),3])
@@ -144,9 +152,8 @@ EPSODE <- function(start,
                                           ), silent = TRUE)
            
         }
-       
+
         ## update
-        
         if(control$exportAllPath && length(bridge.ode[,"iter"])>2){ ## export all the points of the regularization path
             seq_index <- c(seq_index, rep(NA, nrow(bridge.ode)-2) )       
             seq_lambda1 <- c(seq_lambda1, 
@@ -174,8 +181,10 @@ EPSODE <- function(start,
                 setNE <- union(setNE, cv.ode$index)  
             }
             seq_index <- c(seq_index, cv.ode$index)
+        }else if(cv.ode$cv["cv.lambda0"]){
+            seq_index <- c(seq_index, NA)
         }
-    
+
         newLambda1 <- unname(bridge.ode[nrow(bridge.ode),"lambda"])
         newBeta <- unname(bridge.ode[nrow(bridge.ode),name.coef])
         if(length(setZE)>0){newBeta[setZE] <- 0}
@@ -190,9 +199,10 @@ EPSODE <- function(start,
             test.ncv <- (length(setNE) > 0 || length(setPE) > 0 )
             if(!is.null(control$stopLambda) && newLambda1>=control$stopLambda){test.ncv <- -1}
             if(!is.null(control$stopParam) && length(setZE)>=control$stopParam){test.ncv <- -1}
-        }else {            
-            test.ncv <- length(setZE)>0
-            if(newLambda1==0){test.ncv <- -1 ;  seq_index <- c(seq_index, NA) ;}
+        }else {
+            test.ncv <- newLambda1>0
+            #test.ncv <- length(setZE)>0
+            #if(newLambda1==0){test.ncv <- -1 ;  seq_index <- c(seq_index, NA) ;}
             if(!is.null(control$stopLambda) && newLambda1<=control$stopLambda){test.ncv <- -1}
             if(!is.null(control$stopParam) && (length(setNE)+length(setPE))>=control$stopParam){test.ncv <- -1}
         }
@@ -204,6 +214,7 @@ EPSODE <- function(start,
     
     }
     # }}}
+    
     if(control$trace==0){close(pb)}
     
     #### export
@@ -217,6 +228,7 @@ EPSODE <- function(start,
   
     seq_lambda1 <- unname(seq_lambda1)
     rownames(M.beta) <- NULL
+    
     dt <- as.data.table(cbind(index = 1:NROW(M.beta),
                               lambda1.abs = if(constrain.lambda == 0){NA}else{seq_lambda1}, 
                               lambda1 = if(constrain.lambda == 0){seq_lambda1}else{NA}, 
@@ -237,19 +249,19 @@ EPSODE <- function(start,
 
 # {{{ EPSODE_odeBeta
 EPSODE_odeBeta <- function(t, y, ls.args){
-  
-  bridge <- get("bridge.ode", envir = ls.args$envir)
-  lambda1 <- bridge[tail(which(bridge[,"iter"]==(t-1)),1),"lambda"]
-  constrain.lambda1 <- as.vector(y %*% ls.args$V)
-   
+
+    bridge <- get("bridge.ode", envir = ls.args$envir)
+    lambda1 <- sum(bridge[tail(which(bridge[,"iter"]==(t-1)),1),c("lambda","step")])
+    constrain.lambda1 <- as.vector(y %*% ls.args$V)
+     
   # {{{ test lambda <= 0
   if(lambda1 < 0 || ls.args$resolution[2] < 0 && lambda1 == 0){
     
       assign("cv.ode", 
-             value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = FALSE, cv.constrain = FALSE, s = NA)), 
+             value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = FALSE, cv.constrain = FALSE, cv.lambda0 = TRUE, s = NA)), 
              envir = ls.args$envir)
       assign("bridge.ode",
-             value =  rbind(bridge,c(t, NA, 0, y)),
+             value =  rbind(bridge,c(t, lambda = 0, NA, y)),
              envir = ls.args$envir)
       stop("EPSODE_odeBeta: lambda1 = 0 \n",
            "end of the path \n")
@@ -264,15 +276,15 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     
         if(length(index) == 1){
             assign("cv.ode",
-                   value = list(param = y, lambda = lambda1, index = index, cv = c(cv.sign = TRUE, cv.constrain = FALSE, s = NA)),
+                   value = list(param = y, lambda = lambda1, index = index, cv = c(cv.sign = TRUE, cv.constrain = FALSE, cv.lambda0 = FALSE, s = NA)),
                    envir = ls.args$envir)
             assign("bridge.ode",
-                   value =  rbind(bridge,c(t, NA, lambda1, y)),
+                   value =  rbind(bridge,c(t, lambda1, NA, y)),
                    envir = ls.args$envir)
             stop("cv \n")
         }else if(length(index) > 1){
             assign("cv.ode",
-                   value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = length(index), cv.constrain = FALSE, s = NA)),
+                   value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = length(index), cv.constrain = FALSE, cv.lambda0 = FALSE, s = NA)),
                    envir = ls.args$envir)
             assign("bridge.ode",
                    value =  rbind(bridge,c(t, NA, NA, y)),
@@ -312,7 +324,7 @@ EPSODE_odeBeta <- function(t, y, ls.args){
         }else{ # singular H matrix
             if(all(H<1e-12)){
                 assign("cv.ode", 
-                       value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = FALSE, cv.constrain = FALSE, s = NA)), 
+                       value = list(param = y, lambda = lambda1, index = NA, cv = c(cv.sign = FALSE, cv.constrain = FALSE, cv.lambda0 = FALSE, s = NA)), 
                        envir = ls.args$envir)
                 assign("bridge.ode",
                        value =  rbind(bridge,c(t, NA, NA, y)),
@@ -326,82 +338,92 @@ EPSODE_odeBeta <- function(t, y, ls.args){
       
         }
         # }}}
-        
+
         # {{{ check constrains: subgradient
         if(ls.args$reversible || ls.args$resolution[2]<0){
             s <- - t(Q) %*% ( (1 / lambda1) * G + uz) # - t(Q) %*% ( (1 / nextKnot) * G + uz)
-            if(t > 1 && any(abs(s) - 1 > abs(ls.args$resolution[2])) ){
+            if(t > 1 && any(abs(s) - 1 > -abs(ls.args$resolution[2])) ){
                 index <- which.max(abs(s))
                 assign("cv.ode",
                        value =  list(param = y, lambda = lambda1, index = ls.args$setZE[index], cv = c(cv.sign = FALSE, cv.constrain = TRUE, s = s[index])),
                        envir = ls.args$envir)
                 assign("bridge.ode",
-                       value =  rbind(bridge,c(t, NA, lambda1, y)),
+                       value =  rbind(bridge,c(t, lambda1, NA, y)),
                        envir = ls.args$envir)
                 stop("cv \n")
             }
         }
-        # }}}
     }
-  
+    # }}}
+    
     # {{{ Compute differential of the ODE
     Puz <- rep(0, length(y))
     Puz[ls.args$indexAllCoef] <- P %*% uz
 
+    # P2 <- P
+    # rownames(P2) <- names(y)
+    # colnames(P2) <- names(y)
+    # P2
+    
     ## remove noise due to numeric approximations
-    Puz <- round(Puz,12)
+    #Puz <- round(Puz,12)
  
     # }}}
 
     # {{{ Compute the new lambda
     if(ls.args$resolution[1]>0){ # increase the penalty parameter
     
-    # lAll <- c(y[ls.args$setNE] / Puz[ls.args$setNE], y[ls.args$setPE] / Puz[ls.args$setPE])
-    # if(any(lAll>0)){
-    #   ## linear interpolation
-    #   normTempo <- max(min(lAll[lAll>0]*ls.args$resolution[1]), ls.args$resolution[2])
-    # }else{
-    ## relative difference
-    coef.n0 <- ls.args$indexAllCoef
-    rdiff.max <- max(abs(Puz[coef.n0]/y[coef.n0]))
-    normTempo <- max(ls.args$resolution[1]/rdiff.max,ls.args$resolution[2])  
-    # }
+        # lAll <- c(y[ls.args$setNE] / Puz[ls.args$setNE], y[ls.args$setPE] / Puz[ls.args$setPE])
+        # if(any(lAll>0)){
+        #   ## linear interpolation
+        #   normTempo <- max(min(lAll[lAll>0]*ls.args$resolution[1]), ls.args$resolution[2])
+        # }else{
+        ## relative difference
+        coef.n0 <- ls.args$indexAllCoef
+        rdiff.max <- max(abs(Puz[coef.n0]/y[coef.n0]))
+        normTempo <- max(ls.args$resolution[1]/rdiff.max,ls.args$resolution[2])  
+        # }
     
-  }else{ # decrease the penalty parameter
-   ## linear interpolation
-    lPlus <- (- t(Q) %*% G)/(1 + t(Q) %*% uz)
-    lMinus <- (- t(Q) %*% G)/(-1 + t(Q) %*% uz)
-    lAll <- c(lPlus[lPlus<lambda1],lMinus[lMinus<lambda1])
-    nextKnot <- lAll[which.min(lambda1-lAll)]
-   
-    if(t==1 && length(c(ls.args$setNE,ls.args$setPE))==0){ ## when all parameter are shrinked to 0, the second member of the ODE is constant with lambda so linear interpolation is ok
-      sign <- c(-1,1)[which.min(c(min(abs(lMinus-nextKnot)), min(abs(lPlus-nextKnot))))]
-      if(sign<0){
-        index <- ls.args$setZE[which.min(abs(lMinus-nextKnot))]
-      }else{
-        index <- ls.args$setZE[which.min(abs(lPlus-nextKnot))]
-      }
-      
-      assign("cv.ode",
-             value =  list(param = y, lambda = nextKnot,
-                           index = index,
-                           cv = c(cv.sign = FALSE, cv.constrain = TRUE, s = sign)),
-             envir = ls.args$envir)
-      assign("bridge.ode",
-             value =  rbind(bridge,c(t, NA, nextKnot, y)),
-             envir = ls.args$envir)
-      stop("cv \n")
-      
-    }else{
-        normTempo <- max(-lambda1,
-                         min( (lambda1-nextKnot)*ls.args$resolution[1],
-                             ls.args$resolution[2])) ## max(-lambda) to avoid negative lambda
+    }else{ # decrease the penalty parameter
+        ## linear interpolation
+        if(!is.null(Q)){
+            lPlus <- (- t(Q) %*% G)/(1 + t(Q) %*% uz)
+            lMinus <- (- t(Q) %*% G)/(-1 + t(Q) %*% uz)
+            lAll <- c(lPlus[lPlus<lambda1],lMinus[lMinus<lambda1])
+            nextKnot <- lAll[which.min(lambda1-lAll)]
+        }else{
+            nextKnot <- 0
+        }
+
+        if(t==1 && length(c(ls.args$setNE,ls.args$setPE))==0){ ## when all parameter are shrinked to 0, the second member of the ODE is constant with lambda so linear interpolation is ok
+            sign <- c(-1,1)[which.min(c(min(abs(lMinus-nextKnot)), min(abs(lPlus-nextKnot))))]
+            ## if(sign<0){
+            ##     index <- ls.args$setZE[which.min(abs(lMinus-nextKnot))]
+            ## }else{
+            ##     index <- ls.args$setZE[which.min(abs(lPlus-nextKnot))]
+            ## }
+
+            normTempo <- nextKnot-lambda1
+            ## assign("cv.ode",
+            ##        value =  list(param = y, lambda = nextKnot,
+            ##                      index = index,
+            ##                      cv = c(cv.sign = FALSE, cv.constrain = TRUE, cv.lambda0 = FALSE, s = sign)),
+            ##        envir = ls.args$envir)
+            ## assign("bridge.ode",
+            ##        value =  rbind(bridge,c(t, lambda1, nextKnot-lambda1, y)),
+            ##        envir = ls.args$envir)
+            ## stop("cv \n")  
+            
+        }else{
+            normTempo <- max(-lambda1,
+                             min( (lambda1-nextKnot)*ls.args$resolution[1],
+                                 ls.args$resolution[2])) ## max(-lambda) to avoid negative lambda
+        }
     }
-  }
     # }}}
     ## export
     assign("bridge.ode",
-           value =  rbind(bridge,c(t, normTempo, lambda1+normTempo, y)),
+           value =  rbind(bridge,c(t, lambda1, normTempo, y)),
            envir = ls.args$envir)
     return(list(-Puz*normTempo))
 }

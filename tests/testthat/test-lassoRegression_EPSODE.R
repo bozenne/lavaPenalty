@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar 16 2017 (09:18) 
 ## Version: 
-## last-updated: mar 17 2017 (19:09) 
+## last-updated: mar 17 2017 (19:36) 
 ##           By: Brice Ozenne
-##     Update #: 9
+##     Update #: 10
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -77,8 +77,10 @@ test_that("LARS-forward (lasso)", {
                            constrain.lambda = TRUE,
                            control.EPSODE = list("resolution_lambda1"=c(0.001,1e-3))
                            )
-    pathLARS
+    getPath(pathLARS, lambda = "lambda1")
+    getPath(pathEPSODE, lambda = "lambda1")
     pathEPSODE
+    args(getPath.regPath)
 
     estimate(lvm(Y~X2+X3+X4+X5), data = df.data)
     getPath(PathFor_fixed)

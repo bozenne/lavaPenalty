@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar 17 2017 (13:59) 
+## last-updated: mar 20 2017 (16:57) 
 ##           By: Brice Ozenne
-##     Update #: 209
+##     Update #: 220
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -55,7 +55,8 @@
 lava.penalty.estimate.hook <- function(x,data,...) {
     dots <- list(...)
     if("plvm" %in% class(x) && ("proxGrad" %in% names(dots$optim) || "regPath" %in% names(dots$optim)) ){ #
-        test.regularizationPath <- !is.null(dots$optim$regPath)
+        control.regPath <- dots$optim$regPath
+        test.regularizationPath <- !is.null(control.regPath) && (control.regPath$algorithm == "EPSODE") 
         increasing <- dots$optim$regPath$increasing
         start <- dots$optim$start
         trace <- dots$optim$trace
@@ -70,7 +71,7 @@ lava.penalty.estimate.hook <- function(x,data,...) {
                                                  ...)
             if(trace>0){cat("done \n")}
         }
-    
+
         #### add penalty in control
         dots$optim$penalty <- x$penalty
         dots$optim$penaltyNuclear <- x$penaltyNuclear
@@ -104,7 +105,6 @@ lava.penalty.post.hook <- function(x){
         fit <- x$control$regPath$fit
 
         if(is.path(x)){
-
             ## estimate the best model according to the fit parameter
             if(!is.null(fit)){
                 if(trace>=0){cat("Best penalized model according to the",fit,"criteria",if(x$control$trace>=1){"\n"})}
@@ -118,13 +118,13 @@ lava.penalty.post.hook <- function(x){
       
         }else{
             if(constrain.lambda){
-                penalty$lambda1.abs <- penalty$lambda1
-                penalty$lambda2.abs <- penalty$lambda2
-                penalty$lambda1 <- penalty$lambda1/sum(coef(x)[name.variance])
-                penalty$lambda2 <- penalty$lambda2/sum(coef(x)[name.variance])
+                x$penalty$lambda1.abs <- x$penalty$lambda1
+                x$penalty$lambda2.abs <- x$penalty$lambda2
+                x$penalty$lambda1 <- x$penalty$lambda1/sum(coef(x)[name.variance])
+                x$penalty$lambda2 <- x$penalty$lambda2/sum(coef(x)[name.variance])
             }else{
-                penalty$lambda1.abs <- penalty$lambda1*sum(coef(x)[name.variance])
-                penalty$lambda2.abs <- penalty$lambda2*sum(coef(x)[name.variance])
+                x$penalty$lambda1.abs <- x$penalty$lambda1*sum(coef(x)[name.variance])
+                x$penalty$lambda2.abs <- x$penalty$lambda2*sum(coef(x)[name.variance])
             }
         }
     

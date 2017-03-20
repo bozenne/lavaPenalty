@@ -110,7 +110,7 @@
 #'
 #' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
-                            coef, lambda = NULL, only.breakpoints = TRUE, 
+                            coef, lambda = NULL, only.breakpoints = NULL, 
                             ...) {
 
     if(is.null(x$regularizationPath)){
@@ -133,21 +133,30 @@
       
     }else if(is.null(x$regularizationPath$criterion)){
         
-      # {{{ regularization path
-      cat("Regularization path: \n")
-      if(missing(lambda)){
-          test.ridge <- !is.null(penalty(x, type = "Vridge")$Vridge)
-          if(test.ridge){
-              lambda <- c("lambda1.abs","lambda2.abs")
-          }else{
-              lambda <- "lambda1.abs"
-          }
-      }
-      printPath <- getPath(x,
-                           only.breakpoints = only.breakpoints,
-                           lambda = lambda, keep.index = FALSE,
-                           coef = coef, ...)
-      print(printPath)
+        # {{{ regularization path
+        cat("Regularization path: \n")
+        test.EPSODE <- x$opt$algorithm=="EPSODE"    
+        
+        if(missing(lambda)){
+            test.ridge <- !is.null(penalty(x, type = "Vridge")$Vridge)
+            if(test.ridge){
+                lambda <- c("lambda1","lambda2")
+            }else{
+                lambda <- "lambda1"
+            }
+            if(test.EPSODE){
+                lambda <- paste0(lambda,".abs")
+            }
+        }
+        if(is.null(only.breakpoints)){
+            only.breakpoints <- test.EPSODE
+        }
+        
+        printPath <- getPath(x,
+                             only.breakpoints = only.breakpoints,
+                             lambda = lambda, keep.index = FALSE,
+                             coef = coef, ...)
+        print(printPath)
 
       diffRow <- nrow(getPath(x)) - nrow(printPath)
       if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
@@ -160,7 +169,7 @@
       # {{{ best model after regularization path
       x0 <- x
       x0$regularizationPath <- NULL
-
+      
       cat("** Model selected using ",x$regularizationPath$criterion," **\n",sep="")
       print(x0)
       

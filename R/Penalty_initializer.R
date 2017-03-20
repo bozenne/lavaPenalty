@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  6 2017 (11:51) 
 ## Version: 
-## last-updated: mar 16 2017 (10:44) 
+## last-updated: mar 20 2017 (15:09) 
 ##           By: Brice Ozenne
-##     Update #: 159
+##     Update #: 167
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -190,23 +190,30 @@ initialize.penaltyL12 <- function(x, name.coef, regularizationPath){
     n.coef <- length(name.coef)
     table.penalty <- penalty(x)
 
-    ## check penalized links corresponding to reference parameters
+    
+    ## check penalized links corresponding to existing parameters
     if(any(table.penalty$link %in% name.coef == FALSE)){
         rm.penalty <- setdiff(table.penalty$link, name.coef)
-        warning("initPenalty: some penalty will not be applied because the corresponding parameter is used as a reference \n",
-                "non-applied penalty: ",paste(rm.penalty, collapse = " "),"\n")
-        cancelPenalty(x, rm.lasso = TRUE, rm.ridge = TRUE, rm.group = TRUE, extraParameter = NULL) <- rm.penalty
+        stop("Penalized links not found in coef  \n",
+             "links: ",paste(rm.penalty, collapse = " "),"\n",
+             "Could be because parameters are used as a reference")
     }
-
+    
+    ## remove extra parameters in penalty
+    # since some parameter may be fixed as reference
+    for(iType in c("Vlasso","Vridge","Vgroup")){ # iType <- "Vlasso"
+        V <- penalty(x, type = iType)[[iType]]        
+        if(!is.null(V) && any(rownames(V) %in% name.coef == FALSE)){
+            index.rm <- which(rownames(V) %in% name.coef == FALSE)
+            penalty(x, type = iType, add = FALSE) <- V[-index.rm,]
+        }
+    }
+    
     if(regularizationPath){ ## create matrix
 
         ## extract V matrix
-        Vlasso <- penalty(x, type = "Vlasso")$Vlasso
-        if(!is.null(Vlasso) && !identical(unname(rownames(Vlasso)),name.coef)){
-            stop("mismatch between Vlasso and start \n")
-        }
-        
-       if(table.penalty[penalty == "ridge",.N]>0){
+        Vlasso <- penalty(x, type = "Vlasso")$Vlasso                
+        if(table.penalty[penalty == "ridge",.N]>0){
             index.penalty2 <- match(table.penalty[penalty=="ridge",link], name.coef)
             lambda2 <- table.penalty[penalty=="ridge",lambda]
         }else{
@@ -252,7 +259,6 @@ initialize.penaltyL12 <- function(x, name.coef, regularizationPath){
                     lambda2 = lambda2, index.penalty2 = index.penalty2,
                     lambdaG = lambdaG, index.penaltyG = index.penaltyG)
     }
-    
     return(res)
 }
 
@@ -320,7 +326,7 @@ initialize.start <- function(x, data, regularizationPath, increasing,
         if(!is.null(linkReg.penalty)){
             ls.formula <- lava.reduce::combine.formula(linkReg.penalty)
             for(iter_link in ls.formula){
-                x0 <- cancel(x0, iter_link, clean = FALSE)
+                x0 <- cancel(x0, iter_link)
             }
         }
     
@@ -330,7 +336,7 @@ initialize.start <- function(x, data, regularizationPath, increasing,
         if(!is.null(reg.penalty)){
             ls.formula <- lava.reduce::combine.formula(reg.penalty)
             for(iter_link in ls.formula){
-                x0 <- cancel(x0, iter_link, clean = FALSE)
+                x0 <- cancel(x0, iter_link)
             }
         }
     

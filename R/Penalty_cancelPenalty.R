@@ -48,22 +48,19 @@
 # }}}
 # {{{ cancelPenalty.plvm
 #' @rdname cancelPenalty
-`cancelPenalty.plvm` <- function(x, clean = TRUE, value){
-  cancelPenalty(x, clean = clean, ...) <- value
+`cancelPenalty.plvm` <- function(x, value){
+  cancelPenalty(x, ...) <- value
   return(x)
 }
 # }}}
 # {{{ cancelPenalty<-.plvm
 #' @rdname cancelPenalty
-`cancelPenalty<-.plvm` <- function(x, clean = TRUE, ..., value){
+`cancelPenalty<-.plvm` <- function(x, ..., value){
 
     penalty <- penalty(x, type = "object")
     cancelPenalty(penalty, extraParameter = coefExtra(x, value = TRUE)) <- value
     x$penalty <- penalty
-    if(clean){
-        x <- clean(x, ...)
-    }
-  
+      
   return(x)
   
 }

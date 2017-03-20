@@ -41,11 +41,20 @@
 # {{{ estimate.plvm
 #' @rdname estimate
 #' @export
-estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive = FALSE, 
+estimate.plvm <- function(x, data, estimator = "gaussian",
+                          lambda1, lambda2, lambdaG, lambdaN, adaptive = FALSE, 
                           regularizationPath = FALSE, fit = lava.options()$calcLambda$fit,
                           control = list(), control.proxGrad = list(), control.EPSODE = list(), 
                           constrain.lambda = FALSE, ...) {
 
+    if(identical(regularizationPath,TRUE)){
+        method <- "optim.EPSODE"
+    }else if(identical(regularizationPath,FALSE)){
+        method <- "optim.proxGrad"
+    }else{
+        method <- "optim.proxGradPath"
+    }
+    
     # {{{ prepare control
     controlUser <- control
 
@@ -78,18 +87,19 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive 
                           adaptive = adaptive,
                           constrain.lambda = constrain.lambda,
                           constrain.variance = control$constrain,
-                          name.variance = coefVar(x, value = TRUE)
+                          name.variance = list(coefVar(x, value = TRUE))
                           )
     if (length(controlUser.proxGrad) > 0) { # update with user input
         control$proxGrad[names(controlUser.proxGrad)] <- controlUser.proxGrad
     }
 
     ## regularization path
-    if(regularizationPath){   
-        control$regPath <- c(lava::lava.options()$EPSODE,
+    if(method == "optim.EPSODE"){   
+        control$regPath <- c(algorithm = "EPSODE",
+                             lava::lava.options()$EPSODE,
                              constrain.lambda = constrain.lambda,
                              constrain.variance = control$constrain,
-                             name.variance = coefVar(x, value = TRUE),
+                             name.variance = list(coefVar(x, value = TRUE)),
                              envir = environment(),
                              fit = fit)
 
@@ -103,6 +113,10 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive 
         if (length(control.EPSODE) > 0) { # update with user input
             control$regPath[names(control.EPSODE)] <- control.EPSODE
         }
+    }else if(method == "optim.proxGradPath"){       
+        control$regPath <- c(algorithm = "proxGrad",
+                             grid = list(regularizationPath),
+                             warmUp = lava.options()$proxGradPath$warmUp)
     }else{
         control$regPath <- NULL
     }
@@ -117,7 +131,7 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive 
     table.penalty <- penalty(x, nuclear = FALSE)
 
     ### update the penalty with potential user input
-    if("lasso" %in% table.penalty$penalty && regularizationPath == FALSE){
+    if("lasso" %in% table.penalty$penalty && method == "optim.proxGrad"){
         penalty(x, type = "lambda1", add = FALSE) <- lambda1
     }
     if("ridge" %in% table.penalty$penalty){
@@ -148,13 +162,13 @@ estimate.plvm <- function(x, data, lambda1, lambda2, lambdaG, lambdaN, adaptive 
    
     
     # {{{ optimisation
-    res <- lava_estimate.lvm(x = x, data = data,
-                             method = if(regularizationPath == 0){"optim.regLL"}else{"optim.regPath"},
+    res <- lava_estimate.lvm(x = x, data = data, estimator = estimator,
+                             method = method,
                              control = control, quick = FALSE, index = TRUE, ...)
     # }}}
     
     ## export
-    return(res)
+    return(res)    
 }
 # }}}
 

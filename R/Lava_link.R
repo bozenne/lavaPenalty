@@ -209,7 +209,7 @@ addLink.lvm.reduced <- function(x, ...){
 
 #' @rdname setLink
 setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
-  
+
   res <- initVar_link(var1, var2)
   var1 <- res$var1
   var2 <- res$var2
@@ -254,24 +254,18 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
 #' cancel(pm, Y~X1+X2)
 #' cancel(pm, Y~X1+X2+X3)
 #'
-cancel.plvm <- function(x, value, clean = TRUE, ...){
+cancel.plvm <- function(x, value, ...){
 
     ## normalize input
     value <- initVar_link(value, format = "txt.formula")
 
     ## remove penalties associated to the link
     if(any(value %in% penalty(x, type = "link"))){
-        cancelPenalty(x, clean = FALSE) <- value[value %in% penalty(x, type = "link")]
+        cancelPenalty(x) <- value[value %in% penalty(x, type = "link")]
     }
 
     ## call the method for the other classes
-    x <- callS3methodParent(x, FUN = "cancel", class = "plvm", value = value, clean = FALSE, ...)
-
-     ## clean object
-    if(clean){
-        x <- clean(x, ...)
-    }
-
+    x <- callS3methodParent(x, FUN = "cancel", class = "plvm", value = value, ...)
     
     return(x)
 }

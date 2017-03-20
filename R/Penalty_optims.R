@@ -1,5 +1,5 @@
 
-# {{{ optim.regLL
+# {{{ optim.proxGrad
 #' @title Proximal gradient algorithm
 #' 
 #' @description Estimate a penalized lvm model using a proximal gradient algorithm 
@@ -12,8 +12,8 @@
 #' @param ... -exported by estimate.lvm
 #' 
 #' @export 
-optim.regLL <- function(start, objective, gradient, hessian, control, ...){
-    
+optim.proxGrad <- function(start, objective, gradient, hessian, control, ...){
+
     ## only keep the relevant elements in control
     control.proxGrad <- control$proxGrad
     penalty <- control$penalty
@@ -77,7 +77,80 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
 }
 # }}}
 
-# {{{ optim.regPath
+# {{{ optim.proxGradPath
+optim.proxGradPath <- function(start, objective, gradient, hessian, control, ...){
+
+    ## extract
+    trace <- control$trace
+    grid <- as.data.frame(control$regPath$grid)
+    warmUp <- control$regPath$warmUp
+    control$regPath <- NULL
+    control$proxGrad$trace <- FALSE
+    
+    ## init
+    n.grid <- NROW(grid)
+    name.grid <- names(grid)
+
+    name.coef <- names(start)
+    n.coef <- length(start)
+    res.Path <- data.table(matrix(as.numeric(NA), nrow = n.grid, ncol = n.coef+7))
+    names(res.Path) <- c("index","lambda1.abs","lambda1","lambda2.abs","lambda2","indexChange",name.coef,"cv")
+
+    if(trace){
+        cat("Penalisation path using the proxGrad algorithm \n", sep = "")
+        pb <- txtProgressBar(min = 1, max = n.grid)
+    }
+    
+    for(iLambda in 1:n.grid){ # iLambda <- 1
+        ## update penalty
+        for(iPen in 1:NCOL(grid)){ # iPen <- 1
+            penalty(control$penalty, type = name.grid[[iPen]], add = FALSE) <- grid[iLambda,iPen]
+            res.Path[iLambda,(name.grid[[iPen]]) := grid[iLambda,iPen]]
+        }
+
+        ## update start
+        if(warmUp && iLambda>1){
+            iStart <- res$par
+        }else{
+            iStart <- start
+        }
+        
+        ## estimation
+        res <- optim.proxGrad(start, objective, gradient, hessian, control, ...)
+
+        ## store results        
+        vec.res <- c(iLambda,res$par,as.numeric(res$convergence==0))
+        vec.names <- c("index",name.coef,"cv")
+        res.Path[iLambda, (vec.names) := as.list(vec.res)]
+        if(trace){setTxtProgressBar(pb, iLambda)}
+    }
+
+    if(trace){close(pb)}
+
+    ## export
+    regPath <- list(path = res.Path,
+                    increasing = TRUE,
+                    criterion = NULL)
+    class(regPath) <- "regPath"
+
+    if(all(res.Path$cv==1)){
+        message <- "Sucessful convergence \n"
+    }else{
+        message <- "Convergence issues \n"
+    }
+    
+    res <- list(par = start,#setNames(rep(NA, length(start)), names(start)),
+                convergence = 0,
+                iterations = 0,
+                algorithm = "proximal gradient",
+                message = message, 
+                regPath = regPath,
+                objective = NA)
+
+}
+# }}}
+
+# {{{ optim.regEPSODE
 
 #' @title Regularization path
 #' 
@@ -91,12 +164,12 @@ optim.regLL <- function(start, objective, gradient, hessian, control, ...){
 #' @param ... -exported by estimate.lvm
 #' 
 #' @export
-optim.regPath <- function(start, objective, gradient, hessian, control, ...){
+optim.EPSODE <- function(start, objective, gradient, hessian, control, ...){
 
     name.coef <- names(start)
     penalty <- control$penalty
     control.regPath <- control$regPath
-  
+
     # {{{ update according to the coefficients present in start
     initL12 <- initialize.penaltyL12(penalty, name.coef = name.coef,
                                      regularizationPath = TRUE)
@@ -115,21 +188,26 @@ optim.regPath <- function(start, objective, gradient, hessian, control, ...){
     # }}}
     
     # {{{ estimation of the nuisance parameter and update lambda/lambda.abs
-    if(length(index.variance)>1){stop("several nuisance parameters \n")}
-        
-    if(control.regPath$constrain.lambda){
-        res <- optim.Nuisance.plvm(x = control$regPath$envir$x, data = control$regPath$envir$data,
-                                   path = resEPSODE$path[,name.coef,with=FALSE],
-                                   index.nuisance = index.variance,
-                                   control = control, ...)
+     res <- optim.Nuisance.plvm(x = control$regPath$envir$x,
+                               data = control$regPath$envir$data,
+                               path = resEPSODE$path[,name.coef,with=FALSE],
+                               index.nuisance = index.variance,
+                               control = control,
+                               ...)
 
-        resEPSODE$path[,control.regPath$name.variance := res]        
+    if(length(index.variance)==1){
+        if(control.regPath$constrain.lambda == FALSE){
+            sigma2 <- resEPSODE$path[[control.regPath$name.variance]]
+            resEPSODE$path[, lambda1.abs := lambda1*sigma2]
+            resEPSODE$path[, lambda2.abs := lambda2*sigma2]
+        }
+    }
+
+    resEPSODE$path[,control.regPath$name.variance := lapply(1:NCOL(res),function(c){res[,c]})]
+
+    if(length(index.variance)==1){
         resEPSODE$path[, lambda1 := lambda1.abs/res]
         resEPSODE$path[, lambda2 := lambda2.abs/res]
-    }else{
-        res <- resEPSODE$path[[control.regPath$name.variance]]
-        resEPSODE$path[, lambda1.abs := lambda1/res]
-        resEPSODE$path[, lambda2.abs := lambda2/res]        
     }
 
     # }}}
@@ -187,8 +265,8 @@ optim.Nuisance.plvm <- function(x, data,
     n.knots <- NROW(path)
     n.nuisance <- length(index.nuisance)
     names.coef <- names(path)
-    index.constrain <- setdiff(1:n.coef,c(1, index.nuisance))
-
+    index.constrain <-  setdiff(1:n.coef,c(1, index.nuisance))
+    
     ## constrain LVM model
     class(x) <- setdiff(class(x),"plvm")
 
@@ -212,7 +290,6 @@ optim.Nuisance.plvm <- function(x, data,
             xConstrain <- setLink(xConstrain, var1 = names.coef[iP], value = path[iKnot][[iP]])    
         }# path[iKnot,]       
         elvm <- estimate(xConstrain, data = data, control = control)
-        
         if( abs(path[iKnot,1]-coef(elvm)[1] ) > 1e-3 ){
             warning("possible inaccuracy when estimating the nuisance parameter \n")
         }

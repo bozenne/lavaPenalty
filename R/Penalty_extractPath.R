@@ -27,7 +27,7 @@
 #' @export
 `getPath.plvmfit` <- function(x, coef, ...) {
 
-    if(isPath(x) == FALSE){
+    if(is.path(x) == FALSE){
         stop("getPath.plvmfit: no penalization path in the plvmfit object \n",
              "set argument \'regularizationPath\' to TRUE when calling estimate \n")
     }

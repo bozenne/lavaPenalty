@@ -7,8 +7,10 @@
 
         if(!missing(coef)){
             if(identical(coef, "penalized")){
+                table.penalty <- penalty(x, nuclear = FALSE, type = NULL)
                 coef <- table.penalty[penalty == "lasso",link]            
             }else if(identical(coef, "Npenalized")){
+                table.penalty <- penalty(x, nuclear = FALSE, type = NULL)
                 coef <- setdiff(coef(x),table.penalty[penalty == "lasso",link])
             }
         }
@@ -18,12 +20,12 @@
 }  
 
 #' @export
-`plot.regPath` <- function(x, coef, lambda = "lambda1.abs", 
+`plot.regPath` <- function(x, coef, lambda = "lambda1", 
                            type = NULL, row = NULL, 
                            xlim = NULL, ylim = NULL,
                            add.line = TRUE, line.size = 2,
                            add.point = TRUE, point.shape = 4, point.size = 2,
-                           add.best = TRUE, color.selected = TRUE) {
+                           add.best = TRUE, color.selected = TRUE, plot = TRUE) {
     if(is.null(type)){
         if(!is.null(x$performance)){
             type <- "criterion"
@@ -80,9 +82,10 @@
                                             linetype = 2, color = "blue")
           }
       
-    }
-    
-    return(ggPath)
+        }
+
+        ls.res <- list(plot = ggPath,
+                       data = dtL.path)        
     
   }else if(type == "criterion"){
     performance <- getPerformance(x)[order(getPerformance(x)[[lambda]]),]
@@ -97,6 +100,13 @@
     if(add.line){ggPerf <- ggPerf + geom_line(size = line.size)}
     if(add.point){ggPerf <- ggPerf + geom_point(size = point.size, aes_string(color = "optimum"))}
     
-    return(ggPerf)
-  } 
+    ls.res <- list(plot = ggPerf,
+                   data = df)
+           
+  }
+
+    if(plot){
+        print(ls.res$plot)
+    }
+    return(invisible(ls.res))
 }
