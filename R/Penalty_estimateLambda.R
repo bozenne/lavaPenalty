@@ -46,7 +46,7 @@ calcLambda.plvmfit <- function(x,
                                fit = lava.options()$calcLambda$fit, trace = TRUE, ...){
 
     # {{{ test
-    if(test.path==FALSE){
+    if(is.path(x)==FALSE){
         stop("missing regularization path in object \n")
     }
     if(fit %in% c("AIC","BIC","P_error") == FALSE){
@@ -62,6 +62,7 @@ calcLambda.plvmfit <- function(x,
     regPath <- getPath(x, path.constrain = TRUE, only.breakpoints=TRUE)
     seq_lambda1.abs <- regPath$lambda1.abs
     seq_lambda1 <- regPath$lambda1
+    n.lambda1 <- length(seq_lambda1.abs)
     # }}}
    
   
@@ -108,7 +109,10 @@ calcLambda.plvmfit <- function(x,
     }
     # }}}
     
-    if(trace){pb <- txtProgressBar(min = 0, max = n.lambda1, style = 3)}
+    if(trace){
+        cat("Estimation of the optimum lambda according to the ",fit," criterion \n")
+        pb <- txtProgressBar(min = 0, max = n.lambda1, style = 3)
+    }
 
     
     for(iKnot in 1:n.knot){ # 
@@ -139,7 +143,6 @@ calcLambda.plvmfit <- function(x,
         # {{{ fit the reduced model and extract gof        
         fitTempo2 <- estimate(Imodel0, data = data.fit, 
                               control = control)
-
         ## estimates
         tableTempo2 <- summary(fitTempo2)$coef
         
@@ -195,7 +198,7 @@ calcLambda.plvmfit <- function(x,
     best.lvm$regularizationPath$path[match(index,regPath$index), cv := cv.lvm]
     best.lvm$regularizationPath$path[match(index,regPath$index), optimum := seq.criterion==best.res]
     best.lvm$regularizationPath$criterion <- fit
-    
+
     class(best.lvm) <- class(x)
     return(best.lvm)
   

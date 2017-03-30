@@ -83,15 +83,22 @@
                  "valid values: \"",paste(validNames.coef, collapse = "\" \""),"\"\n")
         }
     }
-    
+
+    # {{{ order the regularization path and convert to data.table
+    seqLambda <- regPath[[lambda[1]]]
+    index.order <- order(seqLambda, decreasing = 1-increasing)
+    regPath <- regPath[index.order]
+    seqLambda <- seqLambda[index.order]
+    # }}}
+
     ## only.breakpoints
     # only keep points where there is a change in the non 0 coefs (+ first and last knot))
     if(only.breakpoints){
         indexChange <- regPath[["indexChange"]]
         indexChange[is.na(indexChange)] <- -1
-        test.change <- which(diff(na.omit(indexChange))!=0)+1
+        test.change <- which(diff(indexChange)!=0)+1
         row <- sort(union(c(1,NROW(regPath))
-                         ,intersect(which(!is.na(regPath[["indexChange"]])), test.change)))
+                         ,intersect(which(!is.na(regPath[["indexChange"]])), test.change)))    
     }
     
     ## row    
@@ -102,14 +109,9 @@
     }else{
         row <- 1:NROW(regPath)
     }
-    # }}}
     
-    # {{{ order the regularization path and convert to data.table
-    seqLambda <- regPath[[lambda[1]]]
-    index.order <- order(seqLambda, decreasing = 1-increasing)
-    regPath <- regPath[index.order]
-    seqLambda <- seqLambda[index.order]
 
+    ## col
     keep.cols <- c(if(keep.index){"index"},
                    lambda,
                    if(keep.indexChange){"indexChange"},
@@ -123,11 +125,7 @@
         
         ## initialization
         seqKnot <- 1:NROW(regPath)
-        if(getIncreasing(x)){ # start non penalized
-            current.constrain <- 1:NCOL(V)
-        }else{ # start fully penalized            
-            current.constrain <- NULL
-        }
+        current.constrain <- NULL
 
         ## loop over the path
         ls.constrain <- NULL

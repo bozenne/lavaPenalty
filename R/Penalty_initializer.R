@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  6 2017 (11:51) 
 ## Version: 
-## last-updated: mar 20 2017 (15:09) 
+## last-updated: mar 30 2017 (18:20) 
 ##           By: Brice Ozenne
-##     Update #: 167
+##     Update #: 171
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -282,15 +282,16 @@ initialize.start <- function(x, data, regularizationPath, increasing,
 
     if(regularizationPath && increasing){
         if(test.ridge){
-        
+            
         suppressWarnings(
-            initLVM <- tryCatch(estimate(x = x, data = data, quick = TRUE,
-                                         regularizationPath = FALSE, lambda2 = penalty(x, "lambda2")$lambda2,
+            initLVM <- tryCatch(coef(estimate(x = x, data = data,
+                                         regularizationPath = FALSE,
+                                         lambda1 = 0,
+                                         lambda2 = penalty(x, "lambda2")$lambda2,
                                          ...),
                                 error = function(e){e}
-                                )
+                                ))
         )
-        
         } else {
             x0 <- x
             class(x0) <- setdiff(class(x0),"plvm")

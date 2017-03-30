@@ -1,0 +1,144 @@
+\maketitle
+
+* Load package
+#+BEGIN_SRC R :exports both :results output  :session *R* :cache no
+library(lava.penalty, quiet = TRUE)
+lava.options(constrain = FALSE)
+#+END_SRC
+
+#+RESULTS:
+
+* Simulate linear model with two variables
+#+BEGIN_SRC R :exports both :results output  :session *R* :cache no
+set.seed(10)
+n <- 500
+formula.lvm <- as.formula(paste0("Y~",paste(paste0("X",1:2), collapse = "+")))
+lvm.model <- lvm(formula.lvm)
+
+# simulation
+df.data <- sim(lvm.model,n)
+df.data <- as.data.frame(scale(df.data))
+
+# estimation
+plvm.model <- penalize(lvm.model, Vridge = FALSE)
+#+END_SRC
+
+#+RESULTS:
+
+* Display the unpenalized estimates:
+#+BEGIN_SRC R :exports both :results output  :session *R* :cache no
+estimate(lvm.model, data = df.data)
+#+END_SRC
+
+#+RESULTS:
+:                     Estimate Std. Error  Z-value  P-value
+: Regressions:                                             
+:    Y~X1              0.50391    0.02519 20.00087   <1e-12
+:    Y~X2              0.61748    0.02519 24.50844   <1e-12
+: Intercepts:                                              
+:    Y                 0.00000    0.02509  0.00000        1
+: Residual Variances:                                      
+:    Y                 0.31475    0.01991 15.81139
+
+* Display LARS results:
+#+BEGIN_SRC R :exports both :results output  :session *R* :cache no
+PathLars <- estimate(plvm.model,  data = df.data,
+                     control.EPSODE = list(trace = FALSE),
+                     fit = NULL, regularizationPath = TRUE)
+PathLars
+#+END_SRC
+
+#+RESULTS:
+: Warning message:
+: In sqrt(diag(asVar)) : NaNs produced
+: Regularization path: 
+:    lambda1.abs            Y      Y~X1      Y~X2      Y~~Y
+: 1:      0.0000 1.179089e-17 0.5039103 0.6174760 0.3147470
+: 2:    271.4201 1.407798e-18 0.0000000 0.1135657 0.8618325
+: 3:    328.0894 0.000000e+00 0.0000000 0.0000000 0.9980000
+: 4:    361.6216 9.704043e-18 0.0000000 0.0000000 0.9980000
+: estimated using EPSODE algorithm
+
+* Display EPSODE results of the lasso OLS:
+#+BEGIN_SRC R :exports both :results output :session *R* :cache no
+PathEPSODE.OLS <- estimate(plvm.model,  data = df.data,
+                           constrain.lambda = TRUE,
+                           control.EPSODE = list(lars = FALSE, trace = FALSE),
+                           fit = NULL, regularizationPath = TRUE)
+PathEPSODE.OLS
+#+END_SRC
+
+#+RESULTS:
+: Warning message:
+: In sqrt(diag(asVar)) : NaNs produced
+: Regularization path: 
+:    lambda1.abs            Y      Y~X1      Y~X2      Y~~Y
+: 1:      0.0000 1.179089e-17 0.5039103 0.6174760 0.3147470
+: 2:    271.4201 1.407798e-18 0.0000000 0.1135657 0.8618325
+: 3:    328.0894 0.000000e+00 0.0000000 0.0000000 0.9980000
+: 4:    361.6216 9.704043e-18 0.0000000 0.0000000 0.9980000
+: estimated using EPSODE algorithm
+
+#+BEGIN_SRC R :results output graphics :file EPOSDEols.png :session *R*
+plot(PathEPSODE.OLS)
+#+END_SRC
+
+#+RESULTS:
+[[file:EPOSDEols.png]]
+
+* Display EPSODE results of the lasso ML:
+#+BEGIN_SRC R :exports both :results output :session *R* :cache no
+PathEPSODE.ML <- estimate(plvm.model,  data = df.data,
+                          constrain.lambda = FALSE,
+                          control.EPSODE = list(lars = FALSE, trace = FALSE, stopLambda = 250, exportAllPath = TRUE),
+                          fit = NULL, regularizationPath = TRUE)
+print(PathEPSODE.ML, lambda = "lambda1")
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Warning messages:
+1: In lava_estimate.lvm(x = x, data = data, estimator = estimator,  :
+  Lack of convergence. Increase number of iteration or change starting values.
+2: In sqrt(diag(asVar)) : NaNs produced
+Regularization path: 
+    lambda1             Y       Y~X1       Y~X2      Y~~Y
+1: 250.0000 -1.409337e-17 -0.3864696 -0.2271841 1.8315174
+2: 315.1830  3.283901e-18  0.0000000  0.1343227 0.8315174
+3: 328.7469  0.000000e+00  0.0000000  0.0000000 0.9980000
+4: 361.6216  9.704043e-18  0.0000000  0.0000000 0.9980000
+[ omitted 11 rows ] 
+estimated using EPSODE algorithm
+#+end_example
+
+#+BEGIN_SRC R :results output graphics :file EPOSDEml.png :session *R*
+plot(PathEPSODE.ML)
+#+END_SRC
+
+When the second variable enters in the model the parameters are
+updated in an incorrect way (the opposite of what one would expect).
+
+#+RESULTS:
+[[file:EPOSDEml.png]]
+
+#
++LANGUAGE:  en
+#+OPTIONS:   TeX:t LaTeX:t toc:nil
+#+LaTeX_CLASS: org-article
+#+LaTeX_HEADER:\usepackage{authblk}
+#+LaTeX_HEADER:\usepackage[utf8]{inputenc}
+#+LaTeX_HEADER:\usepackage[T1]{fontenc}
+#+LaTeX_HEADER:\usepackage{amsmath,amssymb,array}
+#+LaTeX_HEADER:\usepackage{booktabs}
+#+LaTeX_HEADER:\usepackage{amsmath}
+#+LaTeX_HEADER:\usepackage{blindtext}
+#+LaTeX_HEADER:\usepackage{scrextend}
+#+LaTeX_HEADER:\usepackage{listings}
+#+LATEX_HEADER: \usepackage{geometry}
+#+LATEX_HEADER: \newgeometry{top=2cm,bottom=2cm,right=2.5cm,left=2.5cm}
+#+BIND: org-export-allow-bind-keywords t
+#+BIND: org-latex-title-command ""
+#+PROPERTY: session *R*
+#+PROPERTY: cache yes
+#+Title: lava.penalty: EPSODE algorithm
+#+Author: 

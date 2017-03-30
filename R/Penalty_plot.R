@@ -43,14 +43,16 @@
         }
         dt.path <- getPath(x, coef = coef, lambda = lambda, row = row,
                            keep.index = FALSE, keep.indexChange = FALSE, keep.optimum = FALSE)
+
         dtL.path <- data.table::melt(dt.path, 
                                      measure=setdiff(names(dt.path),lambda), 
                                      value.name = "value", variable.name = "coefficient")
-
+        
         ggPath <- ggplot() + coord_cartesian(xlim = xlim, ylim = ylim)
         if(add.line){
             ggPath <- ggPath + geom_line(aes_string(y = "value", x = lambda, group = "coefficient", col = "coefficient"),
-                                         size = line.size, data = dtL.path)}
+                                         size = line.size, data = dtL.path)
+        }
         if(add.point){
             ggPath <- ggPath + geom_point(aes_string(y = "value", x = lambda, group = "coefficient", col = "coefficient"),
                                           size = point.size, shape = point.shape, data = dtL.path)

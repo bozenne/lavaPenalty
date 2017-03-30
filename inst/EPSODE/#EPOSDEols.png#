@@ -1,0 +1,7 @@
+ggsave(plot(PathEPSODE.OLS), "EPSODEols.png")
+
+
+
+
+
+

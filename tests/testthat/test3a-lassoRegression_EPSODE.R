@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar 16 2017 (09:18) 
 ## Version: 
-## last-updated: mar 20 2017 (17:20) 
+## last-updated: mar 30 2017 (18:17) 
 ##           By: Brice Ozenne
-##     Update #: 14
+##     Update #: 30
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -24,12 +24,13 @@ library(penalized)
 library(testthat)
 
 #### > settings ####
-test.tolerance <- 1e-4
+test.tolerance <- 1e-3
 test.scale <- NULL
 lava.penalty.options(trace = FALSE, type = "lava")
 lava.penalty.options(trace = FALSE, type = "proxGrad")
+lambda2 <- 5
 
-context("#### Estimate lasso regression with proximal gradient #### \n")
+context("#### EPSODE algorithm #### \n")
 
 # {{{ simulation and LVM
 # parametrisation
@@ -49,52 +50,56 @@ lvm.model <- lvm(formula.lvm)
 elvm.model <- estimate(lvm.model, df.data)
 
 # path
-penalized.PathL1 <- penalized(Y ~  ., data = df.data, steps = "Park", trace = FALSE)
+penalized.PathL1 <- penalized(Y ~  ., data = df.data, steps = "Park", lambda2 = lambda2, trace = FALSE)
 seq_lambda1 <- unlist(lapply(penalized.PathL1, function(x){x@lambda1}))
 seq_lambda1Sigma <- unlist(lapply(penalized.PathL1, function(x){x@lambda1/x@nuisance$sigma2}))
 n.lambda <- length(seq_lambda1)
 
-plvm.model <- penalize(lvm.model, Vridge = FALSE)
+plvm.model <- penalize(lvm.model, Vridge = TRUE)
 # }}}
 
-# [1] 361.069657 361.033550 229.350080 129.031487 129.018584   6.985620   5.673622   0.000000
+# lasso# [1] 361.069657 361.033550 229.350080 129.031487 129.018584   6.985620   5.673622   0.000000
+# EN   # [1] 361.069657 361.033550 229.350082 129.094503   7.080412   7.010819   7.010118   5.348758   5.346142   0.000000
+# {{{ Lars
+test_that("LARS (lasso)", {
 
-# {{{ Lars forward
-test_that("LARS-forward (lasso)", {
+    ## backward
+    PathLars <- estimate(plvm.model,  data = df.data, lambda2 = lambda2,
+                         control = list(constrain = FALSE),
+                         regularizationPath = TRUE)
     
-    PathLars <- estimate(plvm.model,  data = df.data,
-                         fit = NULL, control = list(constrain = FALSE),
-                         regularizationPath = TRUE)                             
-                              
-   tableLARS <- getPath(PathLars, increasing = FALSE)
-   # plot(PathLars)
+    tableLARS <- getPath(PathLars, increasing = FALSE)
+    # plot(PathLars)
    
-   for(iPath in 2:NROW(tablePath)){ # iPath <- 5
-       index.penalized <- which.min(abs(tableLARS[iPath,lambda1.abs]-seq_lambda1))
-       coef.expected <- coef2.penalized(penalized.PathL1[[index.penalized]], name.response = "Y")[names(coef(elvm.model))]
-       coef.LARS <- tableLARS[iPath,names(coef.expected),with = FALSE]
+    for(iPath in 2:NROW(tableLARS)){ # iPath <- 5
+        index.penalized <- which.min(abs(tableLARS[iPath,lambda1.abs]-seq_lambda1))
+        coef.expected <- coef2.penalized(penalized.PathL1[[index.penalized]], name.response = "Y")[names(coef(elvm.model))]
+        coef.LARS <- tableLARS[iPath,names(coef.expected),with = FALSE]
 
-       expect_equal(as.double(tablePath[iPath,lambda1.abs]),
-                    expected=as.double(seq_lambda1[index.penalized]),
-                    tolerance=test.tolerance, scale=test.scale)    
-       expect_equal(as.double(coef.expected), expected=as.double(coef.LARS), tolerance=test.tolerance, scale=test.scale)    
-   }
+        expect_equal(as.double(tableLARS[iPath,lambda1.abs]),
+                     expected=as.double(seq_lambda1[index.penalized]),
+                     tolerance=test.tolerance, scale=test.scale)    
+        expect_equal(as.double(coef.expected), expected=as.double(coef.LARS), tolerance=test.tolerance, scale=test.scale)    
+    }
+
+    ## forward
+    PathLars.f <- estimate(plvm.model,  data = df.data, lambda2 = lambda2,
+                           control = list(constrain = FALSE),
+                           control.EPSODE = list(increasing = TRUE),
+                           regularizationPath = TRUE)
+    #PathLars.f$regularizationPath$path 
+    #PathLars$regularizationPath$path
   
 })
 # }}}
 
-# {{{ Lars backward
+# {{{ EPSODE
+test_that("EPSODE (lasso)", {
 
-# }}}
-
-lava.options()$EPSODE
-
-# {{{ EPSODE forward
-test_that("EPSODE-forward (lasso)", {
-
+    
     ## at fixed sigma
-    PathEPSODE <- estimate(plvm.model,  data = df.data,
-                           fit = NULL, control = list(constrain = FALSE),
+    PathEPSODE <- estimate(plvm.model,  data = df.data, fit = NULL, lambda2 = lambda2,
+                           control = list(constrain = FALSE),
                            constrain.lambda = TRUE,
                            control.EPSODE = list(resolution_lambda1 = c(0.5,0.001),
                                                  stopParam = 3),
@@ -114,34 +119,16 @@ test_that("EPSODE-forward (lasso)", {
                     tolerance=0.01, scale=test.scale)    
    }
 
-   ## no constrains
-   PathEPSODE <- estimate(plvm.model,  data = df.data,
-                          fit = NULL, control = list(constrain = FALSE),
-                          constrain.lambda = FALSE,
-                          control.EPSODE = list(resolution_lambda1 = c(0.5,0.001)),
-                          regularizationPath = TRUE)
-
-#   plot(PathEPSODE)
-    tableEPSODE <- getPath(PathEPSODE, increasing = FALSE, only.breakpoints = TRUE)
- #   tableLARS
-
-   for(iPath in 2:NROW(tableEPSODE)){ # iPath <- 1
-       index.penalized <- which.min(abs(tableEPSODE[iPath,lambda1.abs]-seq_lambda1))
-       coef.expected <- coef2.penalized(penalized.PathL1[[index.penalized]], name.response = "Y")[names(coef(elvm.model))]
-       coef.EPSODE <- tableEPSODE[iPath,names(coef.expected),with = FALSE]
-       
-       expect_equal(as.double(tableEPSODE[iPath,lambda1.abs]),
-                    expected=as.double(seq_lambda1[index.penalized]),
-                    tolerance=0.1, scale=test.scale)    
-       expect_equal(as.double(coef.expected), expected=as.double(coef.EPSODE),
-                    tolerance=0.01, scale=test.scale)    
-   }
+   PathEPSODE.f <- estimate(plvm.model,  data = df.data, fit = NULL, lambda2 = lambda2,
+                            control = list(constrain = FALSE),
+                            constrain.lambda = TRUE,
+                            control.EPSODE = list(resolution_lambda1 = c(0.5,0.001),
+                                                  stopParam = 3, increasing = TRUE, exportAllPath = TRUE),
+                            regularizationPath = TRUE)
   
 })
 
 # }}}
-
-
 
 test <- FALSE
 if(test){
@@ -158,7 +145,7 @@ if(test){
     df.data <- sim(lvm.modelSim,n)
     index.latent <- which(names(df.data) %in% latent(lvm.modelSim) == FALSE)
     df.data <- as.data.frame(scale(df.data))[,index.latent]
-    head(    df.data)
+    head(df.data)
     # estimation
 
     lvm.model <- lvm(Y1~eta+X1+X2,Y2~eta+X3+X4,Y3~eta+X5+X6)
@@ -172,6 +159,13 @@ if(test){
                                      "Y3~X5","Y3~X6"),
                            Vridge = FALSE)
 
+    testEPSODE <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
+                           fit = NULL, control = list(constrain = TRUE),
+                           constrain.lambda = FALSE)
+    plot(testEPSODE, coef = c("Y2~~Y2"))
+    plot(testEPSODE)
+
+        initVar_link("eta")
     seq_lambda <- c(11.10,11.15,
                     11.45,11.50,
                     48.00,48.05)

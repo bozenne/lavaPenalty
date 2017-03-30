@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar 20 2017 (16:57) 
+## last-updated: mar 30 2017 (16:42) 
 ##           By: Brice Ozenne
-##     Update #: 220
+##     Update #: 223
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -107,13 +107,7 @@ lava.penalty.post.hook <- function(x){
         if(is.path(x)){
             ## estimate the best model according to the fit parameter
             if(!is.null(fit)){
-                if(trace>=0){cat("Best penalized model according to the",fit,"criteria",if(x$control$trace>=1){"\n"})}
-                resLambda <- calcLambda(x, fit = fit, trace = trace+1)
-                res <- resLambda$optimum$lvm
-                resLambda$optimum$lvm <- NULL
-                regPath <- resLambda
-                if(trace>=0){cat(" - done \n")}
-        
+                x <- calcLambda(x, fit = fit, trace = trace)                                
             }
       
         }else{

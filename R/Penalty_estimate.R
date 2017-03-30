@@ -41,7 +41,7 @@
 # {{{ estimate.plvm
 #' @rdname estimate
 #' @export
-estimate.plvm <- function(x, data, estimator = "gaussian",
+estimate.plvm <- function(x, data, estimator = "gaussian1",
                           lambda1, lambda2, lambdaG, lambdaN, adaptive = FALSE, 
                           regularizationPath = FALSE, fit = lava.options()$calcLambda$fit,
                           control = list(), control.proxGrad = list(), control.EPSODE = list(), 
@@ -105,8 +105,8 @@ estimate.plvm <- function(x, data, estimator = "gaussian",
 
         # if linear regression then use LARS algorithm
         test.regression <- (length(endogenous(x)) == 1) && (length(latent(x)) == 0)
-        if(test.regression && all( c("resolution_lambda1","increasing") %in% names(controlUser.EPSODE) == FALSE)){
-            control$regPath$resolution_lambda1 <- c(1,1e-10)
+        if(test.regression && "lars" %in% names(controlUser.EPSODE) == FALSE){
+            control$regPath$lars <- TRUE
             control$regPath$constrain.lambda <- TRUE
             control$regPath$increasing <- FALSE
         }
