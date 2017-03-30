@@ -186,30 +186,36 @@ optim.EPSODE <- function(start, objective, gradient, hessian, control, ...){
                         index.variance = index.variance,
                         control = control.regPath)
     # }}}
-    
-    # {{{ estimation of the nuisance parameter and update lambda/lambda.abs
-     res <- optim.Nuisance.plvm(x = control$regPath$envir$x,
-                               data = control$regPath$envir$data,
-                               path = resEPSODE$path[,name.coef,with=FALSE],
-                               index.nuisance = index.variance,
-                               control = control,
-                               ...)
 
-    if(length(index.variance)==1){
-        if(control.regPath$constrain.lambda == FALSE){
+    # {{{ estimation of the nuisance parameter and update lambda/lambda.abs
+    if(control.regPath$constrain.lambda){
+        res <- optim.Nuisance.plvm(x = control$regPath$envir$x,
+                                   data = control$regPath$envir$data,
+                                   path = resEPSODE$path[,name.coef,with=FALSE],
+                                   index.nuisance = index.variance,
+                                   control = control,
+                                   ...)   
+
+        if(length(index.variance)==1){
             sigma2 <- resEPSODE$path[[control.regPath$name.variance]]
-            resEPSODE$path[, lambda1.abs := lambda1*sigma2]
-            resEPSODE$path[, lambda2.abs := lambda2*sigma2]
+            if(control.regPath$constrain.variance){sigma2 <- exp(sigma2)}
+            resEPSODE$path[, lambda1.abs := lambda1.abs*sigma2]
+            resEPSODE$path[, lambda2.abs := lambda2.abs*sigma2]
+        }
+
+        resEPSODE$path[,control.regPath$name.variance := lapply(1:NCOL(res),function(c){res[,c]})]
+
+        if(length(index.variance)==1){            
+            if(control.regPath$constrain.variance){res <- exp(res)}            
+            resEPSODE$path[, lambda1 := lambda1.abs/res]
+            resEPSODE$path[, lambda2 := lambda2.abs/res]
+        }
+    }else{
+        if(length(index.variance)==1){
+            resEPSODE$path[, lambda1.abs := lambda1*resEPSODE$path[[control.regPath$name.variance]]]
+            resEPSODE$path[, lambda2.abs := lambda2*resEPSODE$path[[control.regPath$name.variance]]]
         }
     }
-
-    resEPSODE$path[,control.regPath$name.variance := lapply(1:NCOL(res),function(c){res[,c]})]
-
-    if(length(index.variance)==1){
-        resEPSODE$path[, lambda1 := lambda1.abs/res]
-        resEPSODE$path[, lambda2 := lambda2.abs/res]
-    }
-
     # }}}
     
     # {{{ conversion to regPath object
@@ -218,7 +224,7 @@ optim.EPSODE <- function(start, objective, gradient, hessian, control, ...){
                     criterion = NULL)
     class(regPath) <- "regPath"
     # }}}
-    
+
     res <- list(par = start,#setNames(rep(NA, length(start)), names(start)),
                 convergence = resEPSODE$convergence,
                 iterations = resEPSODE$iterations,
@@ -280,11 +286,11 @@ optim.Nuisance.plvm <- function(x, data,
     }
 
     ##  estimate nuisance for each node
-    if(trace>=0){cat("Estimation of the nuisance parameter ")}
+    if(trace>=1){cat("Estimation of the nuisance parameter ")}
 
     M.nuisance <- matrix(NA, nrow = n.knots, ncol = n.nuisance)
-    
-    for(iKnot in 1:n.knots){
+
+    for(iKnot in 1:n.knots){ # iKnot <- 1
         xConstrain <- x
         for(iP in index.constrain){ # iP <- 1
             xConstrain <- setLink(xConstrain, var1 = names.coef[iP], value = path[iKnot][[iP]])    
@@ -296,7 +302,7 @@ optim.Nuisance.plvm <- function(x, data,
         M.nuisance[iKnot,] <- coef(elvm)[names.coef[index.nuisance]]
     }
 
-    if(trace>=0){cat("- done \n")}
+    if(trace>=1){cat("- done \n")}
 
     ## export
     return(M.nuisance)  
