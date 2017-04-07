@@ -1,5 +1,7 @@
 # {{{ EPSODE
 #' @title Perform the generic Path Algorithm for a LVM
+#'
+#' @description Perform the generic Path Algorithm for a LVM
 #' 
 #' @param start the starting value
 #' @param objective likelihood given by lava. Used to adjust the step parameter when using backtracking
@@ -7,11 +9,16 @@
 #' @param hessian second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL
 #' @param V matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)
 #' @param lambda2 ridge penalization parameter
+#' @param index.penalty2 parameters to which ridge penalization is applied
 #' 
-#' @param indexPenalty position of the penalised coefficients in beta
-#' @param indexNuisance index of the nuisance parameter to be treated as a constant
+#' @param equivariance should the lambda parameter be multiplied with the first variance parameter?
+#' @param constrain.variance should the variance parameters be log transformed?
+#' @param index.variance the position of the variance parameters in start
 #' @param control settings for the EPSODE algorithm. See lava.options.
-
+#'
+#' @details Does not work for an unknown variance matrix since the log-likelihood of the regression and variance parameter is not jointly convex
+#' (according to ??)
+#' 
 #' @references 
 #' Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
 
@@ -20,7 +27,7 @@ EPSODE <- function(start,
                    objective, gradient, hessian,
                    V,
                    lambda2, index.penalty2,
-                   constrain.lambda, constrain.variance, index.variance,
+                   equivariance, constrain.variance, index.variance,
                    control){
 
     n.coef <- length(start)
@@ -51,7 +58,7 @@ EPSODE <- function(start,
     # }}}
   
     # {{{ constrain variance
-    if(constrain.lambda){
+    if(equivariance){
         if(constrain.variance){ # on the log scale
             start[index.variance] <- start[index.variance] - start[index.variance[1]]
         }else{ # on the original scale
@@ -78,7 +85,7 @@ EPSODE <- function(start,
   
     if(control$trace>=1){
         cat("Penalisation path using the EPSODE algorithm \n", sep = "")
-        if(constrain.lambda){
+        if(equivariance){
             cat(" * fixed coef : \"",paste(names(start)[index.variance[1]], collapse = "\" \""),"\" \n", sep = "")
         }
         if(control$trace==1){pb <- utils::txtProgressBar(min = 0, max = n.penalty, style = 3)}
@@ -206,8 +213,8 @@ EPSODE <- function(start,
     rownames(M.beta) <- NULL
 
     dt <- as.data.table(cbind(index = 1:NROW(M.beta),
-                              lambda1.abs = if(constrain.lambda == 0){NA}else{seq_lambda1}, 
-                              lambda1 = if(constrain.lambda == 0){seq_lambda1}else{NA}, 
+                              lambda1.abs = if(equivariance == 0){NA}else{seq_lambda1}, 
+                              lambda1 = if(equivariance == 0){seq_lambda1}else{NA}, 
                               lambda2.abs = if(!is.null(lambda2)){mean(lambda2)}else{NA}, 
                               lambda2 = NA,
                               indexChange = unname(seq_index),
@@ -228,7 +235,7 @@ EPSODE_odeBeta <- function(t, y, ls.args){
 
     bridge <- get("bridge.ode", envir = ls.args$envir)
     lambda1 <- sum(bridge[tail(which(bridge[,"iter"]==(t-1)),1),c("lambda","step")])
-    constrain.lambda1 <- as.vector(y %*% ls.args$V)
+    equivariance1 <- as.vector(y %*% ls.args$V)
 
     # {{{ test lambda exceed stopLambda
     if((ls.args$increasing==FALSE && lambda1 <= ls.args$stopLambda) || (ls.args$increasing && lambda1 >= ls.args$stopLambda)){
@@ -247,8 +254,8 @@ EPSODE_odeBeta <- function(t, y, ls.args){
     # {{{ check constrains: sign change
     if(ls.args$reversible || ls.args$increasing){
         index <- NULL
-        if(length(ls.args$setNE)>0){index <- c(index, ls.args$setNE[which(constrain.lambda1[ls.args$setNE] > 0)])} ## any negative constrain that becomes positive: stop algorithm
-        if(length(ls.args$setPE)>0){index <- c(index, ls.args$setPE[which(constrain.lambda1[ls.args$setPE] < 0)])} ## any positive constrain that becomes negative: stop algorithm
+        if(length(ls.args$setNE)>0){index <- c(index, ls.args$setNE[which(equivariance1[ls.args$setNE] > 0)])} ## any negative constrain that becomes positive: stop algorithm
+        if(length(ls.args$setPE)>0){index <- c(index, ls.args$setPE[which(equivariance1[ls.args$setPE] < 0)])} ## any positive constrain that becomes negative: stop algorithm
     
         if(length(index) == 1){
             assign("cv.ode",

@@ -1,6 +1,7 @@
 # {{{ cvCheck
 
 #' @title Test the sensibility of the lvm estimate to the initialization points
+#' @description Test the sensibility of the lvm estimate to the initialization points
 #' @name cvCheck
 #'
 #' @param object a lvm model
@@ -22,17 +23,19 @@
 #' covariance(m) <- v1~v2+v3+v4
 #' dd <- sim(m,10000) ## Simulate 10000 observations from model
 #' e <- estimate(m, dd) ## Estimate parameters
-#' 
-#' system.time(
+#'
+#' \dontrun{
 #' summary(cvCheck(m, dd))
-#' )
-#' 
-#' system.time(
 #' summary(cvCheck(m, dd, ncpus = 4))
-#' )
+#' }
+#' \dontshow{
+#' summary(cvCheck(m, dd, n.init = 10))
+#' summary(cvCheck(m, dd, ncpus = 4, n.init = 10))
+#' }
+#' 
 #' @export
-cvCheck <- function (x, ...) {
-  UseMethod("cvCheck", x)
+cvCheck <- function (object, ...) {
+  UseMethod("cvCheck", object)
 }
 
 #' @rdname cvCheck
@@ -74,7 +77,7 @@ cvCheck.lvm <- function(object,
     }
     diag(VCOV) <-  diag(lvm.vcov)*factor.vcov
     
-    sample.start <- tmvtnorm:::rtmvnorm(n = n.init, mean = coef(lvm.init), sigma = VCOV,
+    sample.start <- tmvtnorm::rtmvnorm(n = n.init, mean = coef(lvm.init), sigma = VCOV,
                                         lower = c(rep(-Inf, length(mean.param)), rep(0, length = length(var.param))),
                                         algorithm = "gibbs"
                                         )
@@ -83,7 +86,7 @@ cvCheck.lvm <- function(object,
     warper <- function(x){
         if(verbose){
             if(ncpus == 1){
-                utils:::setTxtProgressBar(.pb, x) 
+                utils::setTxtProgressBar(.pb, x) 
             }else{
                 snowfall::sfCat("*")
             }
@@ -106,7 +109,7 @@ cvCheck.lvm <- function(object,
     }
     
     if(ncpus == 1){
-        if(verbose){.pb <- utils:::txtProgressBar(min = 0, max = n.init, style = 3)}
+        if(verbose){.pb <- utils::txtProgressBar(min = 0, max = n.init, style = 3)}
         Mres <- sapply(1:n.init, warper)
     }else{
         sfInit( parallel=TRUE, cpus=ncpus )
@@ -135,10 +138,13 @@ cvCheck.lvm <- function(object,
 
 # {{{ summary.cvlvm
 #' @title Summary function associated with cvCheck
-#
+#  @description Summary function associated with cvCheck
+
 #' @param object the output of cvCheck
+#' @param threshold threshold used to cluster the convergence points (height in hclust)
+#' 
 #' @export
-summary.cvlvm <- function(object, threshold = NULL){
+summary.cvlvm <- function(object, threshold = NULL, ...){
 
 
     e <- object$estimates
