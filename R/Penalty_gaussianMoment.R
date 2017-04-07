@@ -56,7 +56,7 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     
     n.rows <- sqrt(nrow(partial_vec.iC))
     ls.tempo <- (lapply(1:n.rows, function(x){partial_vec.iC[x*(1:n.rows),]}))
-    partial_iC <- abind:::abind(ls.tempo, along = 3)
+    partial_iC <- abind::abind(ls.tempo, along = 3)
     
     partial2_vec.C <- D$d2vecS # D$d2vecS
     partial2_vec.xi <- NULL

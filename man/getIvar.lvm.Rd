@@ -4,30 +4,37 @@
 \alias{getIvar.lvm}
 \title{Extract the variables related to each parameter}
 \usage{
-getIvar.lvm(x, link = NULL, format = "data.frame")
+getIvar.lvm(x, link = NULL, data = NULL, format = "data.table",
+  rm.factice = TRUE)
 }
 \arguments{
 \item{x}{a lvm model}
 
 \item{link}{the links to be analysed. If NULL, all the coefficients from the lvm model are used instead.}
 
-\item{format}{the type of object to output. Can be \code{"data.frame"} or \code{"matrix"}.}
+\item{data}{the dataset that will be used to fit the model. If NULL, a simulated data will be generated from the model.}
+
+\item{format}{the type of object to output. Can be \code{"data.frame"}, \code{"data.table"}, or \code{"matrix"}.}
+
+\item{rm.factice}{should links corresponding to factor variables be removed since they will be transformed in external parameters?}
+}
+\description{
+Extract the variables related to each parameter
 }
 \examples{
-
+ 
 m <- lvm(Y~X1+X2)
-categorical(m, K =3) <- "X1"
+categorical(m, K = 3) <- "X1"
+try(getIvar.lvm(m)) # error
+
+categorical(m, K = 3, labels = 1:3) <- "X1"
 getIvar.lvm(m)
-getIvar.lvm(m, "X1:0|1")
-getIvar.lvm(m, c("X1:0|1", "X1:1|2"))
 getIvar.lvm(m, "Y~X1")
+getIvar.lvm(m, "X1:0|1")
+getIvar.lvm(m, "X1:1|2")
+getIvar.lvm(m, c("X1:0|1", "X1:1|2"))
 getIvar.lvm(m, c("Y~X1","Y~X2"))
 getIvar.lvm(m, c("Y~X2","Y~X1"))
-
-d <- sim(m, 1e2)
-d$X1 <- factor(d$X1)
-m2 <- lava_categorical2dummy(m, data = d)
-getIvar.lvm(m2$x)
 
 }
 

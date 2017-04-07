@@ -8,10 +8,12 @@
 coef0(x, ...)
 
 \method{coef0}{plvmfit}(x, tol = 0, operator = "<=", penalized = FALSE,
-  value = TRUE)
+  value = TRUE, ...)
 }
 \arguments{
 \item{x}{a penalized lvm model}
+
+\item{...}{not used}
 
 \item{tol}{the threshold below which a coefficient is considered to be null}
 

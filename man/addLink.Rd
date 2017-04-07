@@ -16,6 +16,8 @@ addLink(x, ...)
 \arguments{
 \item{x}{a lvm model}
 
+\item{...}{arguments to be passed to lower levels functions}
+
 \item{var1}{the first variable (character) or a formula describing the link to be added to the lvm}
 
 \item{var2}{the second variable (character). Only used if var1 is a character.}

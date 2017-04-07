@@ -6,4 +6,7 @@
 \usage{
 Qbound(diff.xy, obj.y, grad.y, L)
 }
+\description{
+Estimate an upper bound of obj.x
+}
 

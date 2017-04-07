@@ -47,6 +47,7 @@ initPenaltNuclear <- function(){
 # {{{ lvm2plvm
 
 #' @title Conversion to a penalized latent variable model
+#' @description Conversion to a penalized latent variable model
 #' 
 #' @param x \code{lvm}-object
 #' 
@@ -78,7 +79,7 @@ lvm2plvm <- function(x){
 #' @param x \code{lvm}-object
 #' @param value the name of the link to be penalized 
 #' @param group the groups defining the group lasso penalty
-#' @parma coords the (spatial) position of the links to penalize
+#' @param coords the (spatial) position of the links to penalize
 #' @param Vlasso the matrix defining lasso penalties. Otherwise must be logical to indicate whether to add lasso penalties.
 #' @param Vridge the matrix defining ridge penalties. Otherwise must be logical to indicate whether to add ridge penalties.
 #' @param Vgroup the matrix defining group lasso penalties. Otherwise must be logical to indicate whether to add group lasso penalties.
@@ -155,7 +156,7 @@ lvm2plvm <- function(x){
 `penalize<-.lvm` <- function(x, group, add = TRUE, reduce = FALSE,
                              Vlasso = TRUE, Vridge = TRUE, Vgroup = TRUE, 
                              intercept = FALSE, regression = TRUE, variance = FALSE, covariance = FALSE, latent = FALSE,
-                             value){
+                             value, ...){
 
     ## convert to plvm
     if("plvm" %in% class(x) == FALSE){
@@ -373,7 +374,7 @@ lvm2plvm <- function(x){
                                                           name.Y[1])
   
     #### update object
-    x <- lava.reduce:::lvm2reduce(x)
+    x <- lava.reduce::lvm2reduce(x)
     x <- regression(x, from = name.X, to = name.Y[1],
                     reduce = name.reduce) 
   
@@ -405,7 +406,7 @@ lvm2plvm <- function(x){
 #' categorical(m, labels = c("A","B","C")) <- "X1"
 #' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
 #' dt
-#' categorical(m, K=2) <- "X2"
+#' categorical(m, K=2, labels = 1:2) <- "X2"
 #' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
 #' dt
 #' 
@@ -413,7 +414,7 @@ lvm2plvm <- function(x){
 #' latent(m) <- ~eta
 #' dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
 #' dt
-initGroup.lvm <- function(x, links, data = sim(x, 1), group){
+initGroup.lvm <- function(x, links, group){
 
     dt.link <- getIvar.lvm(x, link = links, format = "data.table")
     dt.link[, group := as.numeric(NA)]
@@ -465,3 +466,54 @@ initVcoef.lvm <- function(x, link, group){
 }
 # }}}
 
+# {{{ initVcoef.multigroup
+initVcoef.multigroup <- function(x, type){
+    n.models <- length(x$lvm)
+
+    ##  coef names new
+    allCoef <- x$name
+    n.allCoef <- length(allCoef)
+
+    x.coef <- mapply(c, x$meanlist, x$parlist, SIMPLIFY = FALSE)
+    posTempo <- unlist(lapply(strsplit(allCoef,split="@"),"[",1))
+    for(iModel in 1:n.models){ # iModel <- 1
+        x.coef[[iModel]] <- setNames(allCoef[posTempo==as.character(iModel)],
+                                     names(x.coef[[iModel]]))
+    }
+
+    ## coef names old
+    ls.coef <- lapply(x$lvm,coef) # list of lvm
+    ls.penalty <- lapply(x$lvm, penalty)
+    max.penalty <- lapply(ls.penalty,function(df){max(df$group,na.rm=TRUE)})
+    n.penalty <- cumsum(c(0,unlist(max.penalty)))
+
+    ## find penalty
+    ls.newPenalty <- lapply(1:n.models, function(iModel){ # iModel <- 2
+        indexCoef.tempo <- match(ls.penalty[[iModel]][penalty==type,link],ls.coef[[iModel]])
+        name.tempo <- names(ls.coef[[iModel]])[indexCoef.tempo]
+
+        list(name = x.coef[[iModel]][name.tempo],
+             group = ls.penalty[[iModel]][penalty==type,group] + n.penalty[iModel])
+    })
+    
+    ## remove duplicated penalties
+    allPenalty <- unlist(lapply(ls.newPenalty,"[[","name"))
+    allGroup <- unlist(lapply(ls.newPenalty,"[[","group"))
+    index.keep <- which(!duplicated(allPenalty))
+    newPenalty <- allPenalty[index.keep]
+    group <- allGroup[index.keep]
+  
+    ## create V
+    V <- Matrix::Matrix(rnorm(n.allCoef), sparse = TRUE, doDiag = FALSE,  # force to be non-symetric
+                        nrow = n.allCoef, ncol = max(group),
+                        dimnames = list(allCoef,NULL)
+                        )
+  
+    #### fill matrix
+    V[] <- 0
+    for(iterLink in 1:length(newPenalty)){ # iterLink <- 1
+        V[newPenalty[iterLink],group[iterLink]] <- 1#as.numeric(group[iterLink])
+    }
+    return(V)
+}
+# }}}

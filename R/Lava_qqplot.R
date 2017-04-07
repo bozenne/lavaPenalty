@@ -1,6 +1,8 @@
 # {{{ residplot
 
 #' @title Plot the residuals of a lvm object
+#' @description Plot the residuals of a lvm object
+#' 
 #' @name residplot
 #'
 #' @param object a lvm model
@@ -27,8 +29,8 @@
 #' residplot(e)
 #' 
 #' @export
-residplot <- function (x, ...) {
-  UseMethod("residplot", x)
+residplot <- function (object, ...) {
+  UseMethod("residplot", object)
 }
 
 #' @rdname cvCheck

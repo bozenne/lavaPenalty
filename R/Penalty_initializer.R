@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  6 2017 (11:51) 
 ## Version: 
-## last-updated: mar 30 2017 (18:20) 
+## last-updated: apr  6 2017 (17:01) 
 ##           By: Brice Ozenne
-##     Update #: 171
+##     Update #: 198
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -21,7 +21,6 @@
 #' @title Intialization functions for plvm models
 #' @name initialize
 #' @description
-#' initialize.data: scale the data and update the type of the variables in the plvm object according to the variables in the dataset.
 #' initializeFactor.penaltyL12: update the lasso penalty to group lasso penalty in presence of categorical variables.
 #' initialize.penaltyL12: estimate starting value for the plvm.
 #' initialize.penaltyNuclear: estimate starting value for the plvm.
@@ -29,8 +28,6 @@
 #' 
 #' @param x a penalized lvm model
 #' @param data a data.frame containing the data
-#' @param method.center function used to center the data
-#' @param method.scale function used to scale the data
 #' @param name.coef the name of the parameters
 #' @param trace should the user be told that some penalties have been updated ?
 #'
@@ -97,55 +94,6 @@
 #' 
 # }}}
 
-# {{{ initialize.data
-#' @rdname initialize
-initialize.data <- function(x, data, method.center = "mean", method.scale = "sd"){
-
-    if(any(manifest(x, lp = FALSE) %in% names(data) == FALSE)){
-        stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
-             "variables: ",paste(manifest(x)[manifest(x) %in% names(data) == FALSE], collapse = " ")," not found in \'data\' \n")
-    }
-
-    #### convert categorical variables to dummy variables
-    resC2D <- lava:::categorical2dummy(x, data)
-  
-    index.numeric <- intersect(manifest(x, lp = FALSE), manifest(resC2D$x, lp = FALSE))
-    indexOld.factor <- setdiff(manifest(x, lp = FALSE),  manifest(resC2D$x, lp = FALSE))
-    indexNew.factor <- setdiff(manifest(resC2D$x, lp = FALSE), manifest(x, lp = FALSE))
-    test.factor <- length(indexNew.factor)>0
-  
-    if(test.factor){
-        if(any(endogenous(x) %in% indexOld.factor == TRUE)){
-            stop("prepareData.lvm: endogenous variables must not be categorical \n",
-                 "incorrect variables: ",paste(endogenous(x)[endogenous(x) %in% indexOld.factor == TRUE], collapse = " "),"\n")
-        }
-        ls.factor <- lapply(indexOld.factor, function(var){unique(data[[var]])})
-        names(ls.factor) <- indexOld.factor
-        conversion.factor <- sapply(indexNew.factor, renameFactor, ls.level = ls.factor)
-    }else{
-        conversion.factor <- NULL
-    }
-  
-    x <- resC2D$x
-    data <- resC2D$data
-  
-    #### rescale data
-    if(class(data)[1] != "data.frame"){data <- as.data.frame(data)}
-    if(length(index.numeric)>0){
-        value.center <- sapply(index.numeric, function(x){do.call(method.center,args = list(na.omit(data[[x]])))})
-        value.scale <- sapply(index.numeric, function(x){do.call(method.scale,args = list(na.omit(data[[x]])))})
-        data[, index.numeric] <- scale(data[, index.numeric, drop = FALSE], center = value.center, scale = value.scale)
-    }
-  
-    #### export
-    return(list(data = data,
-                conversion.factor = conversion.factor,
-                scale = value.scale,
-                center = value.center,
-                lvm = x))
-}
-# }}}
-
 # {{{ initializeFactor.penaltyL12
 #' @rdname initialize
 initializeFactor.penaltyL12 <- function(x, data, trace){
@@ -161,7 +109,7 @@ initializeFactor.penaltyL12 <- function(x, data, trace){
         table.penalty.factor <- table.penalty[table.penalty$exogenous %in% var.factor & penalty == "lasso"]
 
         ## remove lasso link
-        cancelPenalty(x, lasso = TRUE, ridge = FALSE, group = FALSE) <- table.penalty.factor[["link"]]
+        cancelPenalty(x, rm.lasso = TRUE, rm.ridge = FALSE, rm.group = FALSE) <- table.penalty.factor[["link"]]
 
         ## update the lvm with the categorical variables
         for(f in var.factor){ # f <- "X1"
@@ -278,6 +226,7 @@ initialize.start <- function(x, data, regularizationPath, increasing,
     n.data <- NROW(data)
 
     # {{{ compute start - low dimensional (keep all links unpenalized)
+
     test.ridge <- length(penalty(x, "lambda2")$lambda2)>0
 
     if(regularizationPath && increasing){
@@ -309,10 +258,11 @@ initialize.start <- function(x, data, regularizationPath, increasing,
             start <- NULL
         }
     }
-    
+
     # }}}
 
     # {{{ compute start - high dimensional (remove penalized links, all lambda are infinity)
+
     if(!regularizationPath || !increasing){
         start <- setNames(rep(0,n.coef),names.coef)
 
@@ -351,6 +301,7 @@ initialize.start <- function(x, data, regularizationPath, increasing,
         newCoef <- newCoef[names(newCoef) %in% names(start)] # only keep relevant parameters
         start[names(newCoef)] <- newCoef
     }
+
     # }}}
  
     # export
@@ -396,6 +347,95 @@ initializer.penaltyNuclear <- function(x, name.coef){
 
 # }}}
 
+
+# {{{ initialize.data
+#' @title Scale the dataset and convert categorical variables to indicators
+#' @description Scale the dataset and convert categorical variables to indicators
+#' 
+#' @name initializeData
+#' 
+#' @param x a penalized lvm model
+#' @param data a data.frame containing the data
+#' @param method.center function used to center the data
+#' @param method.scale function used to scale the data
+
+`initializeData` <-
+  function(x,...) UseMethod("initializeData")
+
+
+#' @rdname initializeData
+initializeData.plvm <- function(x, data, method.center = "mean", method.scale = "sd"){
+
+    if(any(manifest(x, lp = FALSE) %in% names(data) == FALSE)){
+        stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
+             "variables: ",paste(manifest(x)[manifest(x) %in% names(data) == FALSE], collapse = " ")," not found in \'data\' \n")
+    }
+
+    #### convert categorical variables to dummy variables
+    resC2D <- lava_categorical2dummy(x, data)
+  
+    index.numeric <- intersect(manifest(x, lp = FALSE), manifest(resC2D$x, lp = FALSE))
+    indexOld.factor <- setdiff(manifest(x, lp = FALSE),  manifest(resC2D$x, lp = FALSE))
+    indexNew.factor <- setdiff(manifest(resC2D$x, lp = FALSE), manifest(x, lp = FALSE))
+    test.factor <- length(indexNew.factor)>0
+  
+    if(test.factor){
+        if(any(endogenous(x) %in% indexOld.factor == TRUE)){
+            stop("prepareData.lvm: endogenous variables must not be categorical \n",
+                 "incorrect variables: ",paste(endogenous(x)[endogenous(x) %in% indexOld.factor == TRUE], collapse = " "),"\n")
+        }
+        ls.factor <- lapply(indexOld.factor, function(var){unique(data[[var]])})
+        names(ls.factor) <- indexOld.factor
+        conversion.factor <- sapply(indexNew.factor, renameFactor, ls.level = ls.factor)
+    }else{
+        conversion.factor <- NULL
+    }
+     x <- resC2D$x
+     data <- resC2D$data  
+  
+   #### rescale data
+    if(class(data)[1] != "data.frame"){data <- as.data.frame(data)}
+    if(length(index.numeric)>0){
+        value.center <- sapply(index.numeric, function(x){do.call(method.center,args = list(na.omit(data[[x]])))})
+        value.scale <- sapply(index.numeric, function(x){do.call(method.scale,args = list(na.omit(data[[x]])))})
+        data[, index.numeric] <- scale(data[, index.numeric, drop = FALSE], center = value.center, scale = value.scale)
+    }
+  
+    #### export
+    return(list(data = data,
+                conversion.factor = conversion.factor,
+                scale = value.scale,
+                center = value.center,
+                lvm = x))
+}
+
+#' @rdname initializeData
+initializeData.pmultigroup <- function(x, method.center = "mean", method.scale = "sd"){
+
+    n.model <- length(x$data)
+    
+    if(any(manifest(x, lp = FALSE) %in% names(x$data[[1]]) == FALSE)){
+        stop("prepareData.lvm: arguments \'data\' and \'x\' are incompatible \n",
+             "variables: ",paste(manifest(x)[manifest(x) %in% names(data) == FALSE], collapse = " ")," not found in \'data\' \n")
+    }
+  
+    #### rescale data   
+    for(iData in n.model){
+        dataTempo <- x$data[[iData]]
+        if(class(dataTempo)[1] != "data.frame"){dataTempo <- as.data.frame(dataTempo)}
+        if(length(x$index.numeric)>0){
+            value.center <- sapply(x$index.numeric, function(x){do.call(method.center,args = list(na.omit(dataTempo[[x]])))})
+            value.scale <- sapply(x$index.numeric, function(x){do.call(method.scale,args = list(na.omit(dataTempo[[x]])))})
+            dataTempo[, x$index.numeric] <- scale(dataTempo[, x$index.numeric, drop = FALSE], center = value.center, scale = value.scale)
+        }
+        x$data[[iData]] <- dataTempo
+    }
+  
+    #### export
+    return(list(lvm = x))
+}
+# }}}
+
 # {{{ initializeOperator
 #' @title Initialise a proximal operator
 #' 
@@ -409,9 +449,9 @@ initializer.penaltyNuclear <- function(x, name.coef){
 #' @param index.penaltyN a list containing the position of the parameters corresponding to each image in the vector of parameters.
 #' @param nrow a vector containing the number of rows of each image.
 #' @param ncol a vector containing the number of columnss of each image.
-#' @param constrain.lambda should the lambda parameter be normalized by the total variance?
+#' @param equivariance should the lambda parameter be multiplied with the first variance parameter?
 #' @param constrain.variance should the variance parameters be exponential trans
-#' @param index.variance
+#' @param index.variance the position of the variance parameters in coef
 #' @return a list containing the proximal operator and the penalty funtion
 #'
 #' @examples 
@@ -421,7 +461,7 @@ initializeOperator <- function(lambda1, index.penalty1,
                                lambda2, index.penalty2,
                                lambdaG, index.penaltyG,
                                lambdaN, index.penaltyN, nrow, ncol,
-                               constrain.lambda, constrain.variance, index.variance){
+                               equivariance, constrain.variance, index.variance){
 
   test.lasso <- length(lambda1)>0
   test.ridge <- length(lambda2)>0
@@ -519,7 +559,7 @@ initializeOperator <- function(lambda1, index.penalty1,
     #### compose operators
     composeOperator <- function(x, step) {
 
-        if(constrain.lambda){
+        if(equivariance){
             if(constrain.variance){
                 norm <- sum(exp(x[index.variance]))
             }else{
@@ -544,7 +584,7 @@ initializeOperator <- function(lambda1, index.penalty1,
     }
 
     composeObjective <- function(x){
-        if(constrain.lambda){
+        if(equivariance){
             norm <- sum(x[index.variance])
             if(norm < 0){stop("negative variance parameter - set constrain to TRUE in control \n")}
         }else{

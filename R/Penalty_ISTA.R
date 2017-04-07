@@ -1,5 +1,7 @@
 # {{{ proxGrad
-#' @title step of a proximal gradient algorithm
+#' @title Proximal gradient algorithm
+#' @title Estimate parameters using a proximal gradient algorithm
+#' 
 #' @param start initial values for the parameters
 #' @param proxOperator proximal operator corresponding to the penalization applied to the log likelihood
 #' @param hessian second derivative of the likelihood given by lava. Only used to estimate the step parameter of the algorithm when step = NULL
@@ -192,6 +194,7 @@ ISTA <- function(x_k, obj.x_k, grad.x_k,
 
 
 #' @title Estimate an upper bound of obj.x
+#' @description Estimate an upper bound of obj.x
 Qbound <- function(diff.xy, obj.y, grad.y, L){
   
   return(obj.y + crossprod(diff.xy, grad.y) + L/2 * crossprod(diff.xy))

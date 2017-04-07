@@ -1,4 +1,3 @@
-
 # {{{ penalty
 
 # {{{ doc
@@ -80,7 +79,7 @@ penalty.lvmfit <- function(x, type, ...){
     res <- penalty.lvm(x, type = type, ...)
 
     if(is.null(type)){
-#        if(x$control$proxGrad$constrain.lambda){
+#        if(x$control$proxGrad$equivariance){
      res[,lambda.abs := lambda*sum(coef(x)[coefVar(x, value = TRUE)])]            
     }
     return(res)
@@ -94,7 +93,7 @@ penalty.penaltyL12 <- function(x,
                                no.lasso = FALSE,
                                no.ridge = FALSE,
                                no.group = FALSE,
-                               index.group = NULL){ # 
+                               index.group = NULL, ...){ # 
 
     if(identical(type,"object")){
 
@@ -115,7 +114,7 @@ penalty.penaltyL12 <- function(x,
         n.groups <- if(!is.null(x$Vgroup)){ NCOL(x$Vgroup) } else { 0 }
 
         ## lasso penalty
-        if(!is.null(x$Vlasso) && no.lasso == FALSE){
+        if(!is.null(x$Vlasso) && NCOL(x$Vlasso)>0 && no.lasso == FALSE){
             dt.lasso <- data.table::data.table(link = x$Vlasso@Dimnames[[1]][x$Vlasso@i+1],
                                                group = p2j(x$Vlasso),
                                                coef = x$Vlasso@x,
@@ -125,7 +124,7 @@ penalty.penaltyL12 <- function(x,
             dt.res <- rbind(dt.res, dt.lasso)
         }
         ## ridge penalty
-        if(!is.null(x$Vridge) && no.ridge == FALSE){
+        if(!is.null(x$Vridge) && NCOL(x$Vridge)>0 && no.ridge == FALSE){
             dt.ridge <- data.table::data.table(link = x$Vridge@Dimnames[[1]][x$Vridge@i+1],
                                                group = p2j(x$Vridge),
                                                coef = x$Vridge@x,
@@ -171,7 +170,7 @@ penalty.penaltyL12 <- function(x,
 # {{{ penalty.penaltyNuclear
 #' @rdname penaltyExtract
 #' @export
-penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
+penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE, ...){
   
      if(identical(type,"object")){
         return(x)
@@ -187,6 +186,10 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 
     return(res)
 }
+# }}}
+
+# {{{ penalty.multigroup
+penalty.multigroup <- penalty.lvm 
 # }}}
 
 # }}}
@@ -244,7 +247,7 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 # {{{ penalty<-.penaltyL12
 #' @rdname penaltyUpdate
 #' @export
-`penalty<-.penaltyL12` <- function(x, type, lambda, add, value){
+`penalty<-.penaltyL12` <- function(x, type, lambda, add, value, ...){
 
     validTypes <- names(x)
     
@@ -313,8 +316,7 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
 # {{{ penalty<-.penaltyNuclear
 #' @rdname penaltyUpdate
 #' @export
-`penalty<-.penaltyNuclear` <- function(x, type = "link", value){
-  browser()
+`penalty<-.penaltyNuclear` <- function(x, type = "link", value, ...){
   validTypes <- names(x)
   
   if(is.null(type)){
@@ -341,6 +343,10 @@ penalty.penaltyNuclear <- function(x, type, group = NULL, keep.list = FALSE){
   
   return(x)
 }
+# }}}
+
+# {{{ penalty<-.pmultigroup
+`penalty<-.pmultigroup` <- `penalty<-.plvm`
 # }}}
 
 # }}}

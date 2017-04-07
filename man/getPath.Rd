@@ -8,27 +8,35 @@
 \usage{
 getPath(x, ...)
 
-\method{getPath}{plvmfit}(x, ...)
+\method{getPath}{plvmfit}(x, coef, ...)
 
-\method{getPath}{regPath}(x, names = NULL, coefficient, lambda,
-  only.breakpoints = FALSE, increasing = TRUE, row = NULL)
+\method{getPath}{regPath}(x, coef, V, lambda = "lambda1.abs",
+  keep.indexChange = FALSE, keep.index = TRUE, keep.optimum = TRUE,
+  path.constrain = FALSE, only.breakpoints = FALSE, increasing = TRUE,
+  row = NULL, ...)
 }
 \arguments{
 \item{x}{a plvmfit object or a regPath object}
 
-\item{names}{names of the columns to extract}
+\item{...}{additional arguments to be passed to low levels functions}
+
+\item{coef}{names of the coefficients to extract. Can also be \code{"coef0"} or \code{"coefn0"} to extract the number of 0 or non-0 coefficients}
+
+\item{V}{matrix containig the constrains}
 
 \item{lambda}{names of the penalization parameter to extract.}
+
+\item{keep.index}{should the index of the knot be kept in the output.}
+
+\item{keep.optimum}{should the column indicating the optimum and the fit be kept in the output.}
+
+\item{path.constrain}{should the column containing the active constrains be added to the output.}
 
 \item{only.breakpoints}{should the path be extracted only at the breakpoints}
 
 \item{increasing}{should the path be extracted by increasing value of regularization parameter}
 
 \item{row}{the index at which the path should be extracted}
-
-\item{coef}{names of the coefficients to extract. Can also be \code{"coef0"} or \code{"coefn0"} to extract the number of 0 or non-0 coefficients}
-
-\item{order}{the regularization parameter to consider when ordering the points along the path}
 }
 \description{
 Extract the regularization path from a lvm object

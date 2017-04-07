@@ -40,7 +40,7 @@ proxE2 <- function(x, step, lambda){
 }
 # }}}
 
-# {{{  proxNuclear: nuclear norm
+# {{{ proxNuclear: nuclear norm
 #' @rdname proximalOperators
 proxNuclear <-  function(x, step, lambda, nrow, ncol){  
   eigen.Mx <- svd(matrix(x, nrow = nrow, ncol = ncol))

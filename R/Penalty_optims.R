@@ -19,8 +19,8 @@ optim.proxGrad <- function(start, objective, gradient, hessian, control, ...){
     penalty <- control$penalty
     penaltyNuclear <- control$penaltyNuclear
     name.coef <- names(start)
-    
-    # {{{ update according to the coefficients present in start
+
+     # {{{ update according to the coefficients present in start
     initL12 <- initialize.penaltyL12(penalty, name.coef = name.coef,
                                      regularizationPath = FALSE)
     initNuclear <- initializer.penaltyNuclear(penaltyNuclear, name.coef = name.coef)        
@@ -31,13 +31,13 @@ optim.proxGrad <- function(start, objective, gradient, hessian, control, ...){
     # }}}
     
     # {{{ Proximal gradient
-    ## generate proximal operator
+    # generate proximal operator
     resInit <- initializeOperator(lambda1 = initL12$lambda1, index.penalty1 = initL12$index.penalty1,
                                   lambda2 = initL12$lambda2, index.penalty2 = initL12$index.penalty2,
                                   lambdaG = initL12$lambdaG, index.penaltyG = initL12$index.penaltyG,
                                   lambdaN = initNuclear$lambdaN, index.penaltyN = initNuclear$index.penaltyN, 
                                   nrow = initNuclear$nrow, ncol = initNuclear$ncol,
-                                  constrain.lambda = control.proxGrad$constrain.lambda,
+                                  equivariance = control.proxGrad$equivariance,
                                   constrain.variance = control.proxGrad$constrain.variance,
                                   index.variance = index.variance)
     # resInit$objectivePenalty(start)
@@ -57,7 +57,7 @@ optim.proxGrad <- function(start, objective, gradient, hessian, control, ...){
                                       lambdaG = initL12$lambdaG, index.penaltyG = initL12$index.penaltyG,
                                       lambdaN = initNuclear$lambdaN, index.penaltyN = initNuclear$index.penaltyN, 
                                       nrow = initNuclear$nrow, ncol = initNuclear$ncol,
-                                      constrain.lambda = control$proxGrad$fixSigma,
+                                      equivariance = control$proxGrad$fixSigma,
                                       constrain.variance = control$proxGrad$constrain,
                                       index.variance = control$proxGrad$name.variance)
 
@@ -181,14 +181,14 @@ optim.EPSODE <- function(start, objective, gradient, hessian, control, ...){
                         objective = objective, gradient = gradient, hessian = hessian, 
                         V = initL12$Vlasso,
                         lambda2 = initL12$lambda2, index.penalty2 = initL12$index.penalty2,
-                        constrain.lambda = control.regPath$constrain.lambda,
+                        equivariance = control.regPath$equivariance,
                         constrain.variance = control.regPath$constrain.variance,
                         index.variance = index.variance,
                         control = control.regPath)
     # }}}
 
     # {{{ estimation of the nuisance parameter and update lambda/lambda.abs
-    if(control.regPath$constrain.lambda){
+    if(control.regPath$equivariance){
         res <- optim.Nuisance.plvm(x = control$regPath$envir$x,
                                    data = control$regPath$envir$data,
                                    path = resEPSODE$path[,name.coef,with=FALSE],
@@ -197,7 +197,7 @@ optim.EPSODE <- function(start, objective, gradient, hessian, control, ...){
                                    ...)   
 
         if(length(index.variance)==1){
-            sigma2 <- resEPSODE$path[[control.regPath$name.variance]]
+            sigma2 <- resEPSODE$path[[control.regPath$name.variance[1]]]
             if(control.regPath$constrain.variance){sigma2 <- exp(sigma2)}
             resEPSODE$path[, lambda1.abs := lambda1.abs*sigma2]
             resEPSODE$path[, lambda2.abs := lambda2.abs*sigma2]

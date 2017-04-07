@@ -25,7 +25,8 @@
                            xlim = NULL, ylim = NULL,
                            add.line = TRUE, line.size = 2,
                            add.point = TRUE, point.shape = 4, point.size = 2,
-                           add.best = TRUE, color.selected = TRUE, plot = TRUE) {
+                           add.best = TRUE, color.selected = TRUE, plot = TRUE, 
+						   ...) {
     if(is.null(type)){
         if(!is.null(x$performance)){
             type <- "criterion"

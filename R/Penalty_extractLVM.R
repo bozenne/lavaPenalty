@@ -14,6 +14,7 @@
 #' @param operator the operator used to extract the coefficients
 #' @param penalized should only the penalized coefficient be returned
 #' @param value should the value of the coefficients be returned? Otherwise their position.
+#' @param ... not used
 #' 
 #' @examples 
 #' set.seed(10)
@@ -34,7 +35,7 @@
 
 #' @rdname coef0
 #' @export
-coef0.plvmfit <- function(x, tol = 0, operator = "<=", penalized = FALSE, value = TRUE){
+coef0.plvmfit <- function(x, tol = 0, operator = "<=", penalized = FALSE, value = TRUE, ...){
   
   names.coef <- names(coef(x)) 
   

@@ -30,9 +30,12 @@
 
 .onLoad <- function(lib, pkg="lava.penalty") {
   
-  lava::addhook("lava.penalty.estimate.hook", hook = "estimate.hooks")
-  lava::addhook("lava.penalty.post.hook", hook = "post.hooks")
-  
+    lava::addhook("lava.penalty.estimate.hook", hook = "estimate.hooks")
+    lava::addhook("lava.penalty.post.hook", hook = "post.hooks")
+    lava::addhook("lava.penalty.multigroup.hook", hook = "multigroup.hooks")
+    lava::addhook("lava.penalty.remove.hook", hook = "remove.hooks")
+    lava::addhook("lava.penalty.cancel.hook", hook = "cancel.hooks")
+    
     lava::lava.options(proxGrad = list(method = "ISTA", iter.max = 1000, step = 1, BT.n = 100, BT.eta = 0.8, abs.tol = 1e-9, rel.tol = 1e-10, force.descent = FALSE,
                                        export.iter = FALSE, trace = 1),
                        EPSODE = list(resolution_lambda1 = c(1e-1,1e-3), nstep_max = min(length(beta)*50,1e4), ode.method = "euler", tol.0 = 1e-8,
@@ -41,7 +44,10 @@
                        proxGradPath = list(warmUp = FALSE),
                        calcLambda = list(fit = "BIC"),
                        Nuclear = list(symbols = c("Image[","]")),
-                       constrain = TRUE)  
+                       constrain = TRUE)
+
+    lava.reduce::addhook_lava.reduce("lava.penalty.clean.hook", hook = "clean.hooks")
+    lava.reduce::addhook_lava.reduce("lava.penalty.reduce.hook", hook = "reduce.hooks")
 }
 
 .onAttach <- function(lib, pkg="lava.penalty") {
@@ -52,3 +58,5 @@
 lava_matrices.lvm <- get("matrices.lvm", envir = asNamespace("lava"), inherits = FALSE)
 lava_categorical2dummy <- get("categorical2dummy", envir = asNamespace("lava"), inherits = FALSE)
 lava_estimate.lvm <- get("estimate.lvm", envir = asNamespace("lava"), inherits = FALSE)
+lava_estimate.multigroup <- get("estimate.multigroup", envir = asNamespace("lava"), inherits = FALSE)
+lava_print.lvm <- get("print.lvm", envir = asNamespace("lava"), inherits = FALSE)

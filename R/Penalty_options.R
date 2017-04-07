@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  7 2017 (15:51) 
 ## Version: 
-## last-updated: mar  7 2017 (16:25) 
+## last-updated: apr  4 2017 (12:58) 
 ##           By: Brice Ozenne
-##     Update #: 27
+##     Update #: 29
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -16,7 +16,8 @@
 ### Code:
 
 #' @title Set global options for lava.penalty
-#' @describe Extract and set global parameters of lava.penalty.
+#' 
+#' @description Extract and set global parameters of lava.penalty.
 #' 
 #' @param ... Arguments
 #' @param type which set of parameters to update: \code{"lava"}, \code{"proxGrad"}, or \code{"EPSODE"}.

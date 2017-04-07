@@ -4,12 +4,12 @@
 \alias{residplot}
 \title{Plot the residuals of a lvm object}
 \usage{
-residplot(x, ...)
+residplot(object, ...)
 }
 \arguments{
-\item{...}{additional arguments to be passed to estimate}
-
 \item{object}{a lvm model}
+
+\item{...}{additional arguments to be passed to estimate}
 
 \item{data}{a data frame}
 
@@ -25,6 +25,9 @@ residplot(x, ...)
 }
 \value{
 a data frame/cvlvm object containing the convergence status (by default 0 indicates successful convergence, see ?optim), the value of the log-likelihood and the estimated parameters (in columns) for each initialization (in rows)
+}
+\description{
+Plot the residuals of a lvm object
 }
 \details{
 Simulation is based on a multivariate truncated normal law (even though it is not satifying for the variance components)

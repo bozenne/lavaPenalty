@@ -24,6 +24,9 @@ modelsearchLR(object, ...)
 \value{
 an object of class lvmfit
 }
+\description{
+Model searching using a likelihood ratio test
+}
 \examples{
 mSim <- lvm()
 regression(mSim) <- c(y1,y2,y3)~u

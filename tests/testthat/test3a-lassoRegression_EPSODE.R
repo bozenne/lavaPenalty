@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar 16 2017 (09:18) 
 ## Version: 
-## last-updated: mar 30 2017 (18:17) 
+## last-updated: apr  3 2017 (19:11) 
 ##           By: Brice Ozenne
-##     Update #: 30
+##     Update #: 35
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -100,7 +100,7 @@ test_that("EPSODE (lasso)", {
     ## at fixed sigma
     PathEPSODE <- estimate(plvm.model,  data = df.data, fit = NULL, lambda2 = lambda2,
                            control = list(constrain = FALSE),
-                           constrain.lambda = TRUE,
+                           equivariance = TRUE,
                            control.EPSODE = list(resolution_lambda1 = c(0.5,0.001),
                                                  stopParam = 3),
                            regularizationPath = TRUE)
@@ -121,13 +121,54 @@ test_that("EPSODE (lasso)", {
 
    PathEPSODE.f <- estimate(plvm.model,  data = df.data, fit = NULL, lambda2 = lambda2,
                             control = list(constrain = FALSE),
-                            constrain.lambda = TRUE,
+                            equivariance = TRUE,
                             control.EPSODE = list(resolution_lambda1 = c(0.5,0.001),
                                                   stopParam = 3, increasing = TRUE, exportAllPath = TRUE),
                             regularizationPath = TRUE)
   
 })
 
+# }}}
+
+# {{{ EPSODE heteroscedastic errors
+
+set.seed(10)
+n <- 500
+mSim <- lvm()
+regression(mSim, Y ~ X1 + X2 + X3 + X4 + X5) <-   as.list( c(rep(0,2),1:3) ) # as.list( c(rep(0,2),0.25,0.5,0.75) ) # 
+parameter(mSim, start = 1) <- ~sigma0
+distribution(mSim, ~group) <- binomial.lvm(p=0.5,size=2)
+constrain(mSim,sigma~sigma0+group) <- function(x) x[,1]*(1+x[,2])
+
+df <- sim(mSim, n)
+
+## library(nlme)
+## eGLS <- gls(Y ~ X1 + X2 + X3 + X4 + X5,
+##             weights = varIdent(form=~1|group),
+##             data = df)
+## summary(eGLS)
+
+
+mC <- lvm()
+regression(mC, Y ~ X1 + X2 + X3 + X4 + X5) <- as.list(paste0("beta",1:5))
+eCGroup <- estimate(list(mC,mC,mC), split(df, df$group) )
+
+m <- lvm(Y ~ X1 + X2 + X3 + X4 + X5)
+eGroup <- estimate(list(m,m,m), split(df, df$group) )
+
+m <- lvm(Y ~ X1 + X2 + X3 + X4 + X5)
+eGroup <- estimate(list(m,m,m), split(df, df$group) )
+
+debug(lava:::estimate.lvmlist)
+
+eGroup
+
+mCC1 <- lvm(Y[mu:5] ~ X1 + X2 + X3 + X4 + X5)
+eCC1Group <- estimate(list(mCC1,m,m), split(df, df$group) )
+coef(eGroup)
+coef(eCC1Group)
+
+plot(m, labels =TRUE)
 # }}}
 
 test <- FALSE
@@ -161,7 +202,7 @@ if(test){
 
     testEPSODE <- estimate(plvm.model,  data = df.data, regularizationPath = TRUE,
                            fit = NULL, control = list(constrain = TRUE),
-                           constrain.lambda = FALSE)
+                           equivariance = FALSE)
     plot(testEPSODE, coef = c("Y2~~Y2"))
     plot(testEPSODE)
 
@@ -179,7 +220,7 @@ if(test){
 
     testL1 <- estimate(plvm.model,  data = df.data, lambda1 = 11.1,
                        fit = NULL, control = list(constrain = TRUE),
-                       constrain.lambda = FALSE)
+                       equivariance = FALSE)
     # 11.1 X3
     # 11.45 X1
     # 48 X5
@@ -190,10 +231,59 @@ if(test){
     testL1 <- estimate(plvm.model,  data = df.data,
                        control = list(constrain = TRUE),
                        regularizationPath = cbind(lambda1 = seq_lambda),
-                       constrain.lambda = FALSE)
+                       equivariance = FALSE)
 
-    
 
+
+## linear model
+    mSim <- lvm(Y[1:2] ~ X1 + X2 + X3)
+    d <- sim(mSim, 1e3)
+
+    eTRUE <- estimate(lvm(Y ~ X1 + X2 + X3), data = d)
+
+    m <- lvm(Y[mu:1] ~ X1 + X2 + X3)    
+    eConstrain <- estimate(m, data = d)
+
+    name.coef <- coefReg(mTRUE, value = TRUE)
+    coef(eTRUE)[name.coef] - coef(eConstrain)[name.coef]
+
+## LVM
+    mSim <- lvm(Y1[1:2] ~ X1 + X2 + X3 + eta,
+                Y2[0:2] ~ X1 + X2 + X3 + eta,
+                Y3[2:2] ~ X1 + X2 + X3 + eta)
+    regression(mSim) <- eta ~ group
+    d <- sim(mSim, 1e3)
+
+    mTRUE <- lvm(Y1 ~ X1 + X2 + X3,
+                 Y2 ~ X1 + X2 + X3,
+                 Y3 ~ X1 + X2 + X3)
+    eTRUE <- estimate(mTRUE, data = d)
+
+    mConstrain <- lvm(Y1[mu1:1] ~ X1 + X2 + X3,
+                      Y2[mu2:1] ~ X1 + X2 + X3,
+                      Y3[mu3:1] ~ X1 + X2 + X3)
+    eConstrain <- estimate(mConstrain, data = d)
+
+    name.coef <- names(coef(eConstrain))
+    coef(eTRUE)[name.coef] - coef(eConstrain)[name.coef]
+
+
+    mTRUE <- lvm(Y1 ~ X1 + X2 + X3 + eta,
+                 Y2 ~ X1 + X2 + X3 + eta,
+                 Y3 ~ X1 + X2 + X3 + eta)
+    regression(mTRUE) <- eta ~ group
+    latent(mTRUE) <- ~eta
+    eTRUE <- estimate(mTRUE, data = d)
+
+    mConstrain <- lvm(Y1[mu1:1] ~ X1 + X2 + X3 + 1*eta,
+                      Y2[mu2:1] ~ X1 + X2 + X3 + 1*eta,
+                      Y3[mu3:1] ~ X1 + X2 + X3 + 1*eta)
+    regression(mConstrain) <- eta ~ group
+    latent(mConstrain) <- ~eta
+    eConstrain <- estimate(mConstrain, data = d)
+
+    name.coef <- names(coef(eConstrain))
+    coef(eTRUE)[name.coef] - coef(eConstrain)[name.coef]
 }
 
 #----------------------------------------------------------------------

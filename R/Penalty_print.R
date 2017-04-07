@@ -1,5 +1,16 @@
-
+# {{{ doc
+#' @title Display the content of a penalized object
+#' @description Display the content of a penalized object
+#'
+#' @name print.penalize
+#' 
+#' @param x a plvm object
+#' @param ... additional arguments to be passed to lower level functions.
+#'
+# }}}
 # {{{ print.penaltyL12
+#' @rdname print.penalize
+#' @export
 `print.penaltyL12` <- function(x, ...){
 
     fctExtract <- function(x, char){
@@ -20,48 +31,56 @@
     lambda2 <- fctExtract(x, "lambda2")
     lambdaG <- fctExtract(x, "lambdaG")
 
-    ## elastic net penalty
+    
     x.penalty <- penalty(x)
 
-    if(x.penalty[penalty %in% c("lasso","ridge"),.N]>0){
-        index.lasso <- x.penalty[penalty %in% "lasso",link]
-        index.ridge <- x.penalty[penalty %in% "ridge",link]
+    if(is.null(x.penalty)){
+        cat("Empty penalty \n")
+    }else{    
+        ## elastic net penalty
+        if(x.penalty[penalty %in% c("lasso","ridge"),.N]>0){
+            index.lasso <- x.penalty[penalty %in% "lasso",link]
+            index.ridge <- x.penalty[penalty %in% "ridge",link]
 
-        index.elasticNet <- intersect(index.lasso,index.ridge)
-        index.lasso <- setdiff(index.lasso,index.elasticNet)
-        index.ridge <- setdiff(index.ridge,index.elasticNet)
+            index.elasticNet <- intersect(index.lasso,index.ridge)
+            index.lasso <- setdiff(index.lasso,index.elasticNet)
+            index.ridge <- setdiff(index.ridge,index.elasticNet)
         
-        if(length(index.elasticNet)>0){
-            cat("Penalty: elastic net (lambda1 = ",lambda1," lambda2 = ",lambda2,") \n",
-                "Links  : ", paste(index.elasticNet, collapse = " "),"\n\n",sep="")
+            if(length(index.elasticNet)>0){
+                cat("Penalty: elastic net (lambda1 = ",lambda1," lambda2 = ",lambda2,") \n",
+                    "Links  : ", paste(index.elasticNet, collapse = " "),"\n\n",sep="")
+            }
+            if(length(index.lasso)>0){
+                cat("Penalty: lasso (lambda1 = ",lambda1,") \n",
+                    "Links  : ", paste(index.lasso, collapse = " "),"\n\n",sep="")
+            }
+            if(length(index.ridge)>0){
+                cat("Penalty: ridge (lambda2 = ",lambda2,") \n",
+                    "Links  : ", paste(index.ridge, collapse = " "),"\n\n",sep="")
+            }                    
         }
-        if(length(index.lasso)>0){
-            cat("Penalty: lasso (lambda1 = ",lambda1,") \n",
-                "Links  : ", paste(index.lasso, collapse = " "),"\n\n",sep="")
-        }
-        if(length(index.ridge)>0){
-            cat("Penalty: ridge (lambda2 = ",lambda2,") \n",
-                "Links  : ", paste(index.ridge, collapse = " "),"\n\n",sep="")
-        }                    
+
+        ## group penalty
+        if(x.penalty[penalty %in% c("group lasso"),.N]>0){
+            index.groupLasso <- x.penalty[penalty %in% "group lasso",link]
+            group.groupLasso <- 
+                all.groups <- x.penalty[penalty %in% "group lasso",unique(group)]
+        
+            cat("Penalty: group lasso (lambdaG = ",lambdaG,")\n",sep="")        
+            sapply(all.groups, function(g){
+                glink <- x.penalty[penalty=="group lasso" & group == g,link]
+                cat("group ",g,": ",paste(glink, collapse = " "),"\n",sep="")
+            })
+            cat("\n")
+        }      
     }
-
-    ## group penalty
-    if(x.penalty[penalty %in% c("group lasso"),.N]>0){
-        index.groupLasso <- x.penalty[penalty %in% "group lasso",link]
-        group.groupLasso <- 
-        all.groups <- x.penalty[penalty %in% "group lasso",unique(group)]
-        
-        cat("Penalty: group lasso (lambdaG = ",lambdaG,")\n",sep="")        
-        sapply(all.groups, function(g){
-            glink <- x.penalty[penalty=="group lasso" & group == g,link]
-            cat("group ",g,": ",paste(glink, collapse = " "),"\n",sep="")
-        })
-        cat("\n")
-    }      
+    
 }
 # }}}
 
 # {{{ print.penaltyNuclear
+#' @rdname print.penalize
+#' @export
 `print.penaltyNuclear` <- function(x, ...){
     test.nuclear <- !is.null(penalty(x, type = "link")$link)
     
@@ -84,15 +103,12 @@
 # }}}
 
 # {{{ print.plvm
-#' @title Display the content of a plvm object
-#
-#' @param x a plvm object
-#'
+#' @rdname print.penalize
 #' @export
 `print.plvm` <- function(x, ...) {
   
     ## normal display
-    out <- capture.output(lava:::print.lvm(x))
+    out <- capture.output(lava_print.lvm(x))
     sapply(out, function(o){cat(o,"\n")})
 
     ## penalty
@@ -104,10 +120,7 @@
 }
 # }}}
 # {{{ print.plvmfit
-#' @title Display the content of a plvmfit object
-#
-#' @param x a plvmfit object
-#'
+#' @rdname print.penalize
 #' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
                             coef, lambda = NULL, only.breakpoints = NULL, 

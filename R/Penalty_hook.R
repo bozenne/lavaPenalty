@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: feb 10 2017 (17:00) 
 ## Version: 
-## last-updated: mar 30 2017 (16:42) 
+## last-updated: apr  6 2017 (18:24) 
 ##           By: Brice Ozenne
-##     Update #: 223
+##     Update #: 259
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -81,13 +81,73 @@ lava.penalty.estimate.hook <- function(x,data,...) {
 }
 # }}}
 
+# {{{ lava.penalty.multigroup.hook
+
+#' @title Hook to estimate a multigroup penalized lvm model
+#' @description Merge the penalty of the different models into one
+#' 
+#' @export
+lava.penalty.multigroup.hook <- function(mg, x, ...) {
+    dots <- list(...)
+    
+    ls.penaltyNuclear <- lapply(x, penalty, nuclear = TRUE)
+    if(any(unlist(lapply(ls.penaltyNuclear, is.null)==FALSE))){    
+      stop("nuclear penalty for multigroup LVM not implemented")
+    }else{
+      mg$penaltyNuclear <- list(lambdaN = 0,
+                                nrow = NULL,
+                                ncol = NULL,
+                                name.reduce = NULL,
+                                endogenous = NULL,
+                                link = NULL)
+    }
+    
+    ls.penalty <- lapply(x, penalty)
+    if(any(unlist(lapply(ls.penalty, is.null)==FALSE))){
+        penalty.mg <- list(lambda1 = numeric(0),
+                           lambda2 = numeric(0),
+                           lambdaG = numeric(0),
+                           Vlasso = NULL,
+                           Vridge = NULL,
+                           Vgroup = NULL)
+        class(penalty.mg) <- "penaltyL12"
+        #browser()
+
+        ### update penalty (for factor variables)
+        n.model <- length(x)
+        for(iModel in 1:n.model){ # iModel <- 1
+            mg$lvm[[iModel]]$penalty <- initializeFactor.penaltyL12(x[[iModel]],
+                                                                    data = mg$data[[iModel]],
+                                                                    trace = FALSE)
+        }
+        ls.penalty <- lapply(mg$lvm, penalty)
+
+        ##
+        if( "lasso" %in% unlist(lapply(ls.penalty,"[[","penalty")) ){
+            penalty.mg$Vlasso <- initVcoef.multigroup(mg, type = "lasso")
+        }
+        if( "ridge" %in% unlist(lapply(ls.penalty,"[[","penalty")) ){
+            penalty.mg$Vridge <- initVcoef.multigroup(mg, type = "ridge")
+        }
+        if( "group lasso" %in% unlist(lapply(ls.penalty,"[[","penalty")) ){            
+            penalty.mg$Vgroup <- initVcoef.multigroup(mg, type = "group lasso")
+        }
+
+        mg$index.numeric <- intersect(manifest(mg$lvm[[1]], lp = FALSE), manifest(x[[1]], lp = FALSE))
+        mg$penalty <- penalty.mg
+        class(mg) <- c("pmultigroup", class(mg))
+    }    
+    return(c(list(mg=mg),dots))   
+}
+# }}}
+
 # {{{ lava.penalty.post.hook
 
 #' @export
 lava.penalty.post.hook <- function(x){
 
     if(any(c("EPSODE","proximal gradient") %in% x$opt$algorithm )){
-
+        browser()
         #### update x
         x$regularizationPath <- x$opt$regPath
         x$penalty <- x$control$penalty
@@ -100,7 +160,7 @@ lava.penalty.post.hook <- function(x){
 
         #### add elements to object
         trace <- x$control$trace
-        constrain.lambda <- x$control$proxGrad$constrain.lambda
+        equivariance <- x$control$proxGrad$equivariance
         name.variance <- x$control$proxGrad$name.variance
         fit <- x$control$regPath$fit
 
@@ -111,7 +171,7 @@ lava.penalty.post.hook <- function(x){
             }
       
         }else{
-            if(constrain.lambda){
+            if(equivariance){
                 x$penalty$lambda1.abs <- x$penalty$lambda1
                 x$penalty$lambda2.abs <- x$penalty$lambda2
                 x$penalty$lambda1 <- x$penalty$lambda1/sum(coef(x)[name.variance])

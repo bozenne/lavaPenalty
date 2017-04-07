@@ -1,11 +1,14 @@
 # {{{ findNewLink
 #' @title Find the new possible links between variables (copied from lava::modelsearch)
+#' @description Find the new possible links between variables (copied from lava::modelsearch)
+#' 
 #' @name findNewLink
 #' 
 #' @param x a lvm model
 #' @param rm.latent ignore links between latent variables
 #' @param rm.endo ignore links between endogenous variables
 #' @param output return the names of the variables to link ("names") or their position ("index")
+#' @param ... not used
 #' 
 #' @examples 
 #' \dontrun{
@@ -73,6 +76,7 @@ findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "nam
 #' @param var2 the second variable (character). Only used if var1 is a character.
 #' @param covariance does the link is bidirectional. Ignored if one of the variable is exogenous.
 #' @param warnings should a warning be displayed when no link is added
+#' @param ... arguments to be passed to lower levels functions 
 #' 
 #' @examples 
 #' \dontrun{
@@ -96,77 +100,82 @@ findNewLink.lvm <- function(x, rm.latent = FALSE, rm.endo = FALSE, output = "nam
     function(x,...) UseMethod("addLink")
 
 #' @rdname addLink
-addLink.lvm <- function(x, var1, var2, covariance, allVars = vars(x), warnings = FALSE){
-  
-  res <- initVar_link(var1, var2, format = "list")
-  var1 <- res$var1
-  var2 <- res$var2
-  
-  if(var1 %in% allVars == FALSE){
-    if(warnings){
-      warning("addLink.lvm: var1 does not match any variable in x, no link is added \n",
-              "var1: ",var1,"\n")
-    }
-  }
-  
-  ####
-  if(is.na(var2)){
+addLink.lvm <- function(x,
+                        var1,
+                        var2,
+                        covariance,
+                        allVars = vars(x),
+                        warnings = FALSE){
     
-    intercept(x) <- as.formula(paste0("~", var1))
+    res <- initVar_link(var1, var2, format = "list")
+    var1 <- res$var1
+    var2 <- res$var2
     
-  }else{
-    
-    if(var1 == var2){
-      if(warnings){
-        warning("addLink.lvm: var1 equals var2, no link is added \n",
-                "var1/2: ",var1,"\n")
-      }
+    if(var1 %in% allVars == FALSE){
+        if(warnings){
+            warning("addLink.lvm: var1 does not match any variable in x, no link is added \n",
+                    "var1: ",var1,"\n")
+        }
     }
     
-    
-    if(var2 %in% allVars == FALSE){
-      if(warnings){
-        warning("addLink.lvm: var2 does not match any variable in x, no link is added \n",
-                "var2: ",var2,"\n")
-      }
+    ####
+    if(is.na(var2)){
+        
+        intercept(x) <- as.formula(paste0("~", var1))
+        
+    }else{
+        
+        if(var1 == var2){
+            if(warnings){
+                warning("addLink.lvm: var1 equals var2, no link is added \n",
+                        "var1/2: ",var1,"\n")
+            }
+        }
+        
+        
+        if(var2 %in% allVars == FALSE){
+            if(warnings){
+                warning("addLink.lvm: var2 does not match any variable in x, no link is added \n",
+                        "var2: ",var2,"\n")
+            }
+        }
+        if(var1 %in% endogenous(x) && var2 %in% endogenous(x)){
+            if(missing(covariance)){
+                covariance <- TRUE
+            }else if(covariance == FALSE){
+                if(warnings){ warning("addLink.lvm: set covariance argument to TRUE to add a covariance link to the lvm \n") }
+                return(x)
+            }
+        }
+        
+        test.1 <- var1 %in% exogenous(x)
+        test.2 <- var2 %in% exogenous(x)
+        
+        if(test.1 && test.2){
+            if(warnings){
+                warning("addLink.lvm: both variable are exogenous, no link is added \n",
+                        "var1: ",var1,"\n",
+                        "var2: ",var2,"\n")
+            }
+        }else if(test.1){
+            regression(x) <- as.formula(paste(var2, var1,  sep = "~"))
+        }else if(test.2){
+            regression(x) <- as.formula(paste(var1, var2, sep = "~"))
+        }else if(covariance){
+            covariance(x) <- as.formula(paste(var1, var2, sep = "~"))  
+        }else {
+            if(var1 %in% endogenous(x)){
+                regression(x) <- as.formula(paste(var1, var2, sep = "~"))  
+            }else if(var2 %in% endogenous(x)){
+                regression(x) <- as.formula(paste(var2, var1, sep = "~"))  
+            }else{
+                stop("unknow configuration \n")
+            }
+            
+        }
     }
-    if(var1 %in% endogenous(x) && var2 %in% endogenous(x)){
-      if(missing(covariance)){
-        covariance <- TRUE
-      }else if(covariance == FALSE){
-        if(warnings){ warning("addLink.lvm: set covariance argument to TRUE to add a covariance link to the lvm \n") }
-        return(x)
-      }
-    }
     
-    test.1 <- var1 %in% exogenous(x)
-    test.2 <- var2 %in% exogenous(x)
-    
-    if(test.1 && test.2){
-      if(warnings){
-        warning("addLink.lvm: both variable are exogenous, no link is added \n",
-                "var1: ",var1,"\n",
-                "var2: ",var2,"\n")
-      }
-    }else if(test.1){
-      regression(x) <- as.formula(paste(var2, var1,  sep = "~"))
-    }else if(test.2){
-      regression(x) <- as.formula(paste(var1, var2, sep = "~"))
-    }else if(covariance){
-      covariance(x) <- as.formula(paste(var1, var2, sep = "~"))  
-    }else {
-      if(var1 %in% endogenous(x)){
-        regression(x) <- as.formula(paste(var1, var2, sep = "~"))  
-      }else if(var2 %in% endogenous(x)){
-        regression(x) <- as.formula(paste(var2, var1, sep = "~"))  
-      }else{
-        stop("unknow configuration \n")
-      }
-      
-    }
-  }
-  
-  return(x)
+    return(x)
 }
 
 #' @rdname addLink
@@ -236,38 +245,4 @@ setLink.lvm <- function(x, var1, var2, value, warnings = FALSE){
 # }}}
 
 
-# {{{ cancel.plvm
-#' @title Remove a new link between two variables in a plvm model
-#' @name cancel
-#' @description Generic interface to remove a link in a plvm.
-#' 
-#' @param x a lvm model
-#' @param value the names of the links that should be removed
-#' @param clean should the lvm object be simplified using the \code{clean} function
-#' @param ... other argument to be passed to \code{clean}.
-#' 
-#' @examples 
-#' 
-#' #### penalized lvm ###
-#' m <- lvm(Y ~ X1 + X2 + X3)
-#' pm <- penalize(m)
-#' cancel(pm, Y~X1+X2)
-#' cancel(pm, Y~X1+X2+X3)
-#'
-cancel.plvm <- function(x, value, ...){
-
-    ## normalize input
-    value <- initVar_link(value, format = "txt.formula")
-
-    ## remove penalties associated to the link
-    if(any(value %in% penalty(x, type = "link"))){
-        cancelPenalty(x) <- value[value %in% penalty(x, type = "link")]
-    }
-
-    ## call the method for the other classes
-    x <- callS3methodParent(x, FUN = "cancel", class = "plvm", value = value, ...)
-    
-    return(x)
-}
-# }}}
 

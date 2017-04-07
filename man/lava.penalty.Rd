@@ -5,4 +5,7 @@
 \alias{lava.penalty}
 \alias{lava.penalty-package}
 \title{lava.penalty: Regularization tools for latent variables models}
+\description{
+add-on to the lava package allowing regularized linear models and latent variable models.
+}
 

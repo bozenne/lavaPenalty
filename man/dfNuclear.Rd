@@ -6,6 +6,20 @@
 \usage{
 dfNuclear(B.LS, B.lambda, lambda, lambda2 = 0, tol = 1e-12)
 }
+\arguments{
+\item{B.LS}{}
+
+\item{B.lambda}{}
+
+\item{lambda2}{}
+
+\item{tol}{}
+
+\item{lamba}{}
+}
+\description{
+Compute the degree of freedom for nuclear regularized regression
+}
 \references{
 Zhou et al. Regularized Matrix Regression
 }

@@ -11,15 +11,16 @@
 \usage{
 penalty(x, ...)
 
-\method{penalty}{lvm}(x, type = "link", nuclear = FALSE,
+\method{penalty}{lvm}(x, type = NULL, nuclear = FALSE,
   lambdaPerCoef = FALSE, add.names = TRUE, ...)
 
 \method{penalty}{lvmfit}(x, type, ...)
 
-\method{penalty}{penaltyL12}(x, type, group = NULL, no.elasticNet = FALSE,
-  no.group = FALSE, keep.list = FALSE)
+\method{penalty}{penaltyL12}(x, type = NULL, no.lasso = FALSE,
+  no.ridge = FALSE, no.group = FALSE, index.group = NULL, ...)
 
-\method{penalty}{penaltyNuclear}(x, type, group = NULL, keep.list = FALSE)
+\method{penalty}{penaltyNuclear}(x, type, group = NULL, keep.list = FALSE,
+  ...)
 }
 \arguments{
 \item{x}{a lvm model}

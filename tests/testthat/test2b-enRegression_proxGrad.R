@@ -77,7 +77,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
 
     test_that("proxGrad with lasso", {
@@ -89,7 +89,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=TRUE))
 
   
@@ -102,7 +102,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1, lambda2 = lambda2,
-                                 constrain.lambda = TRUE,#TRUE,
+                                 equivariance = TRUE,#TRUE,
                                  control = list(constrain = TRUE))
     
     test_that("proxGrad with lasso (fixed sigma)", {
@@ -145,7 +145,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
     
     test_that("NR vs proxGrad with lasso (between knots)", {
@@ -157,7 +157,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE, control = list(constrain=TRUE))
+                                 equivariance = FALSE, control = list(constrain=TRUE))
     
     ## test_that("NR vs proxGrad with lasso (constrain.variance - between knots)", {
     ##     expect_equal(object = coef(eplvm.fit_tempo2),
@@ -168,7 +168,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1, lambda2 = iLambda2,
-                                 constrain.lambda = TRUE, control = list(constrain = TRUE)
+                                 equivariance = TRUE, control = list(constrain = TRUE)
                                  )
     
     test_that("NR vs proxGrad with lasso (fix sigma - between knots)", {
@@ -214,7 +214,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
     
     test_that("proxGrad with lasso", {
@@ -226,7 +226,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, lambda2 = iLambda2Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=TRUE))
   
     test_that("proxGrad with lasso (constrain.variance)", {
@@ -238,7 +238,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 4
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1, lambda2 = iLambda2,
-                                 constrain.lambda = TRUE,
+                                 equivariance = TRUE,
                                  control = list(constrain = TRUE))
 
     test_that("proxGrad with lasso (fixed sigma)", {

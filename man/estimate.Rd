@@ -3,18 +3,27 @@
 \name{estimate}
 \alias{estimate}
 \alias{estimate.plvm}
+\alias{estimate.pmultigroup}
 \title{Penalized lvm model}
 \usage{
-\method{estimate}{plvm}(x, data, lambda1 = NULL, lambda2 = NULL,
-  lambdaG = NULL, lambdaN = NULL, adaptive = FALSE,
-  regularizationPath = FALSE, fit = lava.options()$calcLambda$fit,
-  control = list(), control.proxGrad = list(), control.EPSODE = list(),
-  constrain.lambda = FALSE, ...)
+\method{estimate}{plvm}(x, data, estimator = "gaussian1", lambda1, lambda2,
+  lambdaG, lambdaN, adaptive = FALSE, regularizationPath = FALSE,
+  fit = lava.options()$calcLambda$fit, control = list(),
+  control.proxGrad = list(), control.EPSODE = list(),
+  equivariance = FALSE, ...)
+
+\method{estimate}{pmultigroup}(x, data, estimator = "gaussian1", lambda1,
+  lambda2, lambdaG, lambdaN, adaptive = FALSE, regularizationPath = FALSE,
+  fit = lava.options()$calcLambda$fit, control = list(),
+  control.proxGrad = list(), control.EPSODE = list(),
+  equivariance = FALSE, ...)
 }
 \arguments{
 \item{x}{a penalized lvm model}
 
 \item{data}{a data.frame containing the data}
+
+\item{estimator}{the method used to compute the likelihood and its first two derivatives.}
 
 \item{lambda1}{lasso penalization parameter}
 
@@ -28,17 +37,17 @@
 
 \item{regularizationPath}{should the regularization path be computed. If so the argument lambda1 is ignored but not lambda2.}
 
-\item{fit}{criterion to decide of the optimal model to retain among the penalized models.}
+\item{fit}{the criterion used to retain the optimal lambda1 value when the regularization path is used.}
 
 \item{control}{control/optimization parameters}
 
+\item{control.proxGrad}{control values for the proximal gradient algorithm (see \code{proxGrad})}
+
+\item{control.EPSODE}{control values for the EPSODE algorithm (see \code{EPSODE})}
+
+\item{equivariance}{should the regularization parameters be multiplied by the first variance parameter and the first variance parameter fixed to 0.}
+
 \item{...}{additional arguments to be passed to lava:::estimate.lvm}
-
-\item{resolution_lambda1, increasing, stopLambda, stopParam}{arguments for the EPSODE function (see \code{EPSODE})}
-
-\item{method.proxGrad, step, BT.n, BT.eta, force.descent}{arguments for the proximal gradient algorithm (see \code{proxGrad})}
-
-\item{fixSigma}{should the variance parameter be fixed at 1 ? Only works for regression models. [temporary]}
 }
 \value{
 a plvmfit object

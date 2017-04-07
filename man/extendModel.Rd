@@ -32,6 +32,9 @@ extendModel(x, ...)
 \value{
 a latent variable model
 }
+\description{
+Add all possible path between the variables present in a lvm.
+}
 \examples{
 mSim <- lvm()
 regression(mSim) <- c(y1,y2,y3)~u

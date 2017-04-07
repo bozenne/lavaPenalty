@@ -5,7 +5,7 @@
 ## Version: 
 ## last-updated: mar 14 2017 (17:39) 
 ##           By: Brice Ozenne
-##     Update #: 19
+##     Update #: 24
 #----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -17,7 +17,7 @@
 
 # {{{ doc
 #' @title Simplify a lvm object
-#' @name clean
+#' @name clean.penalty
 #' @description Remove variables with no link and simplify the class of the lvm object
 #' 
 #' @param x \code{lvm.penalized}-object
@@ -34,31 +34,35 @@
 #' pm <- penalize(m)
 #' pm
 #'
-#' penalty(pm)
-#'
 #' cancelPenalty(pm) <- Y~X1
 #' cancelPenalty(pm) <- Y~X2
 #' pm
+#'
+#' clean(pm)
 #' 
+# }}}
+
+#' @rdname clean.penalty
 #' @export
-clean.plvm <- function(x, simplify.penalty = TRUE, simplify, ...){
+lava.penalty.clean.hook <- function(x, simplify.penalty = TRUE, simplify, ...){
 
-    if(!missing(simplify)){
-        simplify.penalty <- simplify
-    }
-
-    test.penaltyL12 <- NROW(penalty(x, type = "Vlasso")$Vlasso)+ NROW(penalty(x, type = "Vridge")$Vridge)>0
-    test.penaltyNuclear <- length(penalty(x, type = "link", nuclear = TRUE))>0
+    if("plvm" %in% class(x)){
     
-    if(simplify.penalty && test.penaltyL12 == FALSE && test.penaltyNuclear == FALSE){
-        x$penalty <- NULL
-        x$penaltyNuclear <- NULL
-        class(x) <- setdiff(class(x), "plvm")
-        return(clean(x, simplify = simplify, ...))    
-    }else{
-        return(callS3methodParent(x, FUN = "clean", class = "plvm", simplify = simplify, ...))    
+        if(!missing(simplify)){
+            simplify.penalty <- simplify
+        }
+
+        test.penaltyL12 <- NROW(penalty(x, type = "Vlasso")$Vlasso)+ NROW(penalty(x, type = "Vridge")$Vridge)>0
+        test.penaltyNuclear <- length(penalty(x, type = "link", nuclear = TRUE))>0
+    
+        if(simplify.penalty && test.penaltyL12 == FALSE && test.penaltyNuclear == FALSE){
+            x$penalty <- NULL
+            x$penaltyNuclear <- NULL
+            class(x) <- setdiff(class(x), "plvm")
+        }
     }
 
+    return(list(x=x))
 }
 
 

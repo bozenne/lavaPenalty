@@ -1,5 +1,6 @@
 #' @docType package
 #' @title lava.penalty: Regularization tools for latent variables models
+#' @description add-on to the lava package allowing regularized linear models and latent variable models.
 #' @name lava.penalty
 #' @import lava
 #' @import lava.reduce

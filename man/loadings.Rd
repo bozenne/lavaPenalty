@@ -6,18 +6,21 @@
 \alias{loadings.lvmfit}
 \title{Extract the summary table for the loadings}
 \usage{
-loadings(object, ...)
+loadings(x, ...)
 
 \method{loadings}{lvmfit}(x, level = 9, col = c("Estimate", "Std. Error",
-  "Z-value", "P-value"))
+  "Z-value", "P-value"), ...)
 
 \method{loadings}{lvm.missing}(x, level = 9, col = c("Estimate",
-  "Std. Error", "Z-value", "P-value"))
+  "Std. Error", "Z-value", "P-value"), ...)
 }
 \arguments{
 \item{x}{a lvm model}
 
 \item{value}{should the name of the coefficient be returned? Else return the coefficients}
+}
+\description{
+Extract the summary table for the loadings
 }
 \examples{
 m <- lvm()

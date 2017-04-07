@@ -2,7 +2,7 @@ Package: lava.penalty
 Type: Package
 Title: Penalized Latent Variable Models
 Version: 0.0
-Date: 2017-03-17
+Date: 2017-04-06
 Author: Brice Ozenne[aut, cre]
 Maintainer: brice ozenne <brice.ozenne@orange.fr>
 Description: Implementation of regularization tools for latent variables models. Available penalty are lasso, ridge, group lasso and nuclear norm regularization (linear model only). A generic regularization path algorithm enable to estimate the knots, i.e. penalisation at which the set of non-zero parameters changes. Information criteria (AIC, BIC) can be used to identify an "optimal" penalization value.

@@ -4,7 +4,7 @@
 \alias{initGroup.lvm}
 \title{Reshape information for building the V matrices}
 \usage{
-initGroup.lvm(x, links, data = sim(x, 1), group)
+initGroup.lvm(x, links, group)
 }
 \arguments{
 \item{x}{a \code{lvm}-object}
@@ -19,18 +19,20 @@ Return matrices containg the endogenous, exogenous and group index corresponding
 \examples{
 ## no category
 m <- lvm(Y~X1+X2+X3)
-initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+dt
 
 ## categories
 categorical(m, labels = c("A","B","C")) <- "X1"
-initGroup.lvm(m, links = c("Y~X1","Y~X2"))
-categorical(m, labels = c("A","B","C")) <- "X2"
-initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+dt
+categorical(m, K=2, labels = 1:2) <- "X2"
+dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2"))
+dt
 
-regression(m) <- Z~X1+X2+X3+eta
+regression(m) <- Z~X1+X3+X5+eta
 latent(m) <- ~eta
-initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
-
-
+dt <- initGroup.lvm(m, links = c("Y~X1","Y~X2","Z~X1"))
+dt
 }
 

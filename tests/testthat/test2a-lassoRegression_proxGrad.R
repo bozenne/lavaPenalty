@@ -3,9 +3,9 @@
 ## author: Brice Ozenne
 ## created: mar  7 2017 (15:44) 
 ## Version: 
-## last-updated: mar 16 2017 (09:43) 
+## last-updated: apr  6 2017 (18:41) 
 ##           By: Brice Ozenne
-##     Update #: 40
+##     Update #: 42
 #----------------------------------------------------------------------
 ## 
 ### Commentary:
@@ -67,7 +67,7 @@ test_that("NR vs proxGrad with lasso - lambda=0", {
     eplvm.0 <- estimate(plvm.model,
                         df.data,
                         lambda1 = 0,
-                        constrain.lambda = TRUE)
+                        equivariance = TRUE)
                
     expect_equal(object=coef(elvm.model),
                  expected=coef(eplvm.0),
@@ -96,7 +96,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
     
     test_that("proxGrad with lasso", {
@@ -108,7 +108,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=TRUE))
 
   
@@ -121,7 +121,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1,
-                                 constrain.lambda = TRUE,#TRUE,
+                                 equivariance = TRUE,#TRUE,
                                  control = list(constrain = TRUE))
 
     test_that("proxGrad with lasso (fixed sigma)", {
@@ -159,7 +159,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, 
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
     
     ## test_that("NR vs proxGrad with lasso (between knots)", {
@@ -171,7 +171,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma, 
-                                 constrain.lambda = FALSE, control = list(constrain=TRUE))
+                                 equivariance = FALSE, control = list(constrain=TRUE))
     
     ## test_that("NR vs proxGrad with lasso (constrain.variance - between knots)", {
     ##     expect_equal(object = coef(eplvm.fit_tempo2),
@@ -182,7 +182,7 @@ for(iter_l in 1:length(seq2_lambda)){ # iter_l <- 3
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1,
-                                 constrain.lambda = TRUE, control = list(constrain = TRUE)
+                                 equivariance = TRUE, control = list(constrain = TRUE)
                                  )
     
     test_that("NR vs proxGrad with lasso (fix sigma - between knots)", {
@@ -222,7 +222,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # normal model
     eplvm.fit_tempo1 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=FALSE))
     
     test_that("proxGrad with lasso", {
@@ -234,7 +234,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # with constrains
     eplvm.fit_tempo2 <- estimate(plvm.model, data = df.data,
                                  lambda1 = iLambda1Sigma,
-                                 constrain.lambda = FALSE,
+                                 equivariance = FALSE,
                                  control = list(constrain=TRUE))
 
   
@@ -247,7 +247,7 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
     # fixed sigma
     eplvm.fit_tempo3 <- estimate(plvm.model,  data = df.data,
                                  lambda1 = iLambda1,
-                                 constrain.lambda = TRUE,
+                                 equivariance = TRUE,
                                  control = list(constrain = TRUE))
 
     test_that("proxGrad with lasso (fixed sigma)", {
@@ -275,6 +275,56 @@ for(iter_l in 1:n.lambda){ # iter_l <- 5
 }
 # }}}
 
+
+# {{{ multigroup
+
+## simulate interaction
+set.seed(10)
+mSim <- lvm(Y ~ X1 + gender + group + Interaction)
+distribution(mSim, ~gender) <- binomial.lvm()
+distribution(mSim, ~group) <- binomial.lvm(size = 3)
+constrain(mSim, Interaction ~ gender + group) <- function(x){x[,1]*x[,2]}
+d <- sim(mSim, 1e2)
+#d$gender <- factor(d$gender, labels = letters[1:2])
+#d$group <- factor(d$group)
+
+m <- lvm(Y ~ X1 + group)
+e <- estimate(list(m,m), split(d,d$gender))
+coef(e)
+
+pm <- penalize(m, Vridge = FALSE)
+pe <- estimate(list(pm,pm), lambda1 = 0,
+               data = split(d,d$gender))
+
+
+pe <- estimate(pm, lambda1 = 0,
+               data = d)
+
+library(butils.base)
+#package.source("lava")
+#library(lava.penalty)
+package.source("lava.penalty")
+gethook("multigroup.hooks")
+
+gethook("multigroup.hooks")
+
+
+
+
+set.seed(10)
+mSim <- lvm(Y1~ X1 + gender + group + Interaction + eta,
+            Y2~ eta,
+            Y3~ eta)
+latent(mSim) <- ~eta
+distribution(mSim, ~gender) <- binomial.lvm()
+d <- sim(mSim, 1e2)
+e <- estimate(list(mSim,mSim), split(d,d$gender))
+
+lava:::coef.multigroupfit
+class(e)
+e$parpos
+e$model$name
+# }}}
 
 #----------------------------------------------------------------------
 ### test-lassoRegression_proxGrad.R ends here

@@ -17,9 +17,10 @@ penalize(x, ...) <- value
 
 \method{penalize}{lvm}(x, value = NULL, ...)
 
-\method{penalize}{lvm}(x, group, V, add = TRUE, reduce = FALSE, lambda1,
-  lambda2, lambdaG, lambdaN, adaptive, intercept = FALSE, regression = TRUE,
-  variance = FALSE, covariance = FALSE, latent = FALSE) <- value
+\method{penalize}{lvm}(x, group, add = TRUE, reduce = FALSE,
+  Vlasso = TRUE, Vridge = TRUE, Vgroup = TRUE, intercept = FALSE,
+  regression = TRUE, variance = FALSE, covariance = FALSE,
+  latent = FALSE, ...) <- value
 
 penalizeNuclear(x, ...)
 
@@ -37,21 +38,15 @@ penalizeNuclear(x, ...) <- value
 
 \item{group}{the groups defining the group lasso penalty}
 
-\item{V}{the matrix defining lasso penalties}
-
 \item{add}{should value be added to the existing penalty term ? Otherwise it will overwrite it.}
 
 \item{reduce}{should for each regression the penalised link be aggregated into a linear predictor.}
 
-\item{lambda1}{lasso penalization parameter}
+\item{Vlasso}{the matrix defining lasso penalties. Otherwise must be logical to indicate whether to add lasso penalties.}
 
-\item{lambda2}{ridge penalization parameter}
+\item{Vridge}{the matrix defining ridge penalties. Otherwise must be logical to indicate whether to add ridge penalties.}
 
-\item{lambdaG}{group lasso penalization parameter}
-
-\item{lambdaN}{nuclear norm penalization parameter}
-
-\item{adaptive}{should an adaptive lasso be used?}
+\item{Vgroup}{the matrix defining group lasso penalties. Otherwise must be logical to indicate whether to add group lasso penalties.}
 
 \item{intercept}{should all intercept be penalized. Disregarded if value is specified.}
 
@@ -60,6 +55,8 @@ penalizeNuclear(x, ...) <- value
 \item{variance}{should all covariance links be penalized. Disregarded if value is specified.}
 
 \item{latent}{If FALSE, no link related to the latent variable will be penalized. Disregarded if value is specified.}
+
+\item{coords}{the (spatial) position of the links to penalize}
 }
 \description{
 Add a penalty term to a latent variable model

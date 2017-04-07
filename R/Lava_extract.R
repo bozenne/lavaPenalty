@@ -1,9 +1,13 @@
 #' @title Extract the specific coefficient names or positions in a LVM
+#' @description Extract the specific coefficient names or positions in a LVM
+#' 
 #' @name extractCoef
 #' 
 #' @param x a lvm model or a fitted lvm model 
 #' @param value should the name of the coefficient be returned? Else return the coefficients
 #' @param keep.var should the variance parameters be output?
+#' @param level level argument of \code{lava::coef}
+#' @param ... arguments to be passed to \code{lava::coef}
 #' 
 #' @examples 
 #' ## regression
@@ -121,6 +125,35 @@ coefType.lvmfit <- function(x, level = 9, ...){
 }
 # }}}
 
+#' @rdname extractCoef
+#' @export
+coefType.multigroup <- function(x, ...){ 
+  n.model <- length(x$lvm)
+  
+  ## new coef names
+  allCoef <- x$name
+  n.allCoef <- length(allCoef)
+  index.AllCoef <- x$coef
+  
+  type_tempo <- NULL
+  type <- setNames(rep("", n.allCoef), allCoef)
+  
+  ## old coef names
+  indexCoef.old <- x$coef.idx
+  for(iModel in 1:n.model){ # iModel <- 1
+    
+    if(!is.null(x$meanposN[[iModel]])){
+      indexCoef.old[[iModel]] <- c(1,indexCoef.old[[iModel]]+1)
+    }
+    
+    type_tempo <- coefType(x$lvm[[iModel]],...)
+    type[index.AllCoef[[iModel]]] <- type_tempo[indexCoef.old[[iModel]]]
+  }
+  
+  #### export
+  return(type)
+}
+
 # {{{ coefCov
 #' @rdname extractCoef
 #' @export
@@ -142,7 +175,13 @@ coefCov.lvm <- function(x, value = FALSE, keep.var = FALSE, ...){
 #' @export
 coefCov.lvmfit <- coefCov.lvm
 
+#' @rdname extractCoef
+#' @export
+coefCov.multigroup <- coefCov.lvm
+
+
 # }}}
+
 # {{{ coefExtra
 #' @rdname extractCoef
 #' @export
@@ -163,6 +202,11 @@ coefExtra.lvm <- function(x, value = FALSE, ...){
 #' @rdname extractCoef
 #' @export
 coefExtra.lvmfit <- coefExtra.lvm
+
+#' @rdname extractCoef
+#' @export
+coefExtra.multigroup <- coefExtra.lvm
+
 # }}}
 # {{{ coefIntercept
 #' @rdname extractCoef
@@ -184,6 +228,10 @@ coefIntercept.lvm <- function(x, value = FALSE, ...){
 #' @rdname extractCoef
 #' @export
 coefIntercept.lvmfit <- coefIntercept.lvm
+
+#' @rdname extractCoef
+#' @export
+coefIntercept.multigroup <- coefIntercept.lvm
 # }}}
 # {{{ coefRef
 #' @rdname extractCoef
@@ -224,6 +272,10 @@ coefReg.lvm <- function(x, value = FALSE, ...){
 #' @rdname extractCoef
 #' @export
 coefReg.lvmfit <- coefReg.lvm
+
+#' @rdname extractCoef
+#' @export
+coefReg.multigroup <- coefReg.lvm
 # }}}
 
 # {{{ coefVar
@@ -235,6 +287,7 @@ coefReg.lvmfit <- coefReg.lvm
 #' @rdname extractCoef
 #' @export
 coefVar.lvm <- function(x, value = FALSE, ...){ 
+
     res <- retainType(type = coefType(x, ...),
                       validType = "variance",
                       value = value)
@@ -245,22 +298,32 @@ coefVar.lvm <- function(x, value = FALSE, ...){
 #' @rdname extractCoef
 #' @export
 coefVar.lvmfit <- coefVar.lvm
+
+#' @rdname extractCoef
+#' @export
+coefVar.multigroup <- coefVar.lvm
 # }}}
 
 # {{{ getIvar
 #' @title Extract the variables related to each parameter
+#' @description Extract the variables related to each parameter
 #' 
 #' @param x a lvm model
 #' @param link the links to be analysed. If NULL, all the coefficients from the lvm model are used instead.
+#' @param data the dataset that will be used to fit the model. If NULL, a simulated data will be generated from the model.
 #' @param format the type of object to output. Can be \code{"data.frame"}, \code{"data.table"}, or \code{"matrix"}.
 #' @param rm.factice should links corresponding to factor variables be removed since they will be transformed in external parameters?
 #' 
 #' @examples  
 #' m <- lvm(Y~X1+X2)
-#' categorical(m, K =3) <- "X1"
+#' categorical(m, K = 3) <- "X1"
+#' try(getIvar.lvm(m)) # error
+#' 
+#' categorical(m, K = 3, labels = 1:3) <- "X1"
 #' getIvar.lvm(m)
 #' getIvar.lvm(m, "Y~X1")
 #' getIvar.lvm(m, "X1:0|1")
+#' getIvar.lvm(m, "X1:1|2")
 #' getIvar.lvm(m, c("X1:0|1", "X1:1|2"))
 #' getIvar.lvm(m, c("Y~X1","Y~X2"))
 #' getIvar.lvm(m, c("Y~X2","Y~X1"))
@@ -271,6 +334,7 @@ getIvar.lvm <- function(x, link = NULL,
     if(format %in% c("data.frame","data.table","matrix") == FALSE){
         stop(paste0(format," is an invalid format. Can only be \"data.frame\" or \"matrix\" \n"))
     }
+
     #### valid links
     if(!is.null(link)){
         if(any(link %in% coef(x) == FALSE)){
@@ -286,25 +350,25 @@ getIvar.lvm <- function(x, link = NULL,
     index.Ncat <- setdiff(1:length(link), index.cat)
     
     #### deal with continuous variables
-  if(length(index.Ncat)>0){
-    link.Ncat <- link[index.Ncat]
+    if(length(index.Ncat)>0){
+        link.Ncat <- link[index.Ncat]
 
-    name.link <- names(coef(x))[match(link.Ncat,coef(x))]
-    A <- APmatrix(x)$A
-    colnames.A <- colnames(A)
-    rownames.A <- rownames(A)
+        name.link <- names(coef(x))[match(link.Ncat,coef(x))]
+        A <- APmatrix(x)$A
+        colnames.A <- colnames(A)
+        rownames.A <- rownames(A)
 
-    M.Ncat <- sapply(name.link, function(l){
-        position <- which(A == l, arr.ind = TRUE)
-        return(c(colnames.A[position[2]],rownames.A[position[1]]))
-    })
-    dt.Ncat <- data.table::data.table(link.Ncat,t(M.Ncat), "continuous","",NA, NA)
-    setnames(dt.Ncat, old = names(dt.Ncat),
-             new = c("link", "endogenous","exogenous","type", "level", "originalLink", "externalLink")
-             )
-  }else{
-      dt.Ncat <- NULL
-  }
+        M.Ncat <- sapply(name.link, function(l){
+            position <- which(A == l, arr.ind = TRUE)
+            return(c(colnames.A[position[2]],rownames.A[position[1]]))
+        })
+        dt.Ncat <- data.table::data.table(link.Ncat,t(M.Ncat), "continuous","",NA, NA)
+        setnames(dt.Ncat, old = names(dt.Ncat),
+                 new = c("link", "endogenous","exogenous","type", "level", "originalLink", "externalLink")
+                 )
+    }else{
+        dt.Ncat <- NULL
+    }
 
     #### remove links in continuous that corresponds to categorical variables (i.e. X1 when only X1B and X1C exists)
     # and add the external parameters in the categorical links
@@ -329,24 +393,26 @@ getIvar.lvm <- function(x, link = NULL,
             return(names(x$attributes$ordinalparname)[test])
         })
         # find the level of the exogenous variable
-        exo.level <- unlist(tapply(exo.link, exo.link, function(l){
-            labels <- xCAT$attributes$labels[[l[1]]]
-            if(length(labels)>1){
-                return(labels[-1])
-            }else{
+        exo.level <- unlist(tapply(exo.link, exo.link, function(l){ # l <- exo.link
+            if(l[1] %in% names(xCAT$attributes$labels)){
+                labels <- xCAT$attributes$labels[[l[1]]]
+                index.label <- which(x$attributes$ordinalparname[[l[1]]] %in% link.cat)                
+                return(labels[1+index.label])
+            }else {
                 stop("Categorical variables must have labels. Specify argument \'labels\' when calling categorical. \n")
-            }
+            }            
         }))
 
         # find endogenous variable
         M.link <- xCAT$M[paste0(exo.link,exo.level),,drop = FALSE]
         indexLink <- which(M.link==1, arr.ind = TRUE)
         endo.link <- colnames(M.link)[indexLink[,"col"]]
-        exo.level <- exo.level[indexLink[,"row"]]
-        index.cat <- index.cat[indexLink[,"row"]]
+        exo.link.cat <- rownames(M.link)[indexLink[,"row"]]
+        exo.level <- as.character(exo.level[indexLink[,"row"]])
         original.link <- paste0(endo.link, lava.options()$symbol[1], exo.link)
-        external.link <- link[index.cat]
         
+        external.link <- link[index.cat[indexLink[,"row"]]]
+        exo.link <- as.character(exo.link[external.link])
         # treat numeric as factor
         ## if(!is.list(xCAT$attributes$labels)){xCAT$attributes$labels <- list()}
         ## if(any(unique(exo.link) %in% names(xCAT$attributes$labels) == FALSE)){
@@ -359,16 +425,17 @@ getIvar.lvm <- function(x, link = NULL,
         ##     return(xCAT$attributes$labels[[l[1]]][-1])
         ## }))
         ## link[index.cat] <- paste0(endo.link, lava.options()$symbol[1], exo.link, exo.level2)
-        link[index.cat] <- paste0(endo.link, lava.options()$symbol[1], exo.link, exo.level)
+        link.cat <- paste0(endo.link, lava.options()$symbol[1], exo.link.cat)
+        # find matching parameter-external parameter
+        dt.cat <- data.table::data.table(link = link.cat,
+                                         endogenous = endo.link,
+                                         exogenous = exo.link,
+                                         type = "categorical",
+                                         level = exo.level,
+                                         originalLink = original.link,
+                                         externalLink = external.link)       
 
-        # find matching parameter-external parameter        
-        dt.cat <- data.table::data.table(link[index.cat], endo.link, exo.link, "categorical",
-                                         level = exo.level, originalLink = original.link, externalLink = external.link)        
-        setnames(dt.cat, old = names(dt.cat),
-                 new = c("link","endogenous","exogenous","type","level","originalLink", "externalLink")
-                 )
     }
-
     ## export
     res <- rbind(dt.Ncat, dt.cat)
     if(format == "data.frame"){
@@ -382,6 +449,7 @@ getIvar.lvm <- function(x, link = NULL,
 
 # {{{ loadings
 #' @title Extract the summary table for the loadings
+#' @description Extract the summary table for the loadings
 #' @name loadings
 #' @aliases loadings loadings.lvmfit loadings.lvm.missing
 #' 
@@ -400,11 +468,11 @@ getIvar.lvm <- function(x, link = NULL,
 #' loadings(fit) 
 #' loadings(fit, col = "P-value") 
 #' @export
-`loadings` <- function(object, ...) UseMethod("loadings")
+`loadings` <- function(x, ...) UseMethod("loadings")
 
 #' @rdname loadings
 #' @export
-loadings.lvmfit <- function(x, level = 9, col = c("Estimate","Std. Error", "Z-value","P-value")){
+loadings.lvmfit <- function(x, level = 9, col = c("Estimate","Std. Error", "Z-value","P-value"), ...){
 
     possibleCoef <- coefReg(x, level = level, value = TRUE)
     # check that the first variable is endogeneous and the second a latent variable
@@ -503,12 +571,15 @@ retainType <- function(type, validType, value){
 
 # }}}
 
-# {{{ checkLatent
-#' @title Extract the name or the position of the variance coefficients
-#' @name checkVar
+# {{{ checkData
+#' @title Check that validity of the dataset
+#' @description Check the validity of the dataset used to estimate a lvm.
+#' 
+#' @name checkData
 #' 
 #' @param x a lvm model
-#' @param value should the name of the coefficient be returned? Else return the coefficients
+#' @param data the dataset containing the variables used to estimate the lvm.
+#' @param ... not used
 #' 
 #' @examples 
 #' m <- lvm()
@@ -517,24 +588,25 @@ retainType <- function(type, validType, value){
 #' latent(m) <- ~u
 #'
 #' d <- sim(m,1e2)
-#' checkVar(m, d)
+#'
+#' try(checkData(m, d)) # return an error
 #' 
-#' checkVar(m, d[,-4])
+#' checkData(m, d[,-4])
 #' @export
-`checkVar` <-
-  function(x,data,...) UseMethod("checkVar")
+`checkData` <-
+  function(x, data, ...) UseMethod("checkData")
 
-#' @rdname checkVar
+#' @rdname checkData
 #' @export
-checkVar.lvm <- function(x, data){ 
+checkData.lvm <- function(x, data, ...){ 
     vars <- vars(x)
     latent <- latent(x)
     missingVars <- vars[vars %in% names(data) == FALSE]
 
     if(!identical(sort(latent),sort(missingVars))){
-        cat("wrong specification of the latent variables \n",
-            "latent variables according to the LVM: ",paste(latent, collapse = " "),"\n",
-            "missing variables in data: ",paste(missingVars, collapse = " "),"\n")
+        stop("Wrong specification of the latent variables \n",
+             "latent variables according to the LVM: ",paste(latent, collapse = " "),"\n",
+             "missing variables in data: ",paste(missingVars, collapse = " "),"\n")
         return(invisible(FALSE))
     }else{
         return(invisible(TRUE))

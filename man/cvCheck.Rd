@@ -6,7 +6,7 @@
 \alias{residplot.lvmfit}
 \title{Test the sensibility of the lvm estimate to the initialization points}
 \usage{
-cvCheck(x, ...)
+cvCheck(object, ...)
 
 \method{cvCheck}{lvm}(object, data, factor.vcov = 1, n.init = 100,
   keep.cov = TRUE, ncpus = 1, verbose = TRUE, ...)
@@ -15,9 +15,9 @@ cvCheck(x, ...)
   type = "qqtest", centralPercents = 0.95, ...)
 }
 \arguments{
-\item{...}{additional arguments to be passed to estimate}
-
 \item{object}{a lvm model}
+
+\item{...}{additional arguments to be passed to estimate}
 
 \item{data}{a data frame}
 
@@ -34,6 +34,9 @@ cvCheck(x, ...)
 \value{
 a data frame/cvlvm object containing the convergence status (by default 0 indicates successful convergence, see ?optim), the value of the log-likelihood and the estimated parameters (in columns) for each initialization (in rows)
 }
+\description{
+Test the sensibility of the lvm estimate to the initialization points
+}
 \details{
 Simulation is based on a multivariate truncated normal law (even though it is not satifying for the variance components)
 }
@@ -43,12 +46,14 @@ covariance(m) <- v1~v2+v3+v4
 dd <- sim(m,10000) ## Simulate 10000 observations from model
 e <- estimate(m, dd) ## Estimate parameters
 
-system.time(
+\dontrun{
 summary(cvCheck(m, dd))
-)
-
-system.time(
 summary(cvCheck(m, dd, ncpus = 4))
-)
+}
+\dontshow{
+summary(cvCheck(m, dd, n.init = 10))
+summary(cvCheck(m, dd, ncpus = 4, n.init = 10))
+}
+
 }
 

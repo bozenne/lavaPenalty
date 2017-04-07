@@ -4,23 +4,29 @@
 \alias{coefCov}
 \alias{coefCov.lvm}
 \alias{coefCov.lvmfit}
+\alias{coefCov.multigroup}
 \alias{coefExtra}
 \alias{coefExtra.lvm}
 \alias{coefExtra.lvmfit}
+\alias{coefExtra.multigroup}
 \alias{coefIntercept}
 \alias{coefIntercept.lvm}
 \alias{coefIntercept.lvmfit}
+\alias{coefIntercept.multigroup}
 \alias{coefRef}
 \alias{coefRef.lvmfit}
 \alias{coefReg}
 \alias{coefReg.lvm}
 \alias{coefReg.lvmfit}
+\alias{coefReg.multigroup}
 \alias{coefType}
 \alias{coefType.lvm}
 \alias{coefType.lvmfit}
+\alias{coefType.multigroup}
 \alias{coefVar}
 \alias{coefVar.lvm}
 \alias{coefVar.lvmfit}
+\alias{coefVar.multigroup}
 \alias{extractCoef}
 \title{Extract the specific coefficient names or positions in a LVM}
 \usage{
@@ -30,11 +36,15 @@ coefType(x, ...)
 
 \method{coefType}{lvmfit}(x, level = 9, ...)
 
+\method{coefType}{multigroup}(x, ...)
+
 coefCov(x, ...)
 
 \method{coefCov}{lvm}(x, value = FALSE, keep.var = FALSE, ...)
 
 \method{coefCov}{lvmfit}(x, value = FALSE, keep.var = FALSE, ...)
+
+\method{coefCov}{multigroup}(x, value = FALSE, keep.var = FALSE, ...)
 
 coefExtra(x, ...)
 
@@ -42,11 +52,15 @@ coefExtra(x, ...)
 
 \method{coefExtra}{lvmfit}(x, value = FALSE, ...)
 
+\method{coefExtra}{multigroup}(x, value = FALSE, ...)
+
 coefIntercept(x, ...)
 
 \method{coefIntercept}{lvm}(x, value = FALSE, ...)
 
 \method{coefIntercept}{lvmfit}(x, value = FALSE, ...)
+
+\method{coefIntercept}{multigroup}(x, value = FALSE, ...)
 
 coefRef(x, ...)
 
@@ -58,18 +72,29 @@ coefReg(x, ...)
 
 \method{coefReg}{lvmfit}(x, value = FALSE, ...)
 
+\method{coefReg}{multigroup}(x, value = FALSE, ...)
+
 coefVar(x, ...)
 
 \method{coefVar}{lvm}(x, value = FALSE, ...)
 
 \method{coefVar}{lvmfit}(x, value = FALSE, ...)
+
+\method{coefVar}{multigroup}(x, value = FALSE, ...)
 }
 \arguments{
 \item{x}{a lvm model or a fitted lvm model}
 
+\item{...}{arguments to be passed to \code{lava::coef}}
+
+\item{level}{level argument of \code{lava::coef}}
+
 \item{value}{should the name of the coefficient be returned? Else return the coefficients}
 
 \item{keep.var}{should the variance parameters be output?}
+}
+\description{
+Extract the specific coefficient names or positions in a LVM
 }
 \examples{
 ## regression

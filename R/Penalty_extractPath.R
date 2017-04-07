@@ -9,13 +9,16 @@
 #' @description Extract the regularization path from a lvm object
 #' 
 #' @param x a plvmfit object or a regPath object
-#' @param names names of the columns to extract
 #' @param coef names of the coefficients to extract. Can also be \code{"coef0"} or \code{"coefn0"} to extract the number of 0 or non-0 coefficients
+#' @param V matrix containig the constrains
 #' @param lambda names of the penalization parameter to extract.
 #' @param only.breakpoints should the path be extracted only at the breakpoints
 #' @param increasing should the path be extracted by increasing value of regularization parameter
-#' @param order the regularization parameter to consider when ordering the points along the path
+#' @param keep.index should the index of the knot be kept in the output.
+#' @param keep.optimum should the column indicating the optimum and the fit be kept in the output.
+#' @param path.constrain should the column containing the active constrains be added to the output. 
 #' @param row the index at which the path should be extracted
+#' @param ... additional arguments to be passed to low levels functions
 
 #' @rdname getPath
 #' @export
@@ -53,7 +56,7 @@
 #' @export
 `getPath.regPath` <- function(x, coef, V, lambda = "lambda1.abs",
                               keep.indexChange = FALSE, keep.index = TRUE, keep.optimum = TRUE, path.constrain = FALSE,
-                              only.breakpoints = FALSE, increasing = TRUE, row = NULL) {
+                              only.breakpoints = FALSE, increasing = TRUE, row = NULL, ...) {
 
     ## extract path
     regPath <- x$path

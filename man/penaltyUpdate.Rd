@@ -12,9 +12,9 @@ penalty(x, ...) <- value
 
 \method{penalty}{plvm}(x, nuclear = FALSE, ...) <- value
 
-\method{penalty}{penaltyL12}(x, type = "link") <- value
+\method{penalty}{penaltyL12}(x, type, lambda, add, ...) <- value
 
-\method{penalty}{penaltyNuclear}(x, type = "link") <- value
+\method{penalty}{penaltyNuclear}(x, type = "link", ...) <- value
 }
 \arguments{
 \item{x}{a lvm.penalty object}
@@ -36,8 +36,7 @@ mSim <- lvm(formula.lvm)
 df.data <- sim(mSim,n)
 
 pm <- penalize(mSim, c("Y~X1","Y~X4", "Y~X10"))
-
-penalty(pm, type = "link") <- c("Y~X5")
+pm
 
 }
 

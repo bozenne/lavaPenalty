@@ -1,14 +1,14 @@
-# {{{ cancelPenalty
-
 # {{{ doc
 #' @title Remove penalty from a penalized latent variable model
 #' @name cancelPenalty
 #' @description Remove one or several penalties from a penalized latent variable model
 #' 
 #' @param x \code{plvm}-object
-#' @param link the penalty that should be removed
 #' @param value the penalty that should be removed
-#' @param simplify if the object contain no more penalty should it be converted to a non penalized lvm
+#' @param rm.lasso should lasso penalties be removed?
+#' @param rm.ridge should ridge penalties be removed?
+#' @param rm.groupLasso should group lasso penalties be removed?
+#' @param ... additional arguments to be passed to lower level functions
 #' 
 #' @examples
 #'
@@ -17,21 +17,22 @@
 #' m <- regression(m, x=paste0("x",1:10),y="y")
 #' pm <- penalize(m)
 #' 
-#' cancelPenalty(pm, link = "y~x5")
+#' cancelPenalty(pm, value = "y~x5")
 #' cancelPenalty(pm) <- y~x1
 #' cancelPenalty(pm) <- c("y~x2","y~x3")
-#' cancelPenalty(pm) <- penalty(pm)
+#' cancelPenalty(pm) <- penalty(pm, no.ridge = TRUE)$link
 #' pm
 #'
 #' ## group lasso
 #' m <- regression(m, x=paste0("x",1:10),y="y")
-#' categorical(m, K = 3) <- ~x1
+#' categorical(m, K = 3, labels = 1:3) <- ~x1
 #' pm <- penalize(m)
-#' cancelPenalty(pm) <- "x1:0|1"
 #' pm
-#' cancelPenalty(pm) <- "x1:1|2"
+#' cancelPenalty(pm) <- "y~x2"
 #' pm
-#' cancelPenalty(pm) <- penalty(pm, type = "link")
+#' cancelPenalty(pm) <- "y~x12"
+#' pm
+#' cancelPenalty(pm) <- penalty(pm, no.lasso = TRUE, no.ridge = TRUE)$link
 #' pm
 #' 
 #' 
@@ -39,6 +40,7 @@
 `cancelPenalty` <-
     function(x,...) UseMethod("cancelPenalty")
 # }}}
+
 # {{{ cancelPenalty<-
 #' @rdname cancelPenalty
 #' @export
@@ -48,7 +50,7 @@
 # }}}
 # {{{ cancelPenalty.plvm
 #' @rdname cancelPenalty
-`cancelPenalty.plvm` <- function(x, value){
+`cancelPenalty.plvm` <- function(x, ..., value){
   cancelPenalty(x, ...) <- value
   return(x)
 }
@@ -58,7 +60,7 @@
 `cancelPenalty<-.plvm` <- function(x, ..., value){
 
     penalty <- penalty(x, type = "object")
-    cancelPenalty(penalty, extraParameter = coefExtra(x, value = TRUE)) <- value
+    cancelPenalty(penalty, extraParameter = coefExtra(x, value = TRUE), ...) <- value
     x$penalty <- penalty
       
   return(x)
@@ -70,16 +72,22 @@
 `cancelPenalty<-.penaltyL12` <- function(x, extraParameter,
                                          rm.lasso = TRUE, rm.ridge = TRUE, rm.groupLasso = TRUE,
                                          value){
-
+    ## deal with external parameters
+    if(is.character(value)){
+        value.EP <- intersect(value, extraParameter)
+        value <- setdiff(value, extraParameter)
+    }else{
+        value.EP <- NULL
+    }
+    
     ## normalize argument value
     # initVar_links cannot deal with external parameters like x1:0|1 since it is not a formula
-    value.P <- lava.reduce::initVar_links(setdiff(value, extraParameter),
-                                          format = "txt.formula")
-    value.EP <- intersect(value, extraParameter)
+    value.P <- lava.reduce::initVar_links(value,
+                                          format = "txt.formula")    
     value <- c(value.P, value.EP)
 
     ## identify all penalties
-    table.penalty <- penalty(x)    
+    table.penalty <- penalty(x)
     if(any(value %in% table.penalty$link == FALSE)){
         stop("Cannot remove an non existing link in object \n",
              "link: ",paste(value[value %in% table.penalty$link == FALSE], collapse = " "),"\n")
@@ -136,5 +144,4 @@
 # {{{ cancelPenalty<-.penaltyNuclear [TODO]
 # }}}
 
-# }}}
 

@@ -11,6 +11,9 @@ lava.penalty.options(..., type = "lava")
 
 \item{type}{which set of parameters to update: \code{"lava"}, \code{"proxGrad"}, or \code{"EPSODE"}.}
 }
+\description{
+Extract and set global parameters of lava.penalty.
+}
 \examples{
 
 ## lava

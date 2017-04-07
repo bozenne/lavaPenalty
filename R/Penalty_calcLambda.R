@@ -1,18 +1,13 @@
-# {{{ calcLambda
-
 # {{{ doc
 #' @title Estimate the regularization parameter
-#' 
+#' @name calcLambda
 #' @description Find the optimal regularization parameter according to a fit criterion
 #'  
-#' @param path the penalized latent variable
-#' @param model the non penalized latent variable
-#' @param seq_lambda the sequence of penalisation paramaters to be used to define the sub model
+#' @param x a plvmfit object
+#' @param seq_lambda1 the sequence of penalisation paramaters to be used to define the sub model
 #' @param data.fit the data used to fit the model
 #' @param data.test the data used to test the model
 #' @param warmUp should the new model be initialized with the solution of the previous model (i.e. estimated for a different penalization parameter)
-#' @param keep.fit should the penalized LVM be exported
-#' @param refit.pLVM should the penalized LVM be fitted on only the non 0 parameters
 #' @param fit criterion to decide of the optimal model to retain among the penalized models.
 #' @param trace shoud the execution of the function be traced
 #' @param ... additional arguments - e.g. control argument for estimate.lvm
@@ -32,18 +27,23 @@
 #' 
 #' perf <- calcLambda(res$regularizationPath, res$x, data.fit = df.data)
 #' perf
-#' @rdname getPath
+
+#' @rdname calcLambda
 #' @export
 `calcLambda` <- function(x, ...) UseMethod("calcLambda")
 # }}}
 
 # {{{ calcLambda.plvm
-#'
+#' @rdname calcLambda
 #' @export
 calcLambda.plvmfit <- function(x, 
-                               seq_lambda1, data.fit = x$data$model.frame, data.test = x$data$model.frame, 
+                               seq_lambda1,
+                               data.fit = x$data$model.frame,
+                               data.test = x$data$model.frame, 
                                warmUp = lava.options()$calcLambda$warmUp, 
-                               fit = lava.options()$calcLambda$fit, trace = TRUE, ...){
+                               fit = lava.options()$calcLambda$fit,
+                               trace = TRUE,
+                               ...){
 
     # {{{ test
     if(is.path(x)==FALSE){
@@ -64,8 +64,8 @@ calcLambda.plvmfit <- function(x,
     seq_lambda1 <- regPath$lambda1
     n.lambda1 <- length(seq_lambda1.abs)
     # }}}
-   
-  
+    
+    
     # {{{ initialization
     if("control" %in% names(list(...))){
         control <- list(...)$control
@@ -116,7 +116,7 @@ calcLambda.plvmfit <- function(x,
 
     
     for(iKnot in 1:n.knot){ # 
-    
+        
         ## define the constrains
         ils.constrain <- regPath$constrain0[[iKnot]]        
         
@@ -177,17 +177,17 @@ calcLambda.plvmfit <- function(x,
             best.lambda1.abs <-seq_lambda1.abs[iKnot]
         }
         # }}}
-    
+        
         if(trace){setTxtProgressBar(pb, iKnot)}
     }
 
     if(trace){close(pb)}
-  
+    
     
     #### export
     best.lvm$control <- x$control
     best.lvm$call <- x$call
-   
+    
     best.lvm$regularizationPath <- x$regularizationPath
     best.lvm$penalty <- x$penalty
     best.lvm$penalty$lambda1 <- best.lambda1
@@ -201,8 +201,7 @@ calcLambda.plvmfit <- function(x,
 
     class(best.lvm) <- class(x)
     return(best.lvm)
-  
+    
 }
 # }}}
 
-# }}}

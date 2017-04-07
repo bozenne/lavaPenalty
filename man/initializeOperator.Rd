@@ -4,9 +4,9 @@
 \alias{initializeOperator}
 \title{Initialise a proximal operator}
 \usage{
-initializeOperator(lambda1, lambda2, lambdaG, index.penaltyG, lambdaN,
-  index.penaltyN, nrow, ncol, constrain.lambda, constrain.variance,
-  index.variance)
+initializeOperator(lambda1, index.penalty1, lambda2, index.penalty2, lambdaG,
+  index.penaltyG, lambdaN, index.penaltyN, nrow, ncol, equivariance,
+  constrain.variance, index.variance)
 }
 \arguments{
 \item{lambda1}{lasso penalization parameter.}
@@ -25,9 +25,11 @@ initializeOperator(lambda1, lambda2, lambdaG, index.penaltyG, lambdaN,
 
 \item{ncol}{a vector containing the number of columnss of each image.}
 
-\item{constrain.lambda}{should the lambda parameter be normalized by the total variance?}
+\item{equivariance}{should the lambda parameter be multiplied with the first variance parameter?}
 
 \item{constrain.variance}{should the variance parameters be exponential trans}
+
+\item{index.variance}{the position of the variance parameters in coef}
 }
 \value{
 a list containing the proximal operator and the penalty funtion

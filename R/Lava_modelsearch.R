@@ -1,5 +1,7 @@
 # {{{ extendModel
 #' @title Automatic extension of the lvm
+#' @description Add all possible path between the variables present in a lvm.
+#' 
 #' @name extendModel
 #' 
 #' @param x a lvm model
@@ -123,6 +125,8 @@ extendModel.lvm <- function(x, type, covariance = TRUE,
 
 # {{{ modelsearchLR
 #' @title Model searching using a likelihood ratio test
+#' @description Model searching using a likelihood ratio test
+#' 
 #' @name modelsearchLR
 #' 
 #' @param x a lvm model

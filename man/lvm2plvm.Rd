@@ -9,4 +9,7 @@ lvm2plvm(x)
 \arguments{
 \item{x}{\code{lvm}-object}
 }
+\description{
+Conversion to a penalized latent variable model
+}
 

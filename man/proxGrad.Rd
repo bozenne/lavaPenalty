@@ -2,7 +2,7 @@
 % Please edit documentation in R/Penalty_ISTA.R
 \name{proxGrad}
 \alias{proxGrad}
-\title{step of a proximal gradient algorithm}
+\title{Proximal gradient algorithm}
 \usage{
 proxGrad(start, proxOperator, hessian, gradient, objective,
   control = lava.options()$proxGrad)

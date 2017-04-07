@@ -13,11 +13,16 @@ findNewLink(x, ...)
 \arguments{
 \item{x}{a lvm model}
 
+\item{...}{not used}
+
 \item{rm.latent}{ignore links between latent variables}
 
 \item{rm.endo}{ignore links between endogenous variables}
 
 \item{output}{return the names of the variables to link ("names") or their position ("index")}
+}
+\description{
+Find the new possible links between variables (copied from lava::modelsearch)
 }
 \examples{
 \dontrun{

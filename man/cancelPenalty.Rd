@@ -12,20 +12,25 @@ cancelPenalty(x, ...)
 
 cancelPenalty(x, ...) <- value
 
-\method{cancelPenalty}{plvm}(x, simplify = TRUE, link)
+\method{cancelPenalty}{plvm}(x, ..., value)
 
-\method{cancelPenalty}{plvm}(x, clean = TRUE, ...) <- value
+\method{cancelPenalty}{plvm}(x, ...) <- value
 
-\method{cancelPenalty}{penaltyL12}(x, extraParameter) <- value
+\method{cancelPenalty}{penaltyL12}(x, extraParameter, rm.lasso = TRUE,
+  rm.ridge = TRUE, rm.groupLasso = TRUE) <- value
 }
 \arguments{
 \item{x}{\code{plvm}-object}
 
+\item{...}{additional arguments to be passed to lower level functions}
+
 \item{value}{the penalty that should be removed}
 
-\item{simplify}{if the object contain no more penalty should it be converted to a non penalized lvm}
+\item{rm.lasso}{should lasso penalties be removed?}
 
-\item{link}{the penalty that should be removed}
+\item{rm.ridge}{should ridge penalties be removed?}
+
+\item{rm.groupLasso}{should group lasso penalties be removed?}
 }
 \description{
 Remove one or several penalties from a penalized latent variable model
@@ -37,21 +42,22 @@ m <- lvm()
 m <- regression(m, x=paste0("x",1:10),y="y")
 pm <- penalize(m)
 
-cancelPenalty(pm, link = "y~x5")
+cancelPenalty(pm, value = "y~x5")
 cancelPenalty(pm) <- y~x1
 cancelPenalty(pm) <- c("y~x2","y~x3")
-cancelPenalty(pm) <- penalty(pm)
+cancelPenalty(pm) <- penalty(pm, no.ridge = TRUE)$link
 pm
 
 ## group lasso
 m <- regression(m, x=paste0("x",1:10),y="y")
-categorical(m, K = 3) <- ~x1
+categorical(m, K = 3, labels = 1:3) <- ~x1
 pm <- penalize(m)
-cancelPenalty(pm) <- "x1:0|1"
 pm
-cancelPenalty(pm) <- "x1:1|2"
+cancelPenalty(pm) <- "y~x2"
 pm
-cancelPenalty(pm) <- penalty(pm, type = "link")
+cancelPenalty(pm) <- "y~x12"
+pm
+cancelPenalty(pm) <- penalty(pm, no.lasso = TRUE, no.ridge = TRUE)$link
 pm
 
 

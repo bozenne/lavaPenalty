@@ -1,4 +1,11 @@
 #' @title Compute the degree of freedom for nuclear regularized regression
+#' @description Compute the degree of freedom for nuclear regularized regression
+#'
+#' @param B.LS 
+#' @param B.lambda 
+#' @param lamba 
+#' @param lambda2 
+#' @param tol 
 #' 
 #' @references Zhou et al. Regularized Matrix Regression
 #' 

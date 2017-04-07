@@ -1,33 +1,37 @@
-# {{{ reduce.plvm
-#' @title Reduce latent variable model
-#' @name reduce
-#' @description Aggregate exogeneous variables into a linear predictor
+# {{{ doc
+#' @title Aggregate exogeneous variables associated with penalties
+#' @description Aggregate exogeneous variables associated with penalties into a linear predictor
+#' @name reduce.penalty
 #' 
 #' @param x \code{lvm}-object
-#' @param endo the endogeneous variables for which the related exogeneous variables should be aggregated
-#' @param rm.exo should the exogeneous variables be remove from the object
+#' @param link the links that should be included in the linear predictor
 #' @param ... other arguments to be passed to \code{lava.reduce::reduce.lvm}
 #' 
 #' @examples  
 #' m <- lvm()
 #' m <- regression(m, x=paste0("x",1:10),y="y")
 #' pm <- penalize(m)
-#' reduce(pm)
+#' res <- reduce(pm)
 #' reduce(pm, link = y~x1+x2+x3)
-#'
+#' 
+# }}}
 
-#' @rdname getReduce 
+# {{{ lava.penalty.reduce.hook
+#' @rdname reduce
 #' @export
-reduce.plvm <- function(object, link = NULL, ...){
-  
-    if(is.null(link)){
-        link <- c(penalty(object, type = "link", nuclear = FALSE),
-                  penalty(object, type = "link", nuclear = TRUE)
-                  )
+lava.penalty.reduce.hook <- function(x, link = NULL, ...){
+
+    if("plvm" %in% class(x)){
+        
+        if(is.null(link)){
+            link <- c(unique(penalty(x, nuclear = FALSE)$link),
+                      penalty(x, type = "link", nuclear = TRUE)
+                      )
+        }
+        
     }
-    object <- lava.reduce:::reduce.lvm(object, link = link, ...)
-  
-    return(object)
+    
+    return(list(link = link))
 }
 # }}}
 

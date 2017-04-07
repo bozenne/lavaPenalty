@@ -4,7 +4,7 @@
 \alias{lava.penalty.estimate.hook}
 \title{Hook to estimate a penalized lvm model}
 \usage{
-lava.penalty.estimate.hook(x, data, weight, weight2, estimator, ...)
+lava.penalty.estimate.hook(x, data, ...)
 }
 \description{
 Add LP to dataset, update the estimator for handling LP, and find initialisation.
