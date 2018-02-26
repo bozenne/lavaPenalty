@@ -4,18 +4,11 @@
 \alias{EPSODE}
 \title{Perform the generic Path Algorithm for a LVM}
 \usage{
-EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
-  indexPenalty, indexNuisance, increasing, stopLambda, stopParam, constrain,
-  resolution_lambda1, trace, reversible = lava.options()$EPSODE$reversible,
-  exportAllPath = lava.options()$EPSODE$exportAllPath,
-  nstep_max = lava.options()$EPSODE$nstep_max,
-  ode.method = lava.options()$EPSODE$ode.method,
-  tol.0 = lava.options()$EPSODE$tol.0)
+EPSODE(start, objective, gradient, hessian, V, lambda2, index.penalty2,
+  equivariance, constrain.variance, index.variance, control)
 }
 \arguments{
-\item{beta_lambda0}{values of the parameters when the penalty parameter is 0.}
-
-\item{beta_lambdaMax}{values of the parameters when the penalty parameter is infinite}
+\item{start}{the starting value}
 
 \item{objective}{likelihood given by lava. Used to adjust the step parameter when using backtracking}
 
@@ -25,36 +18,25 @@ EPSODE(beta_lambda0, beta_lambdaMax, objective, gradient, hessian, V, lambda2,
 
 \item{V}{matrix that left multiply beta to define the penalization (identity corresponds to a standard lasso penalty)}
 
-\item{lambda2}{L2 penalization parameter}
+\item{lambda2}{ridge penalization parameter}
 
-\item{indexPenalty}{position of the penalised coefficients in beta}
+\item{index.penalty2}{parameters to which ridge penalization is applied}
 
-\item{indexNuisance}{index of the nuisance parameter to be treated as a constant}
+\item{equivariance}{should the lambda parameter be multiplied with the first variance parameter?}
 
-\item{increasing}{direction of the path}
+\item{constrain.variance}{should the variance parameters be log transformed?}
 
-\item{stopLambda}{if not null, stop the path when the penalty parameter reach this value}
+\item{index.variance}{the position of the variance parameters in start}
 
-\item{stopParam}{if not null, stop the path when the number of 0 (if increasing = TRUE) or non 0 (if increasing = FALSE) parameters has reached this value.}
-
-\item{constrain}{the constrain on the variance parameters}
-
-\item{resolution_lambda1}{the first value is the maximum relative difference in parameter between two steps. 
-If this lead to a too small step, the second value is used as the minimum change in penalization parameter between two steps.}
-
-\item{trace}{should the function be traced}
-
-\item{reversible}{should the algorithm allow a 0 parameter to become non-0 (when increasing = TRUE) or non-0 parameter to become 0 (when increasing = FALSE)}
-
-\item{exportAllPath}{export all the regularization path (and not only the breakpoints)}
-
-\item{nstep_max}{the maximum number of iterations}
-
-\item{ode.method}{the type of method to use to solve the ode (see the documentation of deSolve:::ode)}
-
-\item{tol.0}{tolerance for classify a parameter from beta_lambdaMax in the set of 0 parameters}
+\item{control}{settings for the EPSODE algorithm. See lava.options.}
+}
+\description{
+Perform the generic Path Algorithm for a LVM
+}
+\details{
+Does not work for an unknown variance matrix since the log-likelihood of the regression and variance parameter is not jointly convex
+(according to ??)
 }
 \references{
 Zhou 2014 - A generic Path Algorithm for Regularized Statistical Estimation
 }
-

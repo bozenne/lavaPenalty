@@ -2,18 +2,27 @@
 % Please edit documentation in R/Lava_extract.R
 \name{loadings}
 \alias{loadings}
+\alias{loadings.lvmfit}
 \alias{loadings.lvm.missing}
 \alias{loadings.lvmfit}
+\alias{loadings.lvm.missing}
 \title{Extract the summary table for the loadings}
 \usage{
-\method{loadings}{lvmfit}(x, col = NULL)
+loadings(x, ...)
 
-\method{loadings}{lvm.missing}(x, col = NULL)
+\method{loadings}{lvmfit}(x, level = 9, col = c("Estimate", "Std. Error",
+  "Z-value", "P-value"), ...)
+
+\method{loadings}{lvm.missing}(x, level = 9, col = c("Estimate",
+  "Std. Error", "Z-value", "P-value"), ...)
 }
 \arguments{
 \item{x}{a lvm model}
 
 \item{value}{should the name of the coefficient be returned? Else return the coefficients}
+}
+\description{
+Extract the summary table for the loadings
 }
 \examples{
 m <- lvm()
@@ -27,4 +36,3 @@ fit <- estimate(m, df)
 loadings(fit) 
 loadings(fit, col = "P-value") 
 }
-

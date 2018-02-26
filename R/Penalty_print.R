@@ -1,127 +1,194 @@
-#' @title Display the content of a plvm object
-#
-#' @param x a plvm object
+# {{{ doc
+#' @title Display the content of a penalized object
+#' @description Display the content of a penalized object
 #'
+#' @name print.penalize
+#' 
+#' @param x a plvm object
+#' @param ... additional arguments to be passed to lower level functions.
+#'
+# }}}
+# {{{ print.penaltyL12
+#' @rdname print.penalize
+#' @export
+`print.penaltyL12` <- function(x, ...){
+
+    fctExtract <- function(x, char){
+        lambda <- penalty(x, type = char)[[char]]
+        if(length(lambda)>0){
+            if(length(unique(lambda))==1){
+                lambda <- lambda[1]
+            }else{
+                lambda <- "multiple values"
+            }
+        }else{
+            lambda <- "undefined"
+        }
+        return(lambda)
+    }
+
+    lambda1 <- fctExtract(x, "lambda1")
+    lambda2 <- fctExtract(x, "lambda2")
+    lambdaG <- fctExtract(x, "lambdaG")
+
+    
+    x.penalty <- penalty(x)
+
+    if(is.null(x.penalty)){
+        cat("Empty penalty \n")
+    }else{    
+        ## elastic net penalty
+        if(x.penalty[penalty %in% c("lasso","ridge"),.N]>0){
+            index.lasso <- x.penalty[penalty %in% "lasso",link]
+            index.ridge <- x.penalty[penalty %in% "ridge",link]
+
+            index.elasticNet <- intersect(index.lasso,index.ridge)
+            index.lasso <- setdiff(index.lasso,index.elasticNet)
+            index.ridge <- setdiff(index.ridge,index.elasticNet)
+        
+            if(length(index.elasticNet)>0){
+                cat("Penalty: elastic net (lambda1 = ",lambda1," lambda2 = ",lambda2,") \n",
+                    "Links  : ", paste(index.elasticNet, collapse = " "),"\n\n",sep="")
+            }
+            if(length(index.lasso)>0){
+                cat("Penalty: lasso (lambda1 = ",lambda1,") \n",
+                    "Links  : ", paste(index.lasso, collapse = " "),"\n\n",sep="")
+            }
+            if(length(index.ridge)>0){
+                cat("Penalty: ridge (lambda2 = ",lambda2,") \n",
+                    "Links  : ", paste(index.ridge, collapse = " "),"\n\n",sep="")
+            }                    
+        }
+
+        ## group penalty
+        if(x.penalty[penalty %in% c("group lasso"),.N]>0){
+            index.groupLasso <- x.penalty[penalty %in% "group lasso",link]
+            group.groupLasso <- 
+                all.groups <- x.penalty[penalty %in% "group lasso",unique(group)]
+        
+            cat("Penalty: group lasso (lambdaG = ",lambdaG,")\n",sep="")        
+            sapply(all.groups, function(g){
+                glink <- x.penalty[penalty=="group lasso" & group == g,link]
+                cat("group ",g,": ",paste(glink, collapse = " "),"\n",sep="")
+            })
+            cat("\n")
+        }      
+    }
+    
+}
+# }}}
+
+# {{{ print.penaltyNuclear
+#' @rdname print.penalize
+#' @export
+`print.penaltyNuclear` <- function(x, ...){
+    test.nuclear <- !is.null(penalty(x, type = "link")$link)
+    
+    if(test.nuclear){
+        allNames <- penalty(x, type = "name.reduce")
+        allEndo <- penalty(x, type = "endogeneous")
+        lambdaN <- penalty(x, type = "lambdaN")
+        n.penaltyNuclear <- length(allNames)
+        
+        cat("Penalty: nuclear norm ",if(!is.null(lambdaN)){paste0("(lambdaN = ",mean(lambdaN),")")},"\n",
+            "on     : ", allNames[1]," (endogenous: ",allEndo[1],")\n",sep = "")
+        if(n.penaltyNuclear>1){
+            sapply(1:n.penaltyNuclear, function(p){
+                cat("     : ", allNames[p]," (endogeneous: ",allEndo[p],")\n",sep = "")
+            })
+        }
+    }
+    
+}
+# }}}
+
+# {{{ print.plvm
+#' @rdname print.penalize
 #' @export
 `print.plvm` <- function(x, ...) {
   
-  ## normal display
-  out <- capture.output(lava:::print.lvm(x))
-  if(!is.null(x$penaltyNuclear$name.Y)){
-    charY <- paste0(x$penaltyNuclear$name.Y," ~ ")
-    indexEq <- grep(charY,out)
-    out[indexEq] <- gsub(charY, replacement = paste0(charY,LCSseq(x$penaltyNuclear$name.X),"(image)+"),x = out[indexEq])
-  }
-  sapply(out, function(o){cat(o,"\n")})
-  
-  ## additional display - lasso
-  if(!is.null(x$penalty$name.coef)){
-    if(x$penalty$lambda1>0 && x$penalty$lambda2>0){
-      penaltyType <- "Elastic net"
-    }else if(x$penalty$lambda1>0){
-      penaltyType <- "Lasso"
-    }else if(x$penalty$lambda1>0){
-      penaltyType <- "Ridge"
-    }else{
-      penaltyType <- "None"
-    }
-    
-    if(all(x$penalty$group.coef<1)){
-      cat("Penalty: ", penaltyType,"\n",
-          "On     : ", paste(x$penalty$name.coef, collapse = " "),"\n")
-    }else{
-      
-      test.lasso <- (x$penalty$group.coef<1)*(x$penalty$group.coef>0)
-      if(any(test.lasso==1)){
-        cat("Penalty: ", penaltyType,"\n",
-            "On     : ", paste(x$penalty$name.coef[test.lasso==1], collapse = " "),"\n")
-      }
-      
-      ls.penalty <- tapply(x$penalty$name.coef[test.lasso!=1], x$penalty$group.coef[test.lasso!=1],list)
-      cat("Penalty: Grouped lasso \n")
-      lapply(ls.penalty, function(x){cat("On     :",paste(x, collapse = " "),"\n")})
-    }
-    cat("\n")
-  }
-  if(!is.null(x$penaltyNuclear$name.Y)){
-    penaltyType <- "Nuclear norm"
-    cat("Penalty: ", penaltyType,"\n",
-        "on     : ", LCSseq(x$penaltyNuclear$name.X)," (outcome: ",x$penaltyNuclear$name.Y,")\n",sep = "")
-  }
-  ## export
-  invisible(x)
-}
+    ## normal display
+    out <- capture.output(lava_print.lvm(x))
+    sapply(out, function(o){cat(o,"\n")})
 
-#' @title Display the content of a plvmfit object
-#
-#' @param x a plvmfit object
-#'
+    ## penalty
+    print(x$penalty)
+    print(x$penaltyNuclear)
+    
+    ## export
+    invisible(x)
+}
+# }}}
+# {{{ print.plvmfit
+#' @rdname print.penalize
 #' @export
 `print.plvmfit` <- function(x,level=2,labels=FALSE,
-                            coef = "penalized", lambda = "abs", only.breakpoints = TRUE, 
+                            coef, lambda = NULL, only.breakpoints = NULL, 
                             ...) {
-  
-  if(is.null(x$regularizationPath)){
-    
-    Mtempo <- CoefMat(x,labels=labels,level=level,...) 
-    ncol.M <- ncol(Mtempo)
-    if(x$penalty$lambda1>0 || x$penalty$lambda2>0){
-      Mtempo <- rbind(Mtempo, "Penalization:" = rep("", ncol.M))
-    }
-    if(x$penalty$lambda1>0){
-      Mtempo <- rbind(Mtempo, "   L1 lambda (abs)" = c(x$penalty$lambda1.abs, rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L1 lambda" = c(x$penalty$lambda1, rep("",ncol.M-1)))
-    }
-    if(x$penalty$lambda2>0){
-      Mtempo <- rbind(Mtempo, "   L2 lambda (abs)" = c(x$penalty$lambda2.abs, rep("",ncol.M-1)))
-      Mtempo <- rbind(Mtempo, "   L2 lambda" = c(x$penalty$lambda2, rep("",ncol.M-1)))
-    }
-    
-    print(Mtempo,quote=FALSE,right=TRUE)
-    minSV <- attr(vcov(x),"minSV")
-    if (!is.null(minSV) && minSV<1e-12) {
-      warning("Small singular value: ", format(minSV))
-    }
-    pseudo <- attr(vcov(x),"pseudo")
-    if (!is.null(pseudo) && pseudo) warning("Singular covariance matrix. Pseudo-inverse used.")
-    
-  }else if(is.null(x$regularizationPath$optimum)){
-    cat("Regularization path: \n")
-    print(x$regularizationPath, coef = coef, lambda = lambda, only.breakpoints = only.breakpoints)
-    cat("estimated using EPSODE algorithm \n")
-    
+
+    if(is.null(x$regularizationPath)){
+        
+        # {{{ no regularization path
+        Mtempo <- CoefMat(x,labels=labels,level=level,...) 
+        ncol.M <- ncol(Mtempo)
+        Mtempo[,c("Std. Error","Z-value","P-value")] <- ""
+      
+        print(Mtempo,quote=FALSE,right=TRUE)
+        print(x$penalty)
+
+        minSV <- attr(vcov(x),"minSV")
+        if (!is.null(minSV) && minSV<1e-12) {
+            warning("Small singular value: ", format(minSV))
+        }
+        pseudo <- attr(vcov(x),"pseudo")
+        if (!is.null(pseudo) && pseudo) warning("Singular covariance matrix. Pseudo-inverse used.")
+        # }}}
+      
+    }else if(is.null(x$regularizationPath$criterion)){
+        
+        # {{{ regularization path
+        cat("Regularization path: \n")
+        test.EPSODE <- x$opt$algorithm=="EPSODE"    
+        
+        if(missing(lambda)){
+            test.ridge <- !is.null(penalty(x, type = "Vridge")$Vridge)
+            if(test.ridge){
+                lambda <- c("lambda1","lambda2")
+            }else{
+                lambda <- "lambda1"
+            }
+            if(test.EPSODE){
+                lambda <- paste0(lambda,".abs")
+            }
+        }
+        if(is.null(only.breakpoints)){
+            only.breakpoints <- test.EPSODE
+        }
+        
+        printPath <- getPath(x,
+                             only.breakpoints = only.breakpoints,
+                             lambda = lambda, keep.index = FALSE,
+                             coef = coef, ...)
+        print(printPath)
+
+      diffRow <- nrow(getPath(x)) - nrow(printPath)
+      if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
+
+      cat("estimated using EPSODE algorithm \n")
+      # }}}
+      
   }else{
-    lava:::print.lvmfit(x)
-    cat("\n Model selected using ",x$regularizationPath$optimum$criterion," \n")
-    if(lambda == "abs"){
-      cat("   range of lambda1.abs: ",paste(range(x$regularizationPath$performance$lambda1.abs), collapse = " "),"\n")
-      cat("   best lambda1.abs    : ",x$regularizationPath$optimum$lambda1.abs,"\n")
-    }else if(lambda == "nabs"){
-      cat("   range of lambda1: ",paste(range(x$regularizationPath$performance$lambda1), collapse = " "),"\n")
-      cat("   best lambda1    : ",x$regularizationPath$optimum$lambda1,"\n")
-    }
+
+      # {{{ best model after regularization path
+      x0 <- x
+      x0$regularizationPath <- NULL
+      
+      cat("** Model selected using ",x$regularizationPath$criterion," **\n",sep="")
+      print(x0)
+      
+      # }}}
   }
   
   invisible(x)
 }
-
-`print.regPath` <- function(x, coef = "penalized", lambda = "abs", only.breakpoints = TRUE) {
-  
-    printPath <- getPath(x, only.breakpoints = only.breakpoints, coefficient = coef, lambda = lambda)
-    print(printPath)
-    diffRow <- nrow(getPath(x)) - nrow(printPath)
-    if(diffRow>0){cat("[ omitted ",diffRow," rows ] \n",sep = "")}
-    
-}
-
-  
-##' @title get the common substring sequence in a vector of strings
-LCSseq <- function(x){
-  affixe <- strsplit(x[[1]], split = "")[[1]]
-  
-  for(iterX in 2:length(x)){
-    affixe <- qualV::LCS(affixe, strsplit(x[[iterX]], split = "")[[1]])$LCS
-  }
-  
-  return(affixe)
-}
+# }}}

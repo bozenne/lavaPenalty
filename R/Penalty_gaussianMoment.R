@@ -1,61 +1,4 @@
-gaussian_numHessian.lvm <- function(x,p,method,...) {
-  
-  myg <- function(p1) lava:::gaussian_gradient.lvm(x,p=p1,...)
-  I <- numDeriv::jacobian(myg,p, method = method)
-  return( (I+t(I))/2 )
-  
-}
-
-#### lava version
-#' @export
-penalized_objective.lvm <- lava:::gaussian_objective.lvm 
-#' @export
-penalized_gradient.lvm <- lava:::gaussian_gradient.lvm
-#' @export
-penalized_hessian.lvm <-  lava:::gaussian_hessian.lvm
-#' @export
-penalized_logLik.lvm <- lava:::gaussian_logLik.lvm
-
-#### with numerical derivatives
-#' @export
-numDeriveSimple_objective.lvm <- lava:::gaussian_objective.lvm
-#' @export
-numDeriveSimple_gradient.lvm <- lava:::gaussian_gradient.lvm
-#' @export
-numDeriveSimple_hessian.lvm <- function(...){gaussian_numHessian.lvm(method = "simple", ...)}
-#' @export
-numDeriveSimple_logLik.lvm <- lava:::gaussian_logLik.lvm
-
-# numDeriveRichardson_objective.lvm <- lava:::gaussian_objective.lvm
-# numDeriveRichardson_gradient.lvm <- lava:::gaussian_gradient.lvm
-# numDeriveRichardson_hessian.lvm <- function(...){gaussian_numHessian.lvm(method = "Richardson", ...)}
-
-#### explicit computation
-#' @export
-explicit_objective.lvm <- lava:::gaussian_objective.lvm
-#' @export
-explicit_gradient.lvm <- lava:::gaussian_gradient.lvm
-#' @export
-explicit_hessian.lvm <-  penalized1_hessian.lvm <- function(...){gaussian_dlv.lvm(derivative = 2, ...)}
-#' @export
-explicit_logLik.lvm <- lava:::gaussian_logLik.lvm
-
-
-# penalized1_objective.lvm <- lava:::gaussian1_objective.lvm
-# penalized1_gradient.lvm <- lava:::gaussian1_gradient.lvm
-# penalized1_hessian.lvm <-  penalized1_hessian.lvm <- function(...){gaussian_dlv.lvm(derivative = 2, ...)}
-# 
-# penalized2_objective.lvm <- lava:::gaussian2_objective.lvm
-# penalized2_gradient.lvm <- lava:::gaussian2_gradient.lvm
-# penalized2_hessian.lvm <- lava:::gaussian2_hessian.lvm
-# 
-# penalized3_objective.lvm <- lava:::gaussian3_objective.lvm
-# penalized3_gradient.lvm <- lava:::gaussian3_gradient.lvm
-# penalized3_hessian.lvm <- lava:::gaussian3_hessian.lvm
-
-#### additional ####
-# here S -> \hat{Sigma}
-#      C -> \Omega
+# {{{ gaussian_dlv.lvm
 gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
   
   mp <- modelVar(x, p = p, data = data, ...)
@@ -102,7 +45,7 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     # range(partial_vec.C -numDeriv::jacobian(func = calcC, x = as.double(p)))
   }
   
-  
+    
   #### hessian
   if(2 %in% derivative){
     iCu <- iC %*% t(u)
@@ -113,7 +56,7 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     
     n.rows <- sqrt(nrow(partial_vec.iC))
     ls.tempo <- (lapply(1:n.rows, function(x){partial_vec.iC[x*(1:n.rows),]}))
-    partial_iC <- abind:::abind(ls.tempo, along = 3)
+    partial_iC <- abind::abind(ls.tempo, along = 3)
     
     partial2_vec.C <- D$d2vecS # D$d2vecS
     partial2_vec.xi <- NULL
@@ -159,11 +102,12 @@ gaussian_dlv.lvm <- function(x, p, data, S, mu, n, derivative = 0, ...){
     return(res)
   }
 }
-
+# }}}
 
 
 #### explicit formula ####
 
+# {{{ lvGaussian
 #' @export
 lvGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
@@ -178,7 +122,9 @@ lvGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-as.numeric(lv))
 }
+# }}}
 
+# {{{ scoreGaussian
 #' @export
 scoreGaussian <- function(coef, Y, X, constrain, var = NULL){
   if(!is.null(var)){coef <- c(coef, var)}
@@ -197,7 +143,9 @@ scoreGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-as.numeric(c(gradient_beta,gradient_sigma2)))
 }
+# }}}
 
+# {{{ hessianGaussian
 #' @export
 hessianGaussian <- function(coef, Y, X, constrain, var = NULL){
   
@@ -227,5 +175,4 @@ hessianGaussian <- function(coef, Y, X, constrain, var = NULL){
   
   return(-H)
 }
-
-
+# }}}

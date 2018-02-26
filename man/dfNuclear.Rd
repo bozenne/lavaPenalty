@@ -4,9 +4,22 @@
 \alias{dfNuclear}
 \title{Compute the degree of freedom for nuclear regularized regression}
 \usage{
-dfNuclear(B.LS, B.lambda, lambda, lambda2 = 0, tol = 1e-12)
+dfNuclear(B.LS, B.lambda, lambda1, lambda2 = 0, tol = 1e-12)
+}
+\arguments{
+\item{B.LS}{??}
+
+\item{B.lambda}{??}
+
+\item{lambda1}{lasso penalization parameter}
+
+\item{lambda2}{ridge penalization parameter}
+
+\item{tol}{value under which an eigen value is considered to be null}
+}
+\description{
+Compute the degree of freedom for nuclear regularized regression
 }
 \references{
 Zhou et al. Regularized Matrix Regression
 }
-

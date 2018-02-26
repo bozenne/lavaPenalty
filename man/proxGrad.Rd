@@ -2,15 +2,10 @@
 % Please edit documentation in R/Penalty_ISTA.R
 \name{proxGrad}
 \alias{proxGrad}
-\title{step of a proximal gradient algorithm}
+\title{Proximal gradient algorithm}
 \usage{
-proxGrad(start, proxOperator, method, hessian, gradient, objective, iter.max,
-  trace, abs.tol = lava.options()$proxGrad$abs.tol,
-  rel.tol = lava.options()$proxGrad$rel.tol,
-  step = lava.options()$proxGrad$step, BT.n = lava.options()$proxGrad$BT.n,
-  BT.eta = lava.options()$proxGrad$BT.eta,
-  force.descent = lava.options()$proxGrad$force.descent,
-  export.iter = lava.options()$proxGrad$export.iter)
+proxGrad(start, proxOperator, hessian, gradient, objective,
+  control = lava.options()$proxGrad)
 }
 \arguments{
 \item{start}{initial values for the parameters}
@@ -23,37 +18,13 @@ proxGrad(start, proxOperator, method, hessian, gradient, objective, iter.max,
 
 \item{objective}{likelihood given by lava. Used to adjust the step parameter when using backtracking}
 
-\item{iter.max}{maximum number of iterations}
-
-\item{trace}{should the convergence diagnostics be displayed at each step}
-
-\item{abs.tol}{convergence is the difference in likelihood between two consecutive steps is below this threshold}
-
-\item{rel.tol}{convergence is the relative difference  in likelihood between two consecutive steps is below this threshold}
-
-\item{step}{maximun step for the proximal gradient algorithm. 
-If NULL the step is estimated using the inverse of the maximal eigenvalue of the hessian (in absolute value) and re-estimated at each step
-Otherwise backtracking is used.}
-
-\item{BT.n}{number of backtracking steps}
-
-\item{BT.eta}{multiplicative factor for the step}
-
-\item{lambda1}{L1 penalization parameter}
-
-\item{lambda2}{L2 penalization parameter}
-
-\item{group.lambda1}{group to which each parameter belongs. 0 mean individual lasso otherwise parameters are groupes according to their group.lambda1 value}
-
-\item{fast}{type of iteration
-0 correspond to the ISTA step as described in Bech 2009
-1 correspond to the FISTA step as described in Bech 2009
-2 correspond to the Monotone APG as described in Li 2015
-3 correspond to the Nesterov step as described in Simon 2013}
+\item{control}{settings for the proximal gradient algorithm. See lava.options.}
+}
+\description{
+Estimate parameters using a proximal gradient algorithm
 }
 \references{
 Bech and Teboulle - 2009 A Fast Iterative Shrinkage-Thresholding Algorithm
 Li 2015 - Accelerated Proximal Gradient Methods for Nonconvex Programming
 Simon 2013 - A sparse group Lasso
 }
-

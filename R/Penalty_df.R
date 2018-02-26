@@ -1,8 +1,15 @@
 #' @title Compute the degree of freedom for nuclear regularized regression
+#' @description Compute the degree of freedom for nuclear regularized regression
+#'
+#' @param B.LS ??
+#' @param B.lambda ??
+#' @param lambda1 lasso penalization parameter
+#' @param lambda2 ridge penalization parameter
+#' @param tol value under which an eigen value is considered to be null 
 #' 
 #' @references Zhou et al. Regularized Matrix Regression
 #' 
-dfNuclear <- function(B.LS, B.lambda, lambda, lambda2 = 0, tol = 1e-12){
+dfNuclear <- function(B.LS, B.lambda, lambda1, lambda2 = 0, tol = 1e-12){
   
   eigen.LS <- svd(B.LS)$d
   if(any(eigen.LS<0)){

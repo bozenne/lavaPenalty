@@ -1,15 +1,16 @@
-cvCheck <- function (x, ...) {
-  UseMethod("cvCheck", x)
-}
+# {{{ cvCheck
 
 #' @title Test the sensibility of the lvm estimate to the initialization points
-#
+#' @description Test the sensibility of the lvm estimate to the initialization points
+#' @name cvCheck
+#'
 #' @param object a lvm model
 #' @param data a data frame
 #' @param factor.vcov inflation factor for the variance when sampling the initialization points
 #' @param n.init number of initialization points to be used
 #' @param ncpus the number of CPU to be used
-#' @param verbose should a progression bar be displayed?
+#' @param keep.cov should the covariance between parameter be kept to simulate the initialization points
+#' @param trace should a progression bar be displayed?
 #' @param ... additional arguments to be passed to estimate
 #' 
 #' @details 
@@ -22,124 +23,166 @@ cvCheck <- function (x, ...) {
 #' covariance(m) <- v1~v2+v3+v4
 #' dd <- sim(m,10000) ## Simulate 10000 observations from model
 #' e <- estimate(m, dd) ## Estimate parameters
-#' 
-#' system.time(
-#' summary(cvCheck(m, dd))
-#' )
-#' 
-#' system.time(
+#'
+#' \dontrun{
+#' summary(cvCheck(m, dd, ncpus = 1))
 #' summary(cvCheck(m, dd, ncpus = 4))
-#' )
+#' }
+#' \dontshow{
+#' summary(cvCheck(m, dd, ncpus = 1, n.init = 10))
+#' summary(cvCheck(m, dd, ncpus = 4, n.init = 10))
+#' }
+#' 
 #' @export
-cvCheck.lvm <- function(object, data, factor.vcov = 9, n.init = 100, ncpus = 1, verbose = TRUE, ...){
-  
-  if(is.null(ncpus)){ ncpus <- parallel::detectCores()}
-  
-  dots <- list(...)
-  if("control" %in% names(dots) == FALSE){
-    dots$control <- list()
-  }
-  
-  ## automatic intialisation
-  test.W <- 0
-  
-  if(verbose){cat("* initialisation \n")}
-  suppressWarnings(
-    lvm.init <- estimate(object, data, ...)  
-  )
-  
-  names.coef <- names(coef(lvm.init))
-  n.coef <- length(names.coef)
-  var.param <- grep(",",names.coef, fixed = TRUE)
-  mean.param <- setdiff(1:n.coef, var.param)
-  
-  VCOV <- vcov(lvm.init)
-  diag(VCOV) <-  diag(VCOV)*factor.vcov
-  sample.start <- tmvtnorm:::rtmvnorm(n = n.init, mean = coef(lvm.init), sigma = VCOV,
-                                      lower = c(rep(-Inf, length(mean.param)), rep(0, length = length(var.param))),
-                                      algorithm = "gibbs"
-  )
-  
-  ## grid
-  warper <- function(x){
-    if(verbose){
-      if(ncpus == 1){
-        utils:::setTxtProgressBar(.pb, x) 
-      }else{
-        snowfall::sfCat("*")
-      }
-    }
-    snowfall::sfCat("*")
-    dots$control$start <- sample.start[x,]
-    
-    suppressWarnings(
-      resStart <- try(do.call("estimate", 
-                              c(list(x = object, data = data), dots))
-      )
-    )
-    
-    if(class(resStart) != "try-error"){
-      return(c(resStart$opt$convergence, as.numeric(logLik(resStart)), coef(resStart) ))
-    }else{
-      return(rep(NA, n.coef+2))
-    }
-  }
-  
-  if(ncpus == 1){
-    if(verbose){.pb <- utils:::txtProgressBar(min = 0, max = n.init, style = 3)}
-    Mres <- sapply(1:n.init, warper)
-  }else{
-    sfInit( parallel=TRUE, cpus=ncpus )
-    sfLibrary(lava) ; sfLibrary("snowfall", character.only=TRUE)
-    sfExportAll()
-    
-    Mres <- sfSapply(1:n.init, warper)
-    
-    sfStop()
-  }
-  if(verbose){cat("\n")}
-  
-  Mres <- cbind(Mres,
-                c(lvm.init$opt$convergence, as.numeric(logLik(lvm.init)), coef(lvm.init) ))  
-  df.resCV <- setNames(as.data.frame(t(Mres)), c("cv", "logLik",names.coef))
-  
-  ## export
-  class(df.resCV) <- c("cvlvm","data.frame")
-  return(df.resCV)
+cvCheck <- function (object, ...) {
+  UseMethod("cvCheck", object)
 }
 
-#' @title Summary function associated with cvCheck
-#
-#' @param object the output of cvCheck
+#' @rdname cvCheck
+#' @export
+cvCheck.lvm <- function(object,
+                        data,
+                        factor.vcov = 1,
+                        n.init = 100,
+                        keep.cov = TRUE,
+                        ncpus = 1,
+                        trace = TRUE,
+                        ...){
+    
+    if(is.null(ncpus)){ ncpus <- parallel::detectCores()}
 
-summary.cvlvm <- function(object, threshold = NULL){
-  
-  n.init <- length(object$cv)
-  pc.cv <- mean(object$cv==0, na.rm = TRUE)
-  cat("Convergence rate: ",round(100*pc.cv,2),"% (",sum(object$cv==0, na.rm = TRUE)," over ",n.init,") \n", sep = "")
-  
-  if(pc.cv>0){
-    
-    index.cv <- which(object$cv==0)
-    index.bestcv <- which.max(object$logLik)
-    if(is.null(threshold)){
-      threshold <- min(apply(object[index.cv, -(1:2)],2,median))/1e3 # median / 1e3 of the smaller parameter
+    dots <- list(...)
+    if("control" %in% names(dots) == FALSE){
+        dots$control <- list()
     }
-    dist.coef <- dist(na.omit(object[index.cv, -(1:2)]))
+   
+    # {{{ automatic intialisation
+    test.W <- 0
     
-    hclust.res <- hclust(dist.coef, method="complete")
-    n.clusters <- 1 + sum(hclust.res$height > threshold)
-    quantile.cv <- apply(object[index.cv,-1], 2, function(x){ c(range = diff(range(x, na.rm = TRUE)), min = min(x, na.rm = TRUE), max = max(x, na.rm = TRUE))})
+    if(trace){cat("* initialisation \n")}
+    suppressWarnings(
+        lvm.init <- estimate(object, data, ...)  
+    )
     
-    indexRed.bestcv <- which(index.bestcv == na.omit(cbind(object,index = 1:n.init)[index.cv, -(1:2)])$index)
-    dist.coef <- sum(as.matrix(dist.coef)[indexRed.bestcv,] < threshold)
+    names.coef <- names(coef(lvm.init))
+    n.coef <- length(names.coef)
+    var.param <- grep(",",names.coef, fixed = TRUE)
+    mean.param <- setdiff(1:n.coef, var.param)
+
+    lvm.vcov <- vcov(lvm.init)
+    if(keep.cov){        
+        VCOV <- lvm.vcov
+    }else{
+        VCOV <- matrix(0, nrow = NROW(lvm.vcov), ncol = NCOL(lvm.vcov))        
+    }
+    diag(VCOV) <-  diag(lvm.vcov)*factor.vcov
     
+    sample.start <- tmvtnorm::rtmvnorm(n = n.init, mean = coef(lvm.init), sigma = VCOV,
+                                        lower = c(rep(-Inf, length(mean.param)), rep(0, length = length(var.param))),
+                                        algorithm = "gibbs"
+                                        )
+
+    # }}}
+    
+    # {{{ warper
+    warper <- function(x){
+        dots$control$start <- sample.start[x,]
+
+        suppressWarnings(
+            resStart <- try(do.call("estimate", 
+                                    c(list(x = object, data = data), dots))
+                            )
+        )
+        
+        if(class(resStart) != "try-error"){
+            return(c(resStart$opt$convergence, as.numeric(logLik(resStart)), coef(resStart) ))
+        }else{
+            return(rep(NA, n.coef+2))
+        }
+    }
+    # }}}
+
+    # {{{ parallel computations
+    cl <- parallel::makeCluster(ncpus)
+    doSNOW::registerDoSNOW(cl)
+
+    if(trace > 0){
+        pb <- utils::txtProgressBar(max = n.init, style = 3)
+        progress <- function(n) setTxtProgressBar(pb, n)
+        opts <- list(progress = progress)
+    }else{
+        opts <- NULL
+    }
+
+    Mres <- foreach::`%dopar%`(
+                         foreach::foreach(i = 1:n.init,
+                                          .packages =  "lava",
+                                          .export = "dots",
+                                          .combine = "cbind",
+                                          .options.snow = opts),
+                         {                                
+                             return(warper(i))
+                         })
+    
+    if(trace > 0){  close(pb) }
+    parallel::stopCluster(cl)
+    # }}}
+
+    # {{{ postprocess and export
+    Mres <- cbind(Mres,
+                  c(lvm.init$opt$convergence, as.numeric(logLik(lvm.init)), coef(lvm.init) ))  
+    df.resCV <- setNames(as.data.frame(t(Mres)), c("cv", "logLik",names.coef))
+    
+    ## export
+    out <- list(estimates = df.resCV,
+                seeds = sample.start)
+    class(out) <- c("cvlvm","data.frame")
+    return(out)
+    # }}}
+}
+
+# }}}
+
+
+# {{{ summary.cvlvm
+#' @title Summary function associated with cvCheck
+#' @description Summary function associated with cvCheck
+#'
+#' @param object the output of cvCheck
+#' @param threshold threshold used to cluster the convergence points (height in hclust)
+#' 
+#' @export
+summary.cvlvm <- function(object, threshold = NULL, ...){
+
+
+    e <- object$estimates
+    index.cv <- which(e$cv==0)    
+    n.init <- length(e$cv)
+    
+    quantile.cv <- apply(e[index.cv,-1], 2, function(x){
+        c(range = diff(range(x, na.rm = TRUE)), min = min(x, na.rm = TRUE), max = max(x, na.rm = TRUE))
+    })
     cat("Summary of the estimates: \n", sep = "")
     print(quantile.cv)
+    
+
+    pc.cv <- mean(e$cv==0, na.rm = TRUE)
+    cat("Convergence rate: ",round(100*pc.cv,2),"% (",sum(e$cv==0, na.rm = TRUE)," over ",n.init,") \n", sep = "")
+
+    if(!is.null(threshold)>0 && pc.cv>0){
+    n.cv <- length(index.cv)
+    indexRed.bestcv <- which.max(e$logLik[index.cv])
+            
+    dist.coef <- dist(e[index.cv,-(1:2),drop=FALSE]) 
+    hclust.res <- hclust(dist.coef, method="complete")
+    n.clusters <- 1 + sum(hclust.res$height > threshold)
+    
+    dist.coef <- sum(as.matrix(dist.coef)[indexRed.bestcv,] < threshold)
+    
     cat("Threshold: ",threshold," \n", sep = "")
     cat("Number of convergence points: ",n.clusters," \n", sep = "")
-    cat("Convergence rate to the best convergence point: ",round(100*dist.coef/n.init,2),"% (",dist.coef," over ",n.init,") \n", sep = "")
-    print(object[index.bestcv,])
+    cat("Convergence rate to the best convergence point: ",round(100*dist.coef/n.cv,2),"% (",dist.coef," over ",n.cv,") \n", sep = "")
+    print(e[index.cv[indexRed.bestcv],])
     
   }else{
     quantile.cv <- NA
@@ -150,6 +193,7 @@ summary.cvlvm <- function(object, threshold = NULL){
                         pc.cv = pc.cv,
                         n.clusters = n.clusters)))
 }
+# }}}
 
 
 

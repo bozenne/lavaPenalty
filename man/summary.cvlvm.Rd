@@ -4,9 +4,13 @@
 \alias{summary.cvlvm}
 \title{Summary function associated with cvCheck}
 \usage{
-\method{summary}{cvlvm}(object, threshold = NULL)
+summary.cvlvm(object, threshold = NULL, ...)
 }
 \arguments{
 \item{object}{the output of cvCheck}
-}
 
+\item{threshold}{threshold used to cluster the convergence points (height in hclust)}
+}
+\description{
+Summary function associated with cvCheck
+}

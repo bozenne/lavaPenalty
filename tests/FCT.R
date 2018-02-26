@@ -46,7 +46,7 @@ hessianMC <- function(coef, Y = df.data$Y, X = as.matrix(df.data[, names(df.data
 }
 
 
-coef2.penalized <- function(x, iter_lambda){
+coef2.penalized <- function(x, iter_lambda, name.response){
   
   if(is.list(x)){
     
@@ -60,23 +60,22 @@ coef2.penalized <- function(x, iter_lambda){
           model@penalized, 
           model@nuisance$sigma2)
       })
-      
       Mres <- matrix(unlist(res), nrow = length(res), byrow = TRUE)
       colnames(Mres) <- c("lambda1","lambda2",names(x[[1]]@unpenalized),names(x[[1]]@penalized),"sigma2")
       return(Mres)
     }
     
-  } 
+  }
   
-  coef <- c(x@unpenalized, 
-            x@penalized, 
-            x@nuisance$sigma2)
-  n.coef <- length(coef)
-  names.response <- all.vars(x@formula$penalized)[1]
-  names(coef)[1] <- names.response
-  names(coef)[2:(n.coef-1)] <- paste(names.response, names(coef)[2:(n.coef-1)], sep = "~")
-  names(coef)[length(names(coef))] <- paste(names.response, names.response, sep = ",")
-  return(coef)
+    coef <- c(x@unpenalized, 
+              x@penalized, 
+              x@nuisance$sigma2)
+    n.coef <- length(coef)
+    if(missing(name.response)){name.response <- all.vars(x@formula$penalized)[1]}
+    names(coef)[1] <- name.response
+    names(coef)[2:(n.coef-1)] <- paste(name.response, names(coef)[2:(n.coef-1)], sep = lava.options()$symbols[1])
+    names(coef)[length(names(coef))] <- paste(name.response, name.response, sep =  lava.options()$symbols[2])
+    return(coef)
 }
 
 validPath.lvm <- function(x, data, validMean = TRUE, validCov = TRUE, control = list(), ...){

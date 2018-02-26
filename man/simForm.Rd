@@ -42,4 +42,3 @@ image(simForm(100, 10, 10, 2)$X)
 image(simForm(100, 10, 10, 2, distance = "maximum")$X)
 
 }
-

@@ -1,0 +1,20 @@
+#+BEGIN_HTML
+<a href="https://travis-ci.org/bozenne/lavaPenalty"><img src="https://travis-ci.org/bozenne/lavaPenalty.svg?branch=master"></a>
+#+END_HTML
+
+* lavaPenalty
+
+** Linear regression with regularization term
+
+First define a standard =lvm= model:
+#+BEGIN_SRC R :exports both :results output
+library(lavaPenalty)
+
+m <- lvm(x=paste0("x",1:10),y="y")
+
+set.seed(10)
+df.data <- sim(m, 1e2)
+#+END_SRC
+
+
+** Latent variable model with regularization term
