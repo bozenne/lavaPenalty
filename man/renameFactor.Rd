@@ -20,6 +20,6 @@ Find the categorical variable matching the name of the coefficient in lava
 }
 \examples{
 \dontrun{
-lavaPenalty:::renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
+lavaSearch2:::renameFactor("x2C", ls.levels = list(x1 = 1:5, x2 = c("A","B","C")))
 }
 }

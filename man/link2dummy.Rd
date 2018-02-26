@@ -30,10 +30,10 @@ This function convert a set of variable names to their corresponding name in the
 m <- lvm()
 regression(m) <- c(y1,y2,y3)~u
 regression(m) <- u ~ X1+X2
-lavaPenalty:::var2dummy(m, var = c("X1","X2"))
+lavaSearch2:::var2dummy(m, var = c("X1","X2"))
 categorical(m,labels=c("M","F","MF")) <- ~X1
-lavaPenalty:::var2dummy(m, var = c("X1","X2"))
+lavaSearch2:::var2dummy(m, var = c("X1","X2"))
 categorical(m,labels=c("1","2","3")) <- ~X2
-lavaPenalty:::var2dummy(m, var = c("X1","X2"))
+lavaSearch2:::var2dummy(m, var = c("X1","X2"))
 
 }

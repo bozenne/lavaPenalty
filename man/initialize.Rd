@@ -62,7 +62,7 @@ regression(m) <- y1~x1+x2+x3+x4
 #### elastic net
 e <- estimate(m, sim(m, 1e2))
 pm <- penalize(m, lambda1 = 2, lambda2 = 1.5)
-pen12 <- initializer.penaltyL12(pm$penalty, name.coef = names(coef(e)))
+pen12 <- initialize.penaltyL12(pm$penalty, name.coef = names(coef(e)))
 pen12
 
 i <- initializer.plvm(pm, data = sim(m, 1e2),

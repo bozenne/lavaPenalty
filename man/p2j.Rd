@@ -16,8 +16,8 @@ p2j(x, ...)
 Extract the column index from a sparse matrix
 }
 \examples{
-p2j <- lavaPenalty:::p2j
-initVcoef.lvm <- lavaPenalty:::initVcoef.lvm
+p2j <- lavaSearch2:::p2j
+initVcoef.lvm <- lavaSearch2:::initVcoef.lvm
 
 m <- lvm(Y~X1+X2+X3)
 V <- initVcoef.lvm(m, link = coefReg(m), group = 1:length(coefReg(m)))
